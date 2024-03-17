@@ -38,7 +38,7 @@ import inboundApiRouter from "../../src/mpModules/inbound";
 import samplePrescriptionApiRouter from "../../src/mpModules/samplePrescription";
 import purchaseReturnApiRouter from "../../src/mpModules/purchaseReturn";
 import nationalPharmacySystemApiRouter from "../../src/mpModules/nationalPharmacySystem";
-const openApiDocumentation = require('../../swagger_output.json')
+const openApiDocumentation = require('../../swagger.json')
 const swaggerUi = require('swagger-ui-express');
 const mpRouterManager = function (app) {
   app.use("/mp/api/address", addressApiRouter);
