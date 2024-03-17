@@ -10,6 +10,7 @@ import productApiRouter from "../../src/mpModules/product";
 import bannerApiRouter from "../../src/mpModules/banner";
 import orderApiRouter from "../../src/mpModules/order";
 import imageApiRouter from "../../src/mpModules/image";
+import imageApiExternalRouter from "../../src/mpModules/image/external.js";
 import customerApiRouter from "../../src/mpModules/customer";
 import discountProgramApiRouter from "../../src/mpModules/discountProgram";
 import configurationApiRouter from "../../src/mpModules/configuration";
@@ -81,6 +82,8 @@ const mpRouterManager = function (app) {
   app.use("/mp/api/sample-prescription", samplePrescriptionApiRouter);
   app.use("/mp/api/purchase-return", purchaseReturnApiRouter);
   app.use("/mp/api/nps", nationalPharmacySystemApiRouter);
+  app.use("/mp/api/external/image/upload", imageApiExternalRouter)
+
   app.use("/docs", swaggerUi.serve, swaggerUi.setup(openApiDocumentation))
 };
 

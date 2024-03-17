@@ -19,7 +19,7 @@
     "secret_refresh_access_token_expire": 2592000
   },
   "api": {
-    "apiServer": "http://localhost:3001",
+    "apiServer": "http://157.10.44.228:8000",
     "storageFolder": "/public/upload",
     "excelFolder": "/upload/excel",
     "imagesFolder": "/upload/images"

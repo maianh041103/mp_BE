@@ -7,6 +7,9 @@
   "servers": [
     {
       "url": "http://157.10.44.228:8000"
+    },
+    {
+      "url": "http://localhost:8000"
     }
   ],
   "components": {
