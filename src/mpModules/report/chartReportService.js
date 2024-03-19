@@ -21,11 +21,6 @@ export async function indexChartProductsReport(params, loginUser) {
   if (productType) conditions.productType = productType;
 
   let { dateRange = {} } = params;
-  try {
-    dateRange = JSON.parse(dateRange);
-  } catch (e) {
-    dateRange = {};
-  }
   const { startDate, endDate } = dateRange;
   if (
     startDate &&

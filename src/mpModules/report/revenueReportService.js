@@ -19,13 +19,7 @@ export async function indexRevenuesReport(params, loginUser) {
   };
   if (branchId) conditions.branchId = branchId;
   if (status) conditions.status = status;
-
   let { dateRange = {} } = params;
-  try {
-    dateRange = JSON.parse(dateRange);
-  } catch (e) {
-    dateRange = {};
-  }
   let {
     startDate = moment().startOf("month").format("YYYY-MM-DD"),
     endDate = moment().endOf("month").format("YYYY-MM-DD"),
