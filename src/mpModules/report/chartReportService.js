@@ -21,7 +21,13 @@ export async function indexChartProductsReport(params, loginUser) {
   if (productType) conditions.productType = productType;
 
   let { dateRange = {} } = params;
-  const { startDate, endDate } = dateRange;
+  let {
+    startDate = moment().startOf("month"),
+    endDate = moment().endOf("month"),
+  } = dateRange;
+  startDate = moment(startDate).format("YYYY-MM-DD")
+  endDate = moment(endDate).format("YYYY-MM-DD")
+
   if (
     startDate &&
     moment(startDate).isValid() &&
