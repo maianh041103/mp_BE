@@ -21,9 +21,11 @@ export async function indexRevenuesReport(params, loginUser) {
   if (status) conditions.status = status;
   let { dateRange = {} } = params;
   let {
-    startDate = moment().startOf("month").format("YYYY-MM-DD"),
-    endDate = moment().endOf("month").format("YYYY-MM-DD"),
+    startDate = moment().startOf("month"),
+    endDate = moment().endOf("month"),
   } = dateRange;
+  startDate = moment(startDate).format("YYYY-MM-DD")
+  endDate = moment(endDate).format("YYYY-MM-DD")
   if (
     startDate &&
     moment(startDate).isValid() &&
