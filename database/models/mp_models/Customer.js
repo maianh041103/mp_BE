@@ -174,6 +174,12 @@ module.exports = (sequelize, Sequelize) => {
       foreignKey: "wardId",
       targetKey: "id",
     });
+
+    Customer.belongsTo(models.User, {
+        as: "created_by",
+        foreignKey: "createdBy",
+        targetKey: "id"
+    })
   };
   return Customer;
 };

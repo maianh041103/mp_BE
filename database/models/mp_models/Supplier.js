@@ -86,14 +86,6 @@ module.exports = (sequelize, Sequelize) => {
       allowNull: true,
       type: Sequelize.DATE
     },
-    createdBy: {
-      allowNull: true,
-      type: Sequelize.INTEGER(11).UNSIGNED,
-    },
-    updatedBy: {
-      allowNull: true,
-      type: Sequelize.INTEGER(11).UNSIGNED,
-    },
     deletedAt: {
       allowNull: true,
       type: Sequelize.DATE
@@ -138,6 +130,12 @@ module.exports = (sequelize, Sequelize) => {
       as: 'ward',
       foreignKey: 'wardId',
       targetKey: 'id',
+    });
+
+    Supplier.belongsTo(models.User, {
+      as: "created_by",
+      foreignKey: "createdBy",
+      targetKey: "id"
     });
   };
   return Supplier;

@@ -36,6 +36,8 @@ const customerAttributes = [
   "debt",
   "storeId",
   "createdAt",
+  "createdBy",
+  "note"
 ];
 
 const customerIncludes = [
@@ -63,6 +65,11 @@ const customerIncludes = [
     model: models.Ward,
     as: "ward",
     attributes: ["id", "name"],
+  },
+  {
+    model: models.User,
+    as: "created_by",
+    attributes: ["id", "username"],
   },
 ];
 
@@ -181,7 +188,7 @@ export async function indexCustomers(filter) {
   };
 
   const { rows, count } = await models.Customer.findAndCountAll(query);
-
+  console.log(rows)
   return {
     success: true,
     data: {

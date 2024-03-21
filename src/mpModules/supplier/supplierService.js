@@ -27,6 +27,7 @@ const attributes = [
   "storeId",
   "note",
   "createdAt",
+  "createdBy"
 ];
 
 const include = [
@@ -101,6 +102,11 @@ const include = [
     model: models.Ward,
     as: "ward",
     attributes: ["id", "name"],
+  },
+  {
+    model: models.User,
+    as: "created_by",
+    attributes: ["id", "username"],
   },
 ];
 
