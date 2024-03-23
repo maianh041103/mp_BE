@@ -86,6 +86,7 @@ export async function createController(req, res) {
 
 export async function updateController(req, res) {
   try {
+    console.log(req)
     const { id } = req.params;
     const { loginUser = {} } = req;
     const status = _.get(req.body, "status", null);
@@ -104,6 +105,7 @@ export async function updateController(req, res) {
       wardId: _.get(req.body, "wardId", null),
       districtId: _.get(req.body, "districtId", null),
       provinceId: _.get(req.body, "provinceId", null),
+      note: _.get(req.body, "note", null),
       ...(status && { status }),
       updatedBy: loginUser.id,
       updatedAt: new Date(),
@@ -149,6 +151,7 @@ export async function resetPassword(req, res) {
 export async function updateStatus(req, res) {
   try {
     const { id } = req.params;
+    const { loginUser = {} } = req;
     const user = {
       status: _.get(req, "body.status", ""),
       updatedBy: loginUser.id,

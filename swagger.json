@@ -7418,8 +7418,8 @@
               "schema": {
                 "type": "object",
                 "example": {
-                  "username": "admin",
-                  "password": "tt@1234"
+                  "username": "test01",
+                  "password": "12345678"
                 }
               }
             }
@@ -10324,10 +10324,21 @@
         }
       }
     },
-    "/mp/api/customer/9": {
+    "/mp/api/customer/{id}": {
       "get": {
         "tags": [
           "Khách hàng"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID của khách hàng",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "summary": "Chi tiết thông tin khách hàng",
         "security": [
@@ -10451,6 +10462,17 @@
         "tags": [
           "Khách hàng"
         ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID của khách hàng",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "summary": "Cập nhật thông tin khách hàng",
         "requestBody": {
           "content": {
@@ -10555,12 +10577,21 @@
             }
           }
         }
-      }
-    },
-    "/mp/api/customer/10": {
+      },
       "delete": {
         "tags": [
           "Khách hàng"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID của khách hàng",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "summary": "Xóa tài khoản khách hàng",
         "security": [
@@ -10642,10 +10673,21 @@
         }
       }
     },
-    "/mp/api/customer/10/status": {
+    "/mp/api/customer/{id}/status": {
       "patch": {
         "tags": [
           "Khách hàng"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID của khách hàng",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "summary": "Update trạng thái tài khoản khách hàng",
         "security": [

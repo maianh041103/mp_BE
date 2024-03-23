@@ -423,7 +423,6 @@ export async function indexProducts(params) {
         name: pb.dataValues.batch.name,
         productUnit: pb.dataValues.productUnit,
         productId: pb.productId,
-        batchId: pb.batchId,
         quantity: pb.quantity,
         expiryDate: pb.expiryDate,
       });

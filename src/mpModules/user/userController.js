@@ -48,7 +48,6 @@ export async function createController(req, res) {
       storeId: loginUser.storeId,
       branchId: _.get(req, "body.branchId", null),
       avatarId: _.get(req, "body.avatarId", null),
-      password:  _.get(req, "body.password", null),
       address: _.get(req, "body.address", ""),
       createdBy: loginUser.id,
     });
@@ -93,7 +92,6 @@ export async function updateController(req, res) {
         roleId: _.get(req, "body.roleId", null),
         branchId: _.get(req, "body.branchId", null),
         avatarId: _.get(req, "body.avatarId", null),
-        password: hashPassword(_.get(req, "body.password", "")),
         address: _.get(req, "body.address", ""),
         updatedBy: loginUser.id,
       },
