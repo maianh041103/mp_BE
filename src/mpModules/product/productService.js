@@ -1,3 +1,5 @@
+import {getNextValue} from "./productCodeService";
+
 const moment = require("moment");
 const {
   promotionProgramToCustomerFilter,
@@ -166,6 +168,7 @@ export const productAttributes = [
   "expiryPeriod",
   "status",
   "createdAt",
+  "drugCode"
 ];
 
 export async function queryFilter(params) {
@@ -437,18 +440,32 @@ export async function indexProducts(params) {
     },
   };
 }
-
-function generateProductCode(characters, no) {
-  if (no <= 0) return `${characters}000000000`;
-  if (no < 10) return `${characters}00000000${no}`;
-  if (no < 100) return `${characters}0000000${no}`;
-  if (no < 1000) return `${characters}000000${no}`;
-  if (no < 10000) return `${characters}00000${no}`;
-  if (no < 100000) return `${characters}0000${no}`;
-  if (no < 1000000) return `${characters}000${no}`;
-  if (no < 10000000) return `${characters}00${no}`;
-  if (no < 100000000) return `${characters}0${no}`;
-  if (no < 1000000000) return `${characters}${no}`;
+function getCode(type) {
+  switch (type) {
+    case productTypes.THUOC:
+      return  productTypeCharacters.THUOC;
+    case productTypes.HANGHOA:
+      return  productTypeCharacters.HANGHOA;
+    case productTypes.COMBO:
+      return  productTypeCharacters.COMBO;
+    case productTypes.DONTHUOC:
+      return  productTypeCharacters.DONTHUOC;
+    default:
+      return  "";
+  }
+}
+function generateProductCode(type, no) {
+  const code = getCode(type);
+  if (no <= 0) return `${code}000000000`;
+  if (no < 10) return `${code}00000000${no}`;
+  if (no < 100) return `${code}0000000${no}`;
+  if (no < 1000) return `${code}000000${no}`;
+  if (no < 10000) return `${code}00000${no}`;
+  if (no < 100000) return `${code}0000${no}`;
+  if (no < 1000000) return `${code}000${no}`;
+  if (no < 10000000) return `${code}00${no}`;
+  if (no < 100000000) return `${code}0${no}`;
+  if (no < 1000000000) return `${code}${no}`;
   return no;
 }
 
@@ -507,24 +524,14 @@ export async function createProduct(product, loginUser) {
   });
 
   if (!product.code) {
-    switch (product.type) {
-      case productTypes.THUOC:
-        product.code = productTypeCharacters.THUOC;
-        break;
-      case productTypes.HANGHOA:
-        product.code = productTypeCharacters.HANGHOA;
-        break;
-      case productTypes.COMBO:
-        product.code = productTypeCharacters.COMBO;
-        break;
-      case productTypes.DONTHUOC:
-        product.code = productTypeCharacters.DONTHUOC;
-        break;
-      default:
-        product.code = "";
+    const nextValue = await getNextValue(product.storeId, product.type)
+    const code = generateProductCode(product.type, nextValue)
+    product.code = code
+    if (!product.barCode) {
+        product.barCode = code
     }
     await models.Product.update(
-      { code: generateProductCode(product.code, newProduct.id) },
+      { code: code, barCode: product.barCode },
       { where: { id: newProduct.id } }
     );
   }
@@ -537,15 +544,32 @@ export async function createProduct(product, loginUser) {
     price: item.price,
     isDirectSale: item.isDirectSale || false,
     isBaseUnit: item.isBaseUnit || false,
-    code: item.code || "",
+    code: item.code || item.code,
     barCode: item.barCode || "",
     point: item.point || 0,
     branchId: product.branchId,
     storeId: product.storeId,
     createdBy: loginUser.id,
   }));
+  for (const productUnit of productUnits) {
+    if (productUnit.isBaseUnit) {
+      if (!productUnit.code) {
+        productUnit.code = product.code
+        if (!productUnit.barCode) {
+          productUnit.barCode = productUnit.code
+        }
+      }
+    } else {
+      if (!productUnit.code) {
+        const nextValue = await getNextValue(product.storeId, product.type)
+        productUnit.code = generateProductCode(product.type, nextValue)
+        if (!productUnit.barCode) {
+          productUnit.barCode = productUnit.code
+        }
+      }
+    }
+  }
   await models.ProductUnit.bulkCreate(productUnits);
-
   // sendTelegram({ message: 'Tạo thành công sản phẩm:' + JSON.stringify(newProduct) });
 
   createUserTracking({

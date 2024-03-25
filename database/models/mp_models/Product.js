@@ -32,6 +32,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         type: DataTypes.STRING,
       },
+        // Mã thuốc
+        drugCode: {
+            allowNull: false,
+            type: DataTypes.STRING,
+        },
       // Nhóm sản phẩm
       groupProductId: {
         allowNull: true,

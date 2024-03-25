@@ -1,3 +1,5 @@
+import {insertNewCode} from "../product/productCodeService";
+
 const { createUserTracking } = require("../behavior/behaviorService");
 const Sequelize = require("sequelize");
 const _ = require("lodash");
@@ -124,6 +126,7 @@ export async function indexStores(params) {
 
 export async function createStore(payload) {
   const newStore = await models.Store.create(payload);
+  await insertNewCode(newStore.id);
   const createBranchInput = {
     name: "Chi nhánh mặc định",
     phone: payload.phone,

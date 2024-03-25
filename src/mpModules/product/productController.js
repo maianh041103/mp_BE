@@ -97,6 +97,7 @@ export async function createController(req, res) {
     const product = {
       name: _.get(req.body, "name", ""),
       slug: _.get(req.body, "slug", ""),
+      drugCode: _.get(req.body, "drugCode", ""),
       code: _.get(req.body, "code", ""),
       barCode: _.get(req.body, "barCode", ""),
       shortName: _.get(req.body, "shortName", ""),

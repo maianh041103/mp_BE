@@ -21,6 +21,7 @@ const {
   updateProductPriceSettingValidator,
 } = require("./productValidator");
 const express = require("express");
+const {getNextValue} = require("./productCodeService");
 
 const router = express.Router();
 
@@ -189,5 +190,4 @@ router.patch(
   updateProductPriceSettingValidator,
   updatePriceSettingController
 );
-
 module.exports = router;

@@ -45,6 +45,7 @@ const productSchema = Joi.object().keys({
   productUnits: Joi.array().allow([]),
   dosageId: Joi.number().integer().allow(null).allow(""),
   positionId: Joi.number().integer().allow(null).allow(""),
+  drugCode: Joi.string().max(255).allow(null).allow(""),
 });
 
 export async function createValidator(req, res, next) {

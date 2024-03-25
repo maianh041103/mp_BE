@@ -141,6 +141,8 @@ function queryFilter(params) {
     include = samplePrescriptionIncludes,
     storeId,
     branchId,
+    positionId,
+    createdBy
   } = params;
 
   const conditions = {};
@@ -163,6 +165,14 @@ function queryFilter(params) {
   }
 
   if (typeof status !== "undefined") conditions.status = status;
+
+  if (positionId) {
+    conditions.positionId = positionId
+  }
+
+  if (positionId) {
+    conditions.createdBy = createdBy
+  }
 
   return {
     attributes,
