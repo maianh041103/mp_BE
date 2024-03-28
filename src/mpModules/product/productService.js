@@ -405,6 +405,7 @@ export async function indexProducts(params) {
             "unitName",
             "exchangeValue",
             "price",
+            "quantity",
             "isBaseUnit",
           ],
           where: {
