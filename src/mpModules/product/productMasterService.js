@@ -388,9 +388,6 @@ export async function indexMasterSaleProductsOld(params) {
 export async function indexMasterInboundProducts(params) {
   const limit = +params.limit || 10;
   const page = +params.page || 1;
-  delete params.limit;
-  delete params.page;
-
   const { storeId, branchId } = params;
   const where = {};
   if (storeId) {
@@ -400,84 +397,55 @@ export async function indexMasterInboundProducts(params) {
   if (branchId) {
     where.branchId = branchId;
   }
-
   if (params.keyword) {
-    const queryProduct = await queryFilter({
-      keyword: params.keyword,
-      limit: PAGE_LIMIT,
+    const keyword = params.keyword
+    where.code = {[Op.like]: `%${keyword.trim()}%`}
+    const _products = await models.Product.findAll({
+      attributes: ['id'],
+      where: {
+        [Op.or]: {
+          name: {
+            [Op.like]: `%${keyword.trim()}%`,
+          },
+          slug: {
+            [Op.like]: `%${keyword.trim()}%`,
+          }
+        }
+      }
+    })
+    const productIds = _products.map(x => x.id)
+    where[Op.or] = {
+      code: {
+        [Op.like]: `%${keyword.trim()}%`,
+      },
+      productId: {
+        [Op.in]: productIds
+      }
+  } }
+
+  const productUnits = await models.ProductUnit.findAll({
+      attributes: ["id", "unitName", "exchangeValue", "price", "productId",
+        "code", "barCode", "point", "isBaseUnit"],
+      include: [{
+        model: models.Product,
+        as: "product",
+        include: [
+          {
+            model: models.Image,
+            as: "image"
+          }
+        ],
+        attributes: ["id", "name", "inventory", "isBatchExpireControl", "minInventory", "maxInventory"],
+      },],
+      where: where,
+      offset: +limit * (+page - 1),
+      limit: +limit,
+      order: [["createdAt", "DESC"]]
     });
-    delete queryProduct.include;
-    queryProduct.attributes = ["id"];
-    const products = await models.Product.findAll(queryProduct);
-    const whereInProducts = products.map((prod) => prod.id);
-    if (!whereInProducts.length) {
-      return {
-        success: true,
-        data: {
-          items: [],
-          totalItem: 0,
-        },
-      };
-    }
-    where.productId = {
-      [Op.in]: whereInProducts,
-    };
-  }
-
-  const [items, count] = await Promise.all([
-    models.ProductUnit.findAll({
-      attributes: [
-        "id",
-        "unitName",
-        "exchangeValue",
-        "price",
-        "productId",
-        "code",
-        "barCode",
-        "isDirectSale",
-        "isBaseUnit",
-        "point",
-        "storeId",
-        "branchId",
-      ],
-      include: [
-        {
-          model: models.Product,
-          as: "product",
-          attributes: productAttributes,
-          include: productIncludes.filter(
-            (productInclude) => !ignoreAliasModels.includes(productInclude.as)
-          ),
-        },
-        ...productMasterIncludes,
-      ],
-      where,
-      offset: limit * (page - 1),
-      limit,
-      order: [
-        ["productId", "DESC"],
-        ["exchangeValue", "DESC"],
-      ],
-    }),
-    models.ProductUnit.count({ where }),
-  ]);
-
-  for (const item of items) {
-    const totalQuantityBaseUnits = await cumulativeQuantityTotal(
-      storeId,
-      branchId,
-      item.productId
-    );
-    item.dataValues.quantity = +formatDecimalTwoAfterPoint(
-      totalQuantityBaseUnits / item.exchangeValue
-    );
-  }
-
   return {
     success: true,
     data: {
-      items,
-      totalItem: count,
+      items: productUnits
     },
   };
 }

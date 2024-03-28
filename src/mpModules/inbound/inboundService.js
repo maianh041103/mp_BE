@@ -428,9 +428,10 @@ export async function handleCreateInbound(inbound, loginUser) {
           })
       );
     }
+
     let sumPrice = 0;
     for (const item of inbound.products) {
-      const findProduct = await models.Product.findOne({
+      var findProduct = await models.Product.findOne({
         where: {
           id: item.productId,
         },
@@ -457,25 +458,6 @@ export async function handleCreateInbound(inbound, loginUser) {
           })
         );
       }
-      const productMaster = await models.ProductMaster.findOne({
-        attributes: ["quantity"],
-        where: {
-          productUnitId: item.productUnitId
-        }
-      })
-      await createWarehouseCard({
-        code: generateInboundCode(newInbound.id),
-        type: warehouseStatus.INBOUND,
-        partner: supplier.name,
-        productId: item.productId,
-        branchId: inbound.branchId,
-        productUnitId: item.productUnitId,
-        changeQty: item.totalQuantity,
-        remainQty: productMaster?productMaster.quantity : 0 + item.totalQuantity,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }, t)
-
       const newInboundProduct = await models.InboundToProduct.create(
         {
           storeId: loginUser.storeId,
@@ -486,12 +468,6 @@ export async function handleCreateInbound(inbound, loginUser) {
         },
         { transaction: t }
       );
-
-      await models.ProductUnit.increment(
-          {quantity: item.totalQuantity},
-          {where: {id: item.productUnitId}}
-      )
-
       let totalProductQuantity = 0;
 
       if (findProduct.isBatchExpireControl) {
@@ -643,34 +619,37 @@ export async function handleCreateInbound(inbound, loginUser) {
 
     if (inbound.status === inboundStatus.SUCCEED) {
       for (const item of inbound.products) {
-        const isProductMaster = await models.ProductMaster.findOne({
+        const productUnit = await models.ProductUnit.findOne({
+          attributes: ["exchangeValue"],
           where: {
-            storeId: loginUser.storeId,
-            branchId: inbound.branchId,
-            productId: item.productId,
-            productUnitId: item.productUnitId,
-          },
-        });
-
-        if (isProductMaster) {
-          await models.ProductMaster.increment("quantity", {
-            by: item.totalQuantity,
-            where: { id: isProductMaster.id },
-            transaction: t,
-          });
-        } else {
-          await models.ProductMaster.create(
-            {
-              storeId: loginUser.storeId,
-              branchId: inbound.branchId,
-              productId: item.productId,
-              productUnitId: item.productUnitId,
-              quantity: item.totalQuantity,
-              createdBy: newInbound.createdBy,
-            },
-            { transaction: t }
+            id: item.productUnitId
+          }
+        })
+        if (!productUnit) {
+          throw Error(
+              JSON.stringify({
+                error: true,
+                code: HttpStatusCode.BAD_REQUEST,
+                message: `Không tìm thấy đơn vị thuốc`,
+              })
           );
         }
+        await createWarehouseCard({
+          code: generateInboundCode(newInbound.id),
+          type: warehouseStatus.INBOUND,
+          partner: supplier.name,
+          productId: item.productId,
+          branchId: inbound.branchId,
+          changeQty: item.totalQuantity,
+          remainQty: findProduct.inventory + item.totalQuantity * productUnit.exchangeValue,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }, t)
+        await models.Product.increment(
+            {inventory: item.totalQuantity * productUnit.exchangeValue},
+            {where: { id: item.productId}},
+            {transaction: t}
+        )
       }
     }
   });
