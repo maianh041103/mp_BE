@@ -422,10 +422,9 @@ export async function indexMasterInboundProducts(params) {
         [Op.in]: productIds
       }
   } }
-
-  const productUnits = await models.ProductUnit.findAll({
+  const {rows, count} = await models.ProductUnit.findAndCountAll({
       attributes: ["id", "unitName", "exchangeValue", "price", "productId",
-        "code", "barCode", "point", "isBaseUnit"],
+        "code", "barCode", "point", "isBaseUnit", "barCode", "isDirectSale"],
       include: [{
         model: models.Product,
         as: "product",
@@ -442,10 +441,85 @@ export async function indexMasterInboundProducts(params) {
       limit: +limit,
       order: [["createdAt", "DESC"]]
     });
+  for (const item of rows) {
+    item.dataValues.productUnit = {
+      id: item.id,
+      unitName: item.unitName,
+      exchangeValue: item.exchangeValue,
+      price: item.price,
+      productId: item.productId,
+      code: item.code,
+      barCode: item.barCode,
+      isDirectSale: item.isDirectSale,
+      isBaseUnit: item.isBaseUnit,
+      point: item.point,
+
+    };
+    item.dataValues.quantity =  item.product.inventory / item.exchangeValue
+    if (!params.isSale) {
+      item.dataValues.batches = [];
+      continue;
+    }
+    // Trả về tất cả lô của sản phẩm
+    const findAllProductToBatches = await models.ProductToBatch.findAll({
+      attributes: ["batchId", "productUnitId", "quantity", "expiryDate"],
+      include: [
+        {
+          model: models.Batch,
+          as: "batch",
+          attributes: ["id", "name"],
+        },
+        {
+          model: models.ProductUnit,
+          as: "productUnit",
+          attributes: [
+            "id",
+            "unitName",
+            "exchangeValue",
+            "price",
+            "isBaseUnit",
+          ],
+        },
+      ],
+      where: {
+        storeId: item.storeId,
+        branchId: item.branchId,
+        productId: item.productId,
+      },
+      order: [["expiryDate", "ASC"]],
+    });
+
+    const batchInfoMapping = {};
+    const batchInfos = [];
+    for (const batchInstance of findAllProductToBatches) {
+      if (batchInfoMapping[batchInstance.batchId]) {
+        batchInfoMapping[batchInstance.batchId].quantity +=
+            +formatDecimalTwoAfterPoint(
+                (batchInstance.quantity * batchInstance.productUnit.exchangeValue) /
+                batchInfoMapping[batchInstance.batchId].productUnit.exchangeValue
+            );
+      } else {
+        batchInfoMapping[batchInstance.batchId] = {
+          batchId: batchInstance.batchId,
+          productUnitId: batchInstance.productUnitId,
+          quantity: batchInstance.quantity,
+          expiryDate: batchInstance.expiryDate,
+          batch: batchInstance.batch,
+          productUnit: batchInstance.productUnit,
+        };
+        batchInfos.push(batchInstance);
+      }
+    }
+
+    item.dataValues.batches =
+        batchInfos.map((obj) => {
+          return batchInfoMapping[obj.batchId];
+        }) || [];
+  }
   return {
     success: true,
     data: {
-      items: productUnits
+      items: rows
     },
   };
 }
