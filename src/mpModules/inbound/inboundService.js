@@ -644,11 +644,10 @@ export async function handleCreateInbound(inbound, loginUser) {
           remainQty: findProduct.inventory + item.totalQuantity * productUnit.exchangeValue,
           createdAt: new Date(),
           updatedAt: new Date()
-        }, t)
+        })
         await models.Product.increment(
             {inventory: item.totalQuantity * productUnit.exchangeValue},
-            {where: { id: item.productId}},
-            {transaction: t}
+            {where: { id: item.productId}}
         )
       }
     }

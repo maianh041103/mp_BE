@@ -50,14 +50,13 @@ export async function indexController(params) {
     };
 }
 
-export async function createWarehouseCard(payload, t) {
+export async function createWarehouseCard(payload) {
     const newCard = await models.WarehouseCard.create(payload);
     if (!newCard.code) {
         newCard.code = generateCode(newCard.id);
         await models.WarehouseCard.update(
             { code: newCard.code },
-            { where: { id: newCard.id } },
-            {transaction: t}
+            { where: { id: newCard.id } }
         )
     }
 }

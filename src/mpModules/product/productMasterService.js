@@ -86,9 +86,6 @@ export async function cumulativeQuantityTotal(storeId, branchId, productId) {
 export async function indexMasterSaleProducts(params) {
   const limit = +params.limit || 10;
   const page = +params.page || 1;
-  delete params.limit;
-  delete params.page;
-
   const { storeId, branchId } = params;
   const where = {};
   if (storeId) {
@@ -98,31 +95,31 @@ export async function indexMasterSaleProducts(params) {
   if (branchId) {
     where.branchId = branchId;
   }
-
   if (params.keyword) {
-    const queryProduct = await queryFilter({
-      keyword: params.keyword,
-      limit: PAGE_LIMIT,
-      branchId,
-      storeId,
-    });
-    delete queryProduct.include;
-    queryProduct.attributes = ["id"];
-    const products = await models.Product.findAll(queryProduct);
-    const whereInProducts = products.map((prod) => prod.id);
-    if (!whereInProducts.length) {
-      return {
-        success: true,
-        data: {
-          items: [],
-          totalItem: 0,
-        },
-      };
-    }
-    where.productId = {
-      [Op.in]: whereInProducts,
-    };
-  }
+    const keyword = params.keyword
+    where.code = {[Op.like]: `%${keyword.trim()}%`}
+    const _products = await models.Product.findAll({
+      attributes: ['id'],
+      where: {
+        [Op.or]: {
+          name: {
+            [Op.like]: `%${keyword.trim()}%`,
+          },
+          slug: {
+            [Op.like]: `%${keyword.trim()}%`,
+          }
+        }
+      }
+    })
+    const productIds = _products.map(x => x.id)
+    where[Op.or] = {
+      code: {
+        [Op.like]: `%${keyword.trim()}%`,
+      },
+      productId: {
+        [Op.in]: productIds
+      }
+    } }
 
   const [items, count] = await Promise.all([
     models.ProductUnit.findAll({
@@ -193,13 +190,8 @@ export async function indexMasterSaleProducts(params) {
       isBaseUnit: item.isBaseUnit,
       point: item.point,
     };
-    const totalQuantityBaseUnits = await cumulativeQuantityTotal(
-      storeId,
-      branchId,
-      item.productId
-    );
-    item.dataValues.quantity = +formatDecimalTwoAfterPoint(
-      totalQuantityBaseUnits / item.exchangeValue
+    item.dataValues.quantity = parseInt(
+      item.product.inventory / item.exchangeValue
     );
 
     if (!params.isSale) {
@@ -423,99 +415,41 @@ export async function indexMasterInboundProducts(params) {
       }
   } }
   const {rows, count} = await models.ProductUnit.findAndCountAll({
-      attributes: ["id", "unitName", "exchangeValue", "price", "productId",
-        "code", "barCode", "point", "isBaseUnit", "barCode", "isDirectSale"],
-      include: [{
-        model: models.Product,
-        as: "product",
-        include: [
-          {
-            model: models.Image,
-            as: "image"
-          }
-        ],
-        attributes: ["id", "name", "inventory", "isBatchExpireControl", "minInventory", "maxInventory"],
-      },],
+      attributes: ["id",
+        "unitName",
+        "exchangeValue",
+        "price",
+        "productId",
+        "code",
+        "barCode",
+        "isDirectSale",
+        "isBaseUnit",
+        "point",
+        "storeId",
+        "branchId",
+          "createdAt"
+      ],
+      include: [
+        {
+          model: models.Product,
+          as: "product",
+          attributes: productAttributes,
+          include: productIncludes.filter(
+              (productInclude) => !ignoreAliasModels.includes(productInclude.as)
+          ),
+        },
+        ...productMasterIncludes,
+      ],
       where: where,
       offset: +limit * (+page - 1),
       limit: +limit,
-      order: [["createdAt", "DESC"]]
+    order: [["createdAt", "DESC"]]
     });
   for (const item of rows) {
-    item.dataValues.productUnit = {
-      id: item.id,
-      unitName: item.unitName,
-      exchangeValue: item.exchangeValue,
-      price: item.price,
-      productId: item.productId,
-      code: item.code,
-      barCode: item.barCode,
-      isDirectSale: item.isDirectSale,
-      isBaseUnit: item.isBaseUnit,
-      point: item.point,
-
-    };
-    item.dataValues.quantity =  item.product.inventory / item.exchangeValue
-    if (!params.isSale) {
-      item.dataValues.batches = [];
-      continue;
-    }
-    // Trả về tất cả lô của sản phẩm
-    const findAllProductToBatches = await models.ProductToBatch.findAll({
-      attributes: ["batchId", "productUnitId", "quantity", "expiryDate"],
-      include: [
-        {
-          model: models.Batch,
-          as: "batch",
-          attributes: ["id", "name"],
-        },
-        {
-          model: models.ProductUnit,
-          as: "productUnit",
-          attributes: [
-            "id",
-            "unitName",
-            "exchangeValue",
-            "price",
-            "isBaseUnit",
-          ],
-        },
-      ],
-      where: {
-        storeId: item.storeId,
-        branchId: item.branchId,
-        productId: item.productId,
-      },
-      order: [["expiryDate", "ASC"]],
-    });
-
-    const batchInfoMapping = {};
-    const batchInfos = [];
-    for (const batchInstance of findAllProductToBatches) {
-      if (batchInfoMapping[batchInstance.batchId]) {
-        batchInfoMapping[batchInstance.batchId].quantity +=
-            +formatDecimalTwoAfterPoint(
-                (batchInstance.quantity * batchInstance.productUnit.exchangeValue) /
-                batchInfoMapping[batchInstance.batchId].productUnit.exchangeValue
-            );
-      } else {
-        batchInfoMapping[batchInstance.batchId] = {
-          batchId: batchInstance.batchId,
-          productUnitId: batchInstance.productUnitId,
-          quantity: batchInstance.quantity,
-          expiryDate: batchInstance.expiryDate,
-          batch: batchInstance.batch,
-          productUnit: batchInstance.productUnit,
-        };
-        batchInfos.push(batchInstance);
-      }
-    }
-
-    item.dataValues.batches =
-        batchInfos.map((obj) => {
-          return batchInfoMapping[obj.batchId];
-        }) || [];
+    const totalQuantityBaseUnits = item.product.inventory
+    item.dataValues.quantity = parseInt(totalQuantityBaseUnits / item.exchangeValue)
   }
+
   return {
     success: true,
     data: {
