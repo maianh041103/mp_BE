@@ -30,7 +30,7 @@ function processBuildQuery(params) {
     keyword = "",
     storeId,
     branchId,
-    productId,
+    productId
   } = params;
   const query = {
     attributes,
@@ -69,7 +69,7 @@ export async function batchFilter(params) {
 }
 
 export async function indexBatches(params) {
-  const { storeId, branchId, productId } = params;
+  const { storeId, branchId, productId, productUnitId } = params;
   const { rows, count } = await models.Batch.findAndCountAll(
     processBuildQuery(params)
   );

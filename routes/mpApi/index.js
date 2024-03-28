@@ -39,6 +39,7 @@ import inboundApiRouter from "../../src/mpModules/inbound";
 import samplePrescriptionApiRouter from "../../src/mpModules/samplePrescription";
 import purchaseReturnApiRouter from "../../src/mpModules/purchaseReturn";
 import nationalPharmacySystemApiRouter from "../../src/mpModules/nationalPharmacySystem";
+import warehouseApiRouter from "../../src/mpModules/warehouse"
 const openApiDocumentation = require('../../swagger.json')
 const swaggerUi = require('swagger-ui-express');
 const mpRouterManager = function (app) {
@@ -82,8 +83,8 @@ const mpRouterManager = function (app) {
   app.use("/mp/api/sample-prescription", samplePrescriptionApiRouter);
   app.use("/mp/api/purchase-return", purchaseReturnApiRouter);
   app.use("/mp/api/nps", nationalPharmacySystemApiRouter);
-  app.use("/mp/api/external/image/upload", imageApiExternalRouter)
-
+  app.use("/mp/api/external/image/upload", imageApiExternalRouter);
+  app.use("/mp/api/warehouse", warehouseApiRouter)
   app.use("/docs", swaggerUi.serve, swaggerUi.setup(openApiDocumentation))
 };
 

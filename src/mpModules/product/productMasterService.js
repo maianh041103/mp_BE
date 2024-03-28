@@ -481,3 +481,18 @@ export async function indexMasterInboundProducts(params) {
     },
   };
 }
+
+export async function detailMaster(query) {
+  return  await models.ProductMaster.findOne({
+    attributes: [
+      "storeId",
+      "branchId",
+      "productId",
+      "productUnitId",
+      "quantity",
+    ],
+    where: {
+      productUnitId: query.productUnitId
+    }
+  })
+}

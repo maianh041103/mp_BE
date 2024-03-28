@@ -62,6 +62,19 @@ router.get(
 );
 
 router.get(
+    "/warehouse/remain",
+    authenticate,
+    (req, res, next) => {
+        req.apiRole = [
+            "product_read"
+        ];
+        next();
+    },
+    authorize,
+    indexMasterSaleProductController
+);
+
+router.get(
   "/",
   authenticate,
   (req, res, next) => {

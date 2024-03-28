@@ -1,3 +1,5 @@
+import {detailMaster} from "./productMasterService";
+
 const _ = require("lodash");
 const {
   respondItemSuccess,
@@ -54,6 +56,23 @@ export async function indexMasterSaleProductController(req, res) {
     console.log(error);
     res.json(
       respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
+export async function indexDetailController(req, res) {
+  try {
+    const { loginUser = {} } = req;
+    const result = await detailMaster({
+      ...req.query,
+      storeId: loginUser.storeId,
+    });
+    if (result.success) res.json(respondItemSuccess(result.data));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    console.log(error);
+    res.json(
+        respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
     );
   }
 }

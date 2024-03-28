@@ -1,3 +1,6 @@
+import {createWarehouseCard} from "../warehouse/warehouseService";
+import {warehouseStatus} from "../warehouse/constant";
+
 const _ = require("lodash");
 const Sequelize = require("sequelize");
 const { Op } = Sequelize;
@@ -343,7 +346,7 @@ export async function handleCreateInbound(inbound, loginUser) {
       message: `Bạn cần chọn sản phẩm để tiến hành nhập hàng`,
     };
   }
-
+  let itemQty = []
   // Validate thông tin nhà cung cấp, nhân viên, chi nhánh
   const [responseReadSupplier, responseReadUser, responseReadBranch] =
     await Promise.all([
@@ -409,7 +412,22 @@ export async function handleCreateInbound(inbound, loginUser) {
       },
       { transaction: t }
     );
-
+    const supplier = await models.Supplier.findOne({
+      attributes: ["name"],
+      where: {
+        id: inbound.supplierId,
+        storeId: loginUser.storeId,
+      },
+    });
+    if (!supplier) {
+      throw Error(
+          JSON.stringify({
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Nhà cung cấp không hợp lệ`,
+          })
+      );
+    }
     let sumPrice = 0;
     for (const item of inbound.products) {
       const findProduct = await models.Product.findOne({
@@ -439,6 +457,24 @@ export async function handleCreateInbound(inbound, loginUser) {
           })
         );
       }
+      const productMaster = await models.ProductMaster.findOne({
+        attributes: ["quantity"],
+        where: {
+          productUnitId: item.productUnitId
+        }
+      })
+      await createWarehouseCard({
+        code: generateInboundCode(newInbound.id),
+        type: warehouseStatus.INBOUND,
+        partner: supplier.name,
+        productId: item.productId,
+        branchId: inbound.branchId,
+        productUnitId: item.productUnitId,
+        changeQty: item.totalQuantity,
+        remainQty: productMaster?productMaster.quantity : 0 + item.totalQuantity,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }, t)
 
       const newInboundProduct = await models.InboundToProduct.create(
         {
@@ -451,6 +487,11 @@ export async function handleCreateInbound(inbound, loginUser) {
         { transaction: t }
       );
 
+      await models.ProductUnit.increment(
+          {quantity: item.totalQuantity},
+          {where: {id: item.productUnitId}}
+      )
+
       let totalProductQuantity = 0;
 
       if (findProduct.isBatchExpireControl) {
@@ -459,7 +500,6 @@ export async function handleCreateInbound(inbound, loginUser) {
           if (responseReadBatch.error) {
             return responseReadBatch;
           }
-
           totalProductQuantity += batch.quantity;
 
           const isExistProductBatch = await models.ProductToBatch.findOne({
@@ -687,7 +727,6 @@ export async function updateInboundStatus(id, payload, loginUser) {
     action: logActions.inbound_update.value,
     data: { id, ...payload },
   });
-
   return {
     success: true,
   };

@@ -41,7 +41,6 @@ const createSchema = Joi.object().keys({
         .unknown(true)
     )
     .required([]),
-  totalPrice: Joi.number().integer().required(),
 });
 
 export function createValidator(req, res, next) {
