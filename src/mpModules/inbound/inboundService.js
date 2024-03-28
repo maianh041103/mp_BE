@@ -640,19 +640,18 @@ export async function handleCreateInbound(inbound, loginUser) {
           partner: supplier.name,
           productId: item.productId,
           branchId: inbound.branchId,
-          changeQty: item.totalQuantity,
+          changeQty: item.totalQuantity * productUnit.exchangeValue,
           remainQty: findProduct.inventory + item.totalQuantity * productUnit.exchangeValue,
           createdAt: new Date(),
           updatedAt: new Date()
-        })
+        }, t)
         await models.Product.increment(
             {inventory: item.totalQuantity * productUnit.exchangeValue},
-            {where: { id: item.productId}}
+            {where: { id: item.productId}, transaction: t},
         )
       }
     }
   });
-
   const { data: refreshInbound } = await readInbound(newInbound.id, loginUser);
 
   if (refreshInbound.status === inboundStatus.TRASH) {

@@ -1,3 +1,6 @@
+import {createWarehouseCard} from "../warehouse/warehouseService";
+import {warehouseStatus} from "../warehouse/constant";
+
 const moment = require("moment");
 const {
   addFilterByDate,
@@ -550,7 +553,20 @@ async function handleCreateOrder(order, loginUser) {
           })
         );
       }
-      const productUnit = findProduct.productUnit[0];
+
+      const productProductToBatchConditions = {
+        productId: item.productId,
+        storeId: loginUser.storeId,
+        branchId: order.branchId,
+      };
+
+      const productUnit = await models.ProductUnit.findOne({
+        where: {
+          id: item.productUnitId,
+          ...productProductToBatchConditions,
+        },
+      });
+
       if (!productUnit) {
         throw Error(
           JSON.stringify({
@@ -560,29 +576,30 @@ async function handleCreateOrder(order, loginUser) {
           })
         );
       }
-
-      const productProductToBatchConditions = {
-        productId: item.productId,
-        storeId: loginUser.storeId,
-        branchId: order.branchId,
-      };
-
-      const findNewProductUnit = await models.ProductUnit.findOne({
-        where: {
-          id: item.productUnitId,
-          ...productProductToBatchConditions,
-        },
-      });
-
-      if (!findNewProductUnit) {
+      if (findProduct.inventory < item.totalQuantity * productUnit.exchangeValue) {
         throw Error(
-          JSON.stringify({
-            error: true,
-            code: HttpStatusCode.BAD_REQUEST,
-            message: `Đơn vị sản phẩm không tồn tại`,
-          })
+            JSON.stringify({
+              error: true,
+              code: HttpStatusCode.BAD_REQUEST,
+              message: `Sản phẩm ${findProduct.name} không đủ số lượng`,
+            })
         );
       }
+      await createWarehouseCard({
+        code: generateOrderCode(newOrder.id),
+        type: warehouseStatus.ORDER,
+        partner: findCustomer.name,
+        productId: item.productId,
+        branchId: order.branchId,
+        changeQty: item.quantity * productUnit.exchangeValue,
+        remainQty: findProduct.inventory - item.quantity * productUnit.exchangeValue,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }, t)
+
+      await models.Product.increment({inventory: item.quantity * productUnit.exchangeValue},
+          {where: {id: findProduct.id}, transaction: t}
+      )
 
       // Đối với sản phẩm bắt buộc quản lý theo lô
       if (findProduct.isBatchExpireControl) {
@@ -613,7 +630,7 @@ async function handleCreateOrder(order, loginUser) {
               +formatDecimalTwoAfterPoint(
                 (batchInstance.quantity *
                   batchInstance.productUnit.exchangeValue) /
-                  findNewProductUnit.exchangeValue
+                  productUnit.exchangeValue
               );
           } else {
             batchInfoMapping[batchInstance.batchId] = {
@@ -622,7 +639,7 @@ async function handleCreateOrder(order, loginUser) {
               quantity: +formatDecimalTwoAfterPoint(
                 (batchInstance.quantity *
                   batchInstance.productUnit.exchangeValue) /
-                  findNewProductUnit.exchangeValue
+                  productUnit.exchangeValue
               ),
               expiryDate: batchInstance.expiryDate,
               productUnit: batchInstance.productUnit,
@@ -656,7 +673,7 @@ async function handleCreateOrder(order, loginUser) {
                 code: HttpStatusCode.BAD_REQUEST,
                 message: `Số lượng sản phẩm trong lô "${findBatch.name}"(${
                   batchInfoMapping[batch.id].quantity || 0
-                } ${findNewProductUnit.name}) không đủ`,
+                } ${productUnit.name}) không đủ`,
               })
             );
           }
@@ -691,7 +708,7 @@ async function handleCreateOrder(order, loginUser) {
                 );
               }
               remainQuantity = +formatDecimalTwoAfterPoint(
-                (remainQuantity * findNewProductUnit.exchangeValue) /
+                (remainQuantity * productUnit.exchangeValue) /
                   productBatchInstance.exchangeValue
               );
             }
@@ -723,132 +740,10 @@ async function handleCreateOrder(order, loginUser) {
 
             remainQuantity = +formatDecimalTwoAfterPoint(
               (remainQuantity * productBatchInstance.exchangeValue) /
-                findNewProductUnit.exchangeValue
+                productUnit.exchangeValue
             );
           }
-
-          for (const selectedProductUnitId of Object.keys(
-            selectedProductUnitQuantityMapping
-          )) {
-            // Trừ số lượng sản phẩm trong product master
-            await models.ProductMaster.increment("quantity", {
-              by: -selectedProductUnitQuantityMapping[selectedProductUnitId],
-              where: {
-                ...productProductToBatchConditions,
-                productUnitId: selectedProductUnitId,
-              },
-              transaction: t,
-            });
-          }
         }
-
-        if (totalQuantityOfProduct !== item.quantity) {
-          throw Error(
-            JSON.stringify({
-              error: true,
-              code: HttpStatusCode.BAD_REQUEST,
-              message: `Số lượng sản phẩm "${findProduct.name}" cần mua (=${item.quantity}) không bằng tổng số lượng sản phẩm chọn từ các lô (=${totalQuantityOfProduct})`,
-            })
-          );
-        }
-      } else {
-        // Sản phẩm không có lô, trừ theo tồn kho
-        const findAllProductMasters = await models.ProductMaster.findAll({
-          attributes: [
-            "id",
-            "storeId",
-            "branchId",
-            "productId",
-            "productUnitId",
-            "quantity",
-          ],
-          include: [
-            {
-              model: models.ProductUnit,
-              as: "productUnit",
-              attributes: [
-                "id",
-                "unitName",
-                "exchangeValue",
-                "price",
-                "productId",
-                "code",
-                "barCode",
-                "isDirectSale",
-                "isBaseUnit",
-                "point",
-              ],
-            },
-          ],
-          where: productProductToBatchConditions,
-        });
-
-        const productMasterInfoMapping = {};
-        for (const productMasterItem of findAllProductMasters) {
-          if (productMasterInfoMapping[productMasterItem.productId]) {
-            productMasterInfoMapping[productMasterItem.productId].quantity +=
-              +formatDecimalTwoAfterPoint(
-                (productMasterItem.quantity *
-                  productMasterItem.productUnit.exchangeValue) /
-                  findNewProductUnit.exchangeValue
-              );
-          } else {
-            productMasterInfoMapping[productMasterItem.productId] = {
-              quantity: +formatDecimalTwoAfterPoint(
-                (productMasterItem.quantity *
-                  productMasterItem.productUnit.exchangeValue) /
-                  findNewProductUnit.exchangeValue
-              ),
-            };
-          }
-        }
-
-        if (productMasterInfoMapping[item.productId].quantity < item.quantity) {
-          throw Error(
-            JSON.stringify({
-              error: true,
-              code: HttpStatusCode.BAD_REQUEST,
-              message: `Số lượng sản phẩm ${findProduct.name} (${
-                productMasterInfoMapping[item.productId].quantity || 0
-              } không đủ`,
-            })
-          );
-        }
-
-        let remainQuantity = item.quantity;
-        for (const productMasterItem of findAllProductMasters) {
-          const convertQuantity = +formatDecimalTwoAfterPoint(
-            (productMasterItem.quantity *
-              productMasterItem.productUnit.exchangeValue) /
-              findNewProductUnit.exchangeValue
-          );
-          if (convertQuantity >= remainQuantity) {
-            // Trừ số lượng sản phẩm trong product master
-            const qtyMinus = +formatDecimalTwoAfterPoint(
-              ((convertQuantity - remainQuantity) *
-                findNewProductUnit.exchangeValue) /
-                productMasterItem.productUnit.exchangeValue
-            );
-            await models.ProductMaster.increment("quantity", {
-              by: -qtyMinus,
-              where: { id: productMasterItem.id },
-              transaction: t,
-            });
-            remainQuantity = 0;
-          } else {
-            // Trừ số lượng sản phẩm trong product master
-            await models.ProductMaster.increment("quantity", {
-              by: -productMasterItem.quantity,
-              where: { id: productMasterItem.id },
-              transaction: t,
-            });
-            remainQuantity -= convertQuantity;
-          }
-
-          if (remainQuantity <= 0) break;
-        }
-      }
-
       totalPrice += +productUnit.price * +item.quantity;
 
       await models.OrderProduct.create(
@@ -949,7 +844,7 @@ async function handleCreateOrder(order, loginUser) {
         transaction: t,
       }
     );
-  });
+  }});
 
   const { data: refreshOrder } = await readOrder(newOrder.id);
 
