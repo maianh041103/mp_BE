@@ -23,6 +23,7 @@ const createSchemaValidator = Joi.object().keys({
           productUnitId: Joi.number().integer().required(),
           dosage: Joi.string().allow(null).allow(""),
           quantity: Joi.number().integer().min(1).required(),
+            price: Joi.number().integer().min(1).required()
         })
         .required()
     )

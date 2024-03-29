@@ -137,6 +137,7 @@ function queryFilter(params) {
       "description",
       "status",
       "positionId",
+        "createdBy"
     ],
     include = samplePrescriptionIncludes,
     storeId,
@@ -147,13 +148,14 @@ function queryFilter(params) {
 
   const conditions = {};
   if (keyword) {
-    conditions[Op.or] = [
-      {
-        name: {
-          [Op.like]: `%${keyword.trim()}%`,
-        },
+    conditions[Op.or] = {
+      name: {
+        [Op.like]: `%${keyword.trim()}%`,
       },
-    ];
+      code: {
+        [Op.like]: `%${keyword.trim()}%`,
+      },
+    };
   }
 
   if (storeId) {
@@ -170,7 +172,7 @@ function queryFilter(params) {
     conditions.positionId = positionId
   }
 
-  if (positionId) {
+  if (createdBy) {
     conditions.createdBy = createdBy
   }
 
@@ -214,16 +216,13 @@ export async function indexService(params) {
   const { storeId, branchId } = params;
   for (const row of rows) {
     const products = await readSamplePrescriptionProduct(row.id);
+    console.log(products.length)
     for (const item of products) {
       item.dataValues.batches = [];
       if (!params.isSale) {
         continue;
       }
-      const totalQuantityBaseUnits = await cumulativeQuantityTotal(
-        storeId,
-        branchId,
-        item.product.id
-      );
+      const totalQuantityBaseUnits = item.product.inventory
       item.dataValues.quantity = +formatDecimalTwoAfterPoint(
         totalQuantityBaseUnits / item.exchangeValue
       );
@@ -427,7 +426,6 @@ async function handleCreateSamplePrescription(
     instance = await models.SamplePrescription.create(payload, {
       transaction,
     });
-
     // create SamplePrescriptionToProduct
     const ingredientProductsPayload = [];
     for (const item of ingredientProducts) {
@@ -468,6 +466,7 @@ async function handleCreateSamplePrescription(
         productId: item.productId,
         productUnitId: item.productUnitId,
         dosage: item.dosage,
+        price: item.price,
         quantity: item.quantity,
         branchId: payload.branchId,
         storeId: loginUser.storeId,

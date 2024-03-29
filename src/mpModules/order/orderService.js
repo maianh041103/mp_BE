@@ -93,37 +93,6 @@ const orderIncludes = [
     ],
   },
   {
-    model: models.Store,
-    as: "store",
-    attributes: [
-      "id",
-      "name",
-      "phone",
-      "provinceId",
-      "districtId",
-      "wardId",
-      "address",
-      "createdAt",
-    ],
-    include: [
-      {
-        model: models.Province,
-        as: "province",
-        attributes: ["id", "name"],
-      },
-      {
-        model: models.District,
-        as: "district",
-        attributes: ["id", "name"],
-      },
-      {
-        model: models.Ward,
-        as: "ward",
-        attributes: ["id", "name"],
-      },
-    ],
-  },
-  {
     model: models.Branch,
     as: "branch",
     attributes: [
@@ -137,30 +106,12 @@ const orderIncludes = [
       "wardId",
       "isDefaultBranch",
       "createdAt",
-    ],
-    include: [
-      {
-        model: models.Province,
-        as: "province",
-        attributes: ["id", "name"],
-      },
-      {
-        model: models.District,
-        as: "district",
-        attributes: ["id", "name"],
-      },
-      {
-        model: models.Ward,
-        as: "ward",
-        attributes: ["id", "name"],
-      },
-    ],
+    ]
   },
   {
     model: models.User,
     as: "user",
-    attributes: userAttributes,
-    include: userIncludes,
+    attributes: userAttributes
   },
   {
     model: models.Customer,
@@ -172,25 +123,9 @@ const orderIncludes = [
       "email",
       "address",
       "groupCustomerId",
-    ],
-    include: [
-      {
-        model: models.Province,
-        as: "province",
-        attributes: ["id", "name"],
-      },
-      {
-        model: models.District,
-        as: "district",
-        attributes: ["id", "name"],
-      },
-      {
-        model: models.Ward,
-        as: "ward",
-        attributes: ["id", "name"],
-      },
-    ],
+    ]
   },
+
 ];
 
 const orderAttributes = [
@@ -212,6 +147,7 @@ const orderAttributes = [
   "isVatInvoice",
   "status",
   "createdAt",
+    "createdBy"
 ];
 
 const productAttributes = ["name", "shortName", "code", "barCode", "imageId"];
@@ -240,6 +176,7 @@ export async function indexOrders(params, loginUser) {
   let {
     page = 1,
     limit = 10,
+    keyword,
     code = "",
     phone = "",
     userId,
@@ -257,7 +194,6 @@ export async function indexOrders(params, loginUser) {
     positions = [],
     dateRange = {},
   } = params;
-
   const query = {
     attributes: orderAttributes,
     offset: +limit * (+page - 1),
@@ -289,6 +225,12 @@ export async function indexOrders(params, loginUser) {
     where.code = {
       [Op.like]: `%${code.trim()}%`,
     };
+  }
+
+  if (keyword) {
+      where.code = {
+        [Op.like]: `%${keyword.trim()}%`,
+      };
   }
 
   // Tìm kiếm theo trạng thái đơn hàng
@@ -687,6 +629,9 @@ async function handleCreateOrder(order, loginUser) {
             order: [["expiryDate", "ASC"]],
           });
 
+
+
+
           let remainQuantity = batch.quantity;
           const selectedProductUnitQuantityMapping = {};
           for (const productBatch of findProductBatches) {
@@ -744,30 +689,31 @@ async function handleCreateOrder(order, loginUser) {
             );
           }
         }
-      totalPrice += +productUnit.price * +item.quantity;
 
-      await models.OrderProduct.create(
-        {
-          orderId: newOrder.id,
-          productId: item.productId,
-          productUnitId: productUnit.id,
-          productUnitData: JSON.stringify(productUnit),
-          price: +productUnit.price * +item.quantity,
-          quantityBaseUnit: +productUnit.exchangeValue * +item.quantity,
-          quantity: item.quantity,
-          discount: 0,
-          primePrice: findProduct.primePrice,
-          userId: newOrder.userId,
-          customerId: newOrder.customerId,
-          groupCustomerId: newOrder.groupCustomerId,
-          createdBy: newOrder.createdBy,
-          updatedBy: newOrder.createdBy,
-          createdAt: new Date(),
-          comboId: null,
-        },
-        { transaction: t }
-      );
+        totalPrice += +productUnit.price * +item.quantity;
+
     }
+      await models.OrderProduct.create(
+          {
+            orderId: newOrder.id,
+            productId: item.productId,
+            productUnitId: productUnit.id,
+            productUnitData: JSON.stringify(productUnit),
+            price: +productUnit.price * +item.quantity,
+            quantityBaseUnit: +productUnit.exchangeValue * +item.quantity,
+            quantity: item.quantity,
+            discount: 0,
+            primePrice: findProduct.primePrice,
+            userId: newOrder.userId,
+            customerId: newOrder.customerId,
+            groupCustomerId: newOrder.groupCustomerId,
+            createdBy: newOrder.createdBy,
+            updatedBy: newOrder.createdBy,
+            createdAt: new Date(),
+            comboId: null,
+          },
+          { transaction: t } );
+
 
     if (order.discountType === discountTypes.MONEY) {
       totalPrice = totalPrice - order.discount;
