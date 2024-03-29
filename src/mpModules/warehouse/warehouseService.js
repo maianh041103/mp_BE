@@ -17,7 +17,7 @@ function processQuery(params) {
     const {
         page = 1,
         limit = 10,
-        productUnitId,
+        productId,
         branchId
     } = params;
 
@@ -28,8 +28,8 @@ function processQuery(params) {
         order: [["createdAt", "DESC"]],
     };
     const where = {};
-    if (productUnitId) {
-        where.productUnitId = productUnitId;
+    if (productId) {
+        where.productId = productId;
     }
     if (branchId) {
         where.branchId = branchId;
