@@ -539,7 +539,7 @@ async function handleCreateOrder(order, loginUser) {
         updatedAt: new Date()
       }, t)
 
-      await models.Product.increment({inventory: item.quantity * productUnit.exchangeValue},
+      await models.Product.increment({inventory: -item.quantity * productUnit.exchangeValue},
           {where: {id: findProduct.id}, transaction: t}
       )
 
