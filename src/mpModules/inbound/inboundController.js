@@ -21,7 +21,7 @@ export async function indexController(req, res) {
       },
       loginUser
     );
-    if (result.success) res.json(  (_.get(result, "data", {})));
+    if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
     res.json(
