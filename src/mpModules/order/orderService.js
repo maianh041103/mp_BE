@@ -530,7 +530,7 @@ async function handleCreateOrder(order, loginUser) {
       await createWarehouseCard({
         code: generateOrderCode(newOrder.id),
         type: warehouseStatus.ORDER,
-        partner: findCustomer.name,
+        partner: findCustomer.fullName,
         productId: item.productId,
         branchId: order.branchId,
         changeQty: item.quantity * productUnit.exchangeValue,
@@ -602,13 +602,12 @@ async function handleCreateOrder(order, loginUser) {
           }
 
           totalQuantityOfProduct += batch.quantity;
-
+          const responseReadBatch = await readBatch(batch.id, loginUser);
+          if (responseReadBatch.error) {
+            return responseReadBatch;
+          }
+          const findBatch = responseReadBatch.data;
           if (batch.quantity > batchInfoMapping[batch.id].quantity) {
-            const responseReadBatch = await readBatch(batch.id, loginUser);
-            if (responseReadBatch.error) {
-              return responseReadBatch;
-            }
-            const findBatch = responseReadBatch.data;
             throw Error(
               JSON.stringify({
                 error: true,
@@ -620,6 +619,10 @@ async function handleCreateOrder(order, loginUser) {
             );
           }
 
+          await models.Batch.increment({
+            quantity: -productUnit.exchangeValue * batch.quantity
+          }, {where: {id: batch.id}, transaction: t})
+
           // Trừ số lượng sản phẩm trong lô
           const findProductBatches = await models.ProductToBatch.findAll({
             where: {
@@ -628,9 +631,6 @@ async function handleCreateOrder(order, loginUser) {
             },
             order: [["expiryDate", "ASC"]],
           });
-
-
-
 
           let remainQuantity = batch.quantity;
           const selectedProductUnitQuantityMapping = {};
@@ -689,7 +689,6 @@ async function handleCreateOrder(order, loginUser) {
             );
           }
         }
-
         totalPrice += +productUnit.price * +item.quantity;
 
     }
@@ -713,8 +712,6 @@ async function handleCreateOrder(order, loginUser) {
             comboId: null,
           },
           { transaction: t } );
-
-
     if (order.discountType === discountTypes.MONEY) {
       totalPrice = totalPrice - order.discount;
     } else if (order.discountType === discountTypes.PERCENT) {
@@ -936,7 +933,7 @@ export async function updateOrder(id, order) {
     // Thông báo đến khách hàng
 
     // Tăng sản phẩm đã bán nếu đơn hàng được xác nhận "đơn hàng thành công"
-    if (dataUpdate.status == orderStatuses.SUCCEED) {
+    if (dataUpdate.status === orderStatuses.SUCCEED) {
       for (let item of products) {
         await updateProductStatistic({
           productId: item.productId,

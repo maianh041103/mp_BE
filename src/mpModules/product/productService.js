@@ -117,7 +117,7 @@ export const productIncludes = [
       "isBaseUnit",
       "point",
     ],
-  },
+  }
   // {
   //   model: models.Image,
   //   as: "images",

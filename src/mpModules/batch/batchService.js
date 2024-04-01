@@ -138,7 +138,7 @@ export async function createBatch(payload, loginUser) {
     return responseReadProduct;
   }
 
-  const newBatch = await models.Batch.create(payload);
+  const newBatch = await models.Batch.create({...payload, quantity: 0});
 
   createUserTracking({
     accountId: newBatch.createdBy,
@@ -202,6 +202,32 @@ export async function updateBatch(id, batch, loginUser) {
   };
 }
 
+export async function findAllBatchByProductId(productId) {
+  return await models.Batch.findAll({
+    attributes: ["id", "name", "expiryDate", "quantity"],
+    where: {
+      productId: productId,
+      quantity: {[Op.gt]: 0}
+    },
+    order: [["expiryDate", "ASC"]]
+  });
+}
+
+export async function findAllBatchByListProduct(productIds) {
+  const res = {}
+  const batches = await models.Batch.findAll({
+    attributes: ["id", "name", "expiryDate", "quantity", "productId"],
+    where: {
+      productId: {[Op.in]: productIds},
+      quantity: {[Op.gt]: 0}
+    },
+    order: [["expiryDate", "ASC"]]
+  });
+  for (const batch of batches) {
+    res[batch.productId] = batch
+  }
+  return res
+}
 export async function readBatch(id, loginUser) {
   const findBatch = await models.Batch.findOne({
     where: {

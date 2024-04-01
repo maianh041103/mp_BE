@@ -1,3 +1,5 @@
+import {findAllBatchByProductId} from "../batch/batchService";
+
 const _ = require("lodash");
 const Sequelize = require("sequelize");
 const { Op } = Sequelize;
@@ -227,66 +229,7 @@ export async function indexService(params) {
         totalQuantityBaseUnits / item.exchangeValue
       );
 
-      // Trả về tất cả lô của sản phẩm
-      const findAllProductToBatches = await models.ProductToBatch.findAll({
-        attributes: ["batchId", "productUnitId", "quantity", "expiryDate"],
-        include: [
-          {
-            model: models.Batch,
-            as: "batch",
-            attributes: ["id", "name"],
-          },
-          {
-            model: models.ProductUnit,
-            as: "productUnit",
-            attributes: [
-              "id",
-              "unitName",
-              "exchangeValue",
-              "price",
-              "isBaseUnit",
-            ],
-          },
-        ],
-        where: {
-          storeId: item.storeId,
-          branchId: item.branchId,
-          productId: item.product.id,
-        },
-        order: [["expiryDate", "ASC"]],
-      });
-
-      // Tính tổng tất cả số lượng sản phẩm theo từng lô, nhóm lại theo lô
-      // Lấy đơn vị đầu tiên của batch được duyệt trong vòng lặp trước làm mẫu
-      // Chuyển đổi các đơn vị sau về đơn vị này
-      const batchInfoMapping = {};
-      const batchInfos = [];
-      for (const batchInstance of findAllProductToBatches) {
-        if (batchInfoMapping[batchInstance.batchId]) {
-          batchInfoMapping[batchInstance.batchId].quantity +=
-            +formatDecimalTwoAfterPoint(
-              (batchInstance.quantity *
-                batchInstance.productUnit.exchangeValue) /
-                batchInfoMapping[batchInstance.batchId].productUnit
-                  .exchangeValue
-            );
-        } else {
-          batchInfoMapping[batchInstance.batchId] = {
-            batchId: batchInstance.batchId,
-            productUnitId: batchInstance.productUnitId,
-            quantity: batchInstance.quantity,
-            expiryDate: batchInstance.expiryDate,
-            batch: batchInstance.batch,
-            productUnit: batchInstance.productUnit,
-          };
-          batchInfos.push(batchInstance);
-        }
-      }
-
-      item.dataValues.batches =
-        batchInfos.map((obj) => {
-          return batchInfoMapping[obj.batchId];
-        }) || [];
+      item.dataValues.batches = await findAllBatchByProductId(item.productId);
     }
     row.dataValues.products = products;
   }

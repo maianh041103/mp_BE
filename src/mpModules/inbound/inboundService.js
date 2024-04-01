@@ -445,6 +445,20 @@ export async function handleCreateInbound(inbound, loginUser) {
           })
         );
       }
+      let findProductUnit = await models.ProductUnit.findOne({
+        where: {
+          id: item.productUnitId
+        }
+      })
+      if (!findProductUnit) {
+        throw Error(
+            JSON.stringify({
+              error: true,
+              code: HttpStatusCode.BAD_REQUEST,
+              message: `Không tìm thấy đơn vị của sản phẩm (${item.productId}) `,
+            })
+        );
+      }
 
       // Tiền sản phẩm = Giá nhập * Số lượng - Giảm giá
       const totalProductPrice =
@@ -477,7 +491,12 @@ export async function handleCreateInbound(inbound, loginUser) {
             return responseReadBatch;
           }
           totalProductQuantity += batch.quantity;
-
+          const _batch = responseReadBatch.data;
+          await models.Batch.increment({quantity: findProductUnit.exchangeValue * batch.quantity},
+              {
+                where: {id: _batch.id},
+                transaction: t
+              })
           const isExistProductBatch = await models.ProductToBatch.findOne({
             where: {
               storeId: loginUser.storeId,
