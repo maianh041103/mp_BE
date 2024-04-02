@@ -35,6 +35,23 @@ export async function indexCustomersController(req, res) {
   }
 }
 
+export async function getTotalDebtController(req, res) {
+  try {
+    const { loginUser = {} } = req;
+    const { id } = req.params;
+    const result = await indexCustomers({
+      ...req.query,
+      storeId: loginUser.storeId,
+    });
+    if (result.success) res.json(respondItemSuccess(result.data));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+        respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
 export async function readController(req, res) {
   try {
     const { id } = req.params;

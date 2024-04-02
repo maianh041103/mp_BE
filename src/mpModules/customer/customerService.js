@@ -198,6 +198,12 @@ export async function indexCustomers(filter) {
   };
 }
 
+export async function getTotalDebt(customerId) {
+  const orders = await models.Order.findOne({
+    attributes: []
+  })
+}
+
 export async function readCustomer(id, loginUser) {
   const findCustomer = await models.Customer.findOne({
     attributes: customerAttributes,

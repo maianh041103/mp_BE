@@ -1,4 +1,5 @@
 import {getNextValue} from "./productCodeService";
+import {getInventory} from "../inventory/inventoryService";
 
 const moment = require("moment");
 const {
@@ -34,317 +35,8 @@ const {
 } = require("../customer/customerConstant");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { accountTypes, logActions } = require("../../helpers/choices");
-
-export const productIncludes = [
-  {
-    model: models.Image,
-    as: "image",
-    attributes: ["id", "originalName", "fileName", "filePath", "path"],
-  },
-  {
-    model: models.Store,
-    as: "store",
-    attributes: [
-      "id",
-      "name",
-      "phone",
-      "provinceId",
-      "districtId",
-      "wardId",
-      "address",
-      "createdAt",
-    ],
-  },
-  {
-    model: models.Branch,
-    as: "branch",
-    attributes: [
-      "id",
-      "name",
-      "phone",
-      "code",
-      "zipCode",
-      "provinceId",
-      "districtId",
-      "wardId",
-      "isDefaultBranch",
-      "createdAt",
-    ],
-  },
-  {
-    model: models.Manufacture,
-    as: "productManufacture",
-    attributes: ["id", "name"],
-  },
-  {
-    model: models.Dosage,
-    as: "productDosage",
-    attributes: ["id", "name"],
-  },
-  {
-    model: models.Position,
-    as: "productPosition",
-    attributes: ["id", "name"],
-  },
-  {
-    model: models.CountryProduce,
-    as: "country",
-    attributes: ["id", "name"],
-  },
-  {
-    model: models.GroupProduct,
-    as: "groupProduct",
-    attributes: ["id", "name"],
-  },
-  {
-    model: models.ProductCategory,
-    as: "productCategory",
-    attributes: ["id", "name"],
-  },
-  {
-    model: models.ProductUnit,
-    as: "productUnit",
-    attributes: [
-      "id",
-      "unitName",
-      "exchangeValue",
-      "price",
-      "productId",
-      "quantity",
-      "code",
-      "barCode",
-      "isDirectSale",
-      "isBaseUnit",
-      "point",
-    ],
-  }
-  // {
-  //   model: models.Image,
-  //   as: "images",
-  //   through: {
-  //     attributes: ["isThumbnail"],
-  //     where: {
-  //       modelName: "product",
-  //     },
-  //   },
-  //   attributes: ["id", "originalName", "fileName", "filePath", "path"],
-  // },
-];
-
-export const productAttributes = [
-  "id",
-  "name",
-  "shortName",
-  "code",
-  "barCode",
-  "groupProductId",
-  "productCategoryId",
-  "imageId",
-  "dosageId",
-  "manufactureId",
-  "positionId",
-  "countryId",
-  "primePrice",
-  "price",
-  "weight",
-  "warningExpiryDate",
-  "warningExpiryText",
-  "isDirectSale",
-  "registerNumber",
-  "activeElement",
-  "content",
-  "packingSpecification",
-  "minInventory",
-  "maxInventory",
-  "description",
-  "note",
-  "baseUnit",
-  "inventory",
-  "quantitySold",
-  "storeId",
-  "branchId",
-  "type",
-  "isLoyaltyPoint",
-  "isBatchExpireControl",
-  "expiryPeriod",
-  "status",
-  "createdAt",
-  "drugCode"
-];
-
-export async function queryFilter(params) {
-  const {
-    page = 1,
-    limit = 20,
-    keyword = "",
-    name = "",
-    type,
-    status,
-    productCategoryId,
-    groupProductId,
-    statusArray = [],
-    unitId,
-    manufactureId,
-    notEqualManufactureId,
-    listProductId = [],
-    notEqualId,
-    order = [["id", "DESC"]],
-    tag,
-    newest,
-    bestseller,
-    az,
-    za,
-    price,
-    include = productIncludes,
-    attributes = productAttributes,
-    raw = false,
-    branchId,
-    storeId,
-    isSale,
-  } = params;
-
-  const query = {
-    offset: +limit * (+page - 1),
-    limit: +limit,
-    order,
-  };
-
-  if (raw) query.raw = true;
-
-  if (_.isArray(include) && include.length) {
-    query.include = include;
-    if (!isSale) {
-      for (const item of query.include) {
-        if (item.as === "productUnit") {
-          query.order = [
-            [models.ProductUnit, "exchangeValue", "DESC"],
-            ...query.order,
-          ];
-        }
-      }
-    }
-  }
-
-  if (_.isArray(attributes) && attributes.length) {
-    query.attributes = attributes;
-  }
-
-  if (_.isArray(order) && order.length) {
-    query.order = order;
-  }
-
-  const where = {};
-
-  if (storeId) {
-    where.storeId = storeId;
-  }
-
-  if (branchId) {
-    where.branchId = branchId;
-  }
-
-  if (type) {
-    where.type = type;
-  }
-
-  if (status) {
-    where.status = status;
-  }
-
-  if (groupProductId) {
-    where.groupProductId = groupProductId;
-  }
-
-  if (productCategoryId) {
-    where.productCategoryId = productCategoryId;
-  }
-
-  if (notEqualId) {
-    where.id = {
-      [Op.ne]: notEqualId,
-    };
-  }
-
-  if (notEqualManufactureId) {
-    where.manufactureId = {
-      [Op.ne]: notEqualManufactureId,
-    };
-  }
-
-  if (_.isArray(statusArray) && statusArray.length) {
-    where.status = {
-      [Op.in]: statusArray,
-    };
-  }
-
-  if (_.isArray(unitId) && unitId.length) {
-    where.unitId = {
-      [Op.in]: unitId,
-    };
-  }
-
-  if (_.isArray(manufactureId) && manufactureId.length) {
-    where.manufactureId = {
-      [Op.in]: manufactureId,
-    };
-  }
-
-  if (_.isArray(listProductId) && listProductId.length) {
-    where.id = listProductId;
-  }
-
-  if (tag) {
-    const tagToProducts = await tagToProductFilter({ tag });
-    where.id = tagToProducts;
-  }
-
-  if (keyword) {
-    where[Op.or] = {
-      name: {
-        [Op.like]: `%${keyword.trim()}%`,
-      },
-      slug: {
-        [Op.like]: `%${keyword.trim()}%`,
-      },
-      code: {
-        [Op.like]: `%${keyword.trim()}%`,
-      },
-    };
-  }
-
-  if (name) {
-    where[Op.or] = {
-      name: {
-        [Op.like]: `%${keyword.trim()}%`,
-      },
-    };
-  }
-
-  if (newest) {
-    query.order = [["id", "DESC"]];
-  } else if (bestseller) {
-    where.id = _.get(
-      await productStatisticFilter({
-        limit: 20,
-        orderBy: [["sold", "DESC"]],
-      }),
-      "statistics",
-      []
-    ).map((o) => o.productId);
-  } else if (az) {
-    query.order = [["name", "ASC"]];
-  } else if (za) {
-    query.order = [["name", "DESC"]];
-  } else if (price == "desc") {
-    query.order = [["cost", "DESC"]];
-  } else if (price == "asc") {
-    query.order = [["cost", "ASC"]];
-  }
-
-  query.where = where;
-
-  return query;
-}
+const {productIncludes, productAttributes} = require("./constant")
+const {queryFilter} = require("./filter")
 
 export async function productFilter(params) {
   try {
@@ -375,6 +67,7 @@ export async function indexProducts(params) {
     countProduct(query),
   ]);
   for (const item of items) {
+    item.dataValues.inventory = await getInventory(params.branchId, item.id)
     if (!params.isSale) {
       item.dataValues.batches = [];
       continue;
@@ -491,7 +184,6 @@ export async function createProduct(product, loginUser) {
     product.barCode = removeDiacritics(product.barCode);
     const checkUniqueBarCode = await checkUniqueValue("Product", {
       barCode: product.barCode,
-      branchId: product.branchId,
       storeId: product.storeId,
     });
     if (!checkUniqueBarCode) {
@@ -502,79 +194,65 @@ export async function createProduct(product, loginUser) {
       };
     }
   }
+  let newProduct
+  await models.sequelize.transaction(async (t) => {
 
-  const findBranch = await models.Branch.findOne({
-    attributes: ["id", "storeId"],
-    where: {
-      id: product.branchId,
-      storeId: product.storeId,
-    },
-  });
-  if (!findBranch) {
-    return {
-      error: true,
-      code: HttpStatusCode.BAD_REQUEST,
-      message: `Branch có id = ${product.branchId} không tồn tại.`,
-    };
-  }
+    newProduct = await models.Product.create({
+      ...product,
+      ...(product.type === productTypeCharacters.THUOC && {
+        isBatchExpireControl: true,
+      }),
+    }, {transaction: t});
 
-  const newProduct = await models.Product.create({
-    ...product,
-    ...(product.type === productTypeCharacters.THUOC && {
-      isBatchExpireControl: true,
-    }),
-  });
-
-  if (!product.code) {
-    const nextValue = await getNextValue(product.storeId, product.type)
-    const code = generateProductCode(product.type, nextValue)
-    product.code = code
-    if (!product.barCode) {
+    if (!product.code) {
+      const nextValue = await getNextValue(product.storeId, product.type)
+      const code = generateProductCode(product.type, nextValue)
+      product.code = code
+      if (!product.barCode) {
         product.barCode = code
+      }
+      await models.Product.update(
+          {code: code, barCode: product.barCode},
+          {where: {id: newProduct.id}, transaction: t}
+      );
     }
-    await models.Product.update(
-      { code: code, barCode: product.barCode },
-      { where: { id: newProduct.id } }
-    );
-  }
 
-  // add product units
-  const productUnits = _.get(product, "productUnits", []).map((item) => ({
-    productId: newProduct.id,
-    unitName: item.unitName,
-    exchangeValue: item.exchangeValue,
-    price: item.price,
-    isDirectSale: item.isDirectSale || false,
-    isBaseUnit: item.isBaseUnit || false,
-    quantity: item.quantity || 0,
-    code: item.code || item.code,
-    barCode: item.barCode || "",
-    point: item.point || 0,
-    branchId: product.branchId,
-    storeId: product.storeId,
-    createdBy: loginUser.id,
-  }));
-  for (const productUnit of productUnits) {
-    if (productUnit.isBaseUnit) {
-      if (!productUnit.code) {
-        productUnit.code = product.code
-        if (!productUnit.barCode) {
-          productUnit.barCode = productUnit.code
+    // add product units
+    const productUnits = _.get(product, "productUnits", []).map((item) => ({
+      productId: newProduct.id,
+      unitName: item.unitName,
+      exchangeValue: item.exchangeValue,
+      price: item.price,
+      isDirectSale: item.isDirectSale || false,
+      isBaseUnit: item.isBaseUnit || false,
+      quantity: item.quantity || 0,
+      code: item.code || item.code,
+      barCode: item.barCode || "",
+      point: item.point || 0,
+      storeId: product.storeId,
+      createdBy: loginUser.id,
+    }));
+    for (const productUnit of productUnits) {
+      if (productUnit.isBaseUnit) {
+        if (!productUnit.code) {
+          productUnit.code = product.code
+          if (!productUnit.barCode) {
+            productUnit.barCode = productUnit.code
+          }
+        }
+      } else {
+        if (!productUnit.code) {
+          const nextValue = await getNextValue(product.storeId, product.type)
+          productUnit.code = generateProductCode(product.type, nextValue)
+          if (!productUnit.barCode) {
+            productUnit.barCode = productUnit.code
+          }
         }
       }
-    } else {
-      if (!productUnit.code) {
-        const nextValue = await getNextValue(product.storeId, product.type)
-        productUnit.code = generateProductCode(product.type, nextValue)
-        if (!productUnit.barCode) {
-          productUnit.barCode = productUnit.code
-        }
-      }
     }
-  }
-  await models.ProductUnit.bulkCreate(productUnits);
-  // sendTelegram({ message: 'Tạo thành công sản phẩm:' + JSON.stringify(newProduct) });
-
+    await models.ProductUnit.bulkCreate(productUnits, {transaction: t});
+    // sendTelegram({ message: 'Tạo thành công sản phẩm:' + JSON.stringify(newProduct) });
+  })
   createUserTracking({
     accountId: loginUser.id,
     type: accountTypes.USER,

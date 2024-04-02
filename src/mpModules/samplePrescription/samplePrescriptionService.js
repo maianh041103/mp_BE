@@ -10,7 +10,6 @@ const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { accountTypes, logActions } = require("../../helpers/choices");
 const { productIncludes } = require("../product/productService");
 const { formatDecimalTwoAfterPoint } = require("../../helpers/utils");
-const { cumulativeQuantityTotal } = require("../product/productMasterService");
 
 const samplePrescriptionIncludes = [
   {

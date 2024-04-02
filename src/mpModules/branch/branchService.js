@@ -301,3 +301,7 @@ export async function deleteBranch(id, loginUser) {
     success: true,
   };
 }
+
+export async function getAllBranchFromStore(storeId) {
+  return await models.Branch.findAll({attributes: ["id"], where: {storeId: storeId}})
+}

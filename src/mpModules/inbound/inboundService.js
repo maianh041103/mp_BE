@@ -1,5 +1,6 @@
 import {createWarehouseCard} from "../warehouse/warehouseService";
 import {warehouseStatus} from "../warehouse/constant";
+import {addInventory, getInventory} from "../inventory/inventoryService";
 
 const _ = require("lodash");
 const Sequelize = require("sequelize");
@@ -660,14 +661,12 @@ export async function handleCreateInbound(inbound, loginUser) {
           productId: item.productId,
           branchId: inbound.branchId,
           changeQty: item.totalQuantity * productUnit.exchangeValue,
-          remainQty: findProduct.inventory + item.totalQuantity * productUnit.exchangeValue,
+          remainQty: await getInventory(inbound.branchId, item.productId) + item.totalQuantity * productUnit.exchangeValue,
           createdAt: new Date(),
           updatedAt: new Date()
         }, t)
-        await models.Product.increment(
-            {inventory: item.totalQuantity * productUnit.exchangeValue},
-            {where: { id: item.productId}, transaction: t},
-        )
+        await addInventory(inbound.branchId, item.productId,  item.totalQuantity * productUnit.exchangeValue, t)
+
       }
     }
   });

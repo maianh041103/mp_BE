@@ -29,11 +29,11 @@ module.exports = (sequelize, Sequelize) => {
         },
       changeQty: {
           allowNull: true,
-          type: Sequelize.DOUBLE(11, 2),
+          type: Sequelize.INTEGER,
       },
       remainQty: {
           allowNull: true,
-          type: Sequelize.DOUBLE(11, 2),
+          type: Sequelize.INTEGER,
       },
         // 1. Ban hang , 2. Nhap hang,  3. Kiem kho
         type: {

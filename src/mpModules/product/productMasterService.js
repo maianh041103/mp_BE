@@ -1,4 +1,5 @@
 import {findAllBatchByListProduct, findAllBatchByProductId} from "../batch/batchService";
+import {getInventory} from "../inventory/inventoryService";
 
 const { PAGE_LIMIT } = require("../../helpers/choices");
 const Sequelize = require("sequelize");
@@ -8,8 +9,7 @@ const models = require("../../../database/models");
 const {
   productIncludes,
   productAttributes,
-  queryFilter,
-} = require("./productService");
+} = require("./constant");
 const { formatDecimalTwoAfterPoint } = require("../../helpers/utils");
 
 const ignoreAliasModels = ["store", "branch"];
@@ -47,44 +47,6 @@ export const productMasterIncludes = [
   },
 ];
 
-export async function cumulativeQuantityTotal(storeId, branchId, productId) {
-  const [findAllProductMasters, findAllProductUnits] = await Promise.all([
-    models.ProductMaster.findAll({
-      attributes: [
-        "storeId",
-        "branchId",
-        "productId",
-        "productUnitId",
-        "quantity",
-      ],
-      where: {
-        storeId,
-        branchId,
-        productId,
-      },
-    }),
-    models.ProductUnit.findAll({
-      where: {
-        storeId,
-        branchId,
-        productId,
-      },
-    }),
-  ]);
-  const productUnitMapping = {};
-  findAllProductUnits.forEach((item) => {
-    productUnitMapping[`${productId}_${item.id}`] = item.exchangeValue;
-  });
-
-  let totalQuantityBaseUnits = 0;
-  findAllProductMasters.forEach((item) => {
-    totalQuantityBaseUnits +=
-      item.quantity *
-      (productUnitMapping[`${productId}_${item.productUnitId}`] || 1);
-  });
-  return totalQuantityBaseUnits;
-}
-
 export async function indexMasterSaleProducts(params) {
   const limit = +params.limit || 10;
   const page = +params.page || 1;
@@ -92,10 +54,6 @@ export async function indexMasterSaleProducts(params) {
   const where = {};
   if (storeId) {
     where.storeId = storeId;
-  }
-
-  if (branchId) {
-    where.branchId = branchId;
   }
   if (keyword) {
     where.code = {[Op.like]: `%${keyword.trim()}%`}
@@ -191,8 +149,9 @@ export async function indexMasterSaleProducts(params) {
       isBaseUnit: item.isBaseUnit,
       point: item.point,
     };
+    const inventory = await getInventory(branchId, item.productId)
     item.dataValues.quantity = parseInt(
-      item.product.inventory / item.exchangeValue
+        inventory / item.exchangeValue
     );
 
     if (!params.isSale) {
@@ -218,10 +177,6 @@ export async function indexMasterInboundProducts(params) {
   const where = {};
   if (storeId) {
     where.storeId = storeId;
-  }
-
-  if (branchId) {
-    where.branchId = branchId;
   }
   if (params.keyword) {
     const keyword = params.keyword
@@ -280,8 +235,10 @@ export async function indexMasterInboundProducts(params) {
     order: [["createdAt", "DESC"]]
     });
   for (const item of rows) {
-    const totalQuantityBaseUnits = item.product.inventory
-    item.dataValues.quantity = parseInt(totalQuantityBaseUnits / item.exchangeValue)
+    const inventory = await getInventory(branchId, item.productId)
+    item.dataValues.quantity = parseInt(
+        inventory / item.exchangeValue
+    );
   }
 
   return {

@@ -32,6 +32,7 @@ const createSchema = Joi.object().keys({
               .keys({
                 id: Joi.number().integer().required(),
                 quantity: Joi.number().integer().required(),
+                  name: Joi.string().allow(null).allow(""),
                 expiryDate: Joi.string().allow(null).allow(""),
               })
               .allow(null).allow("")
@@ -41,7 +42,6 @@ const createSchema = Joi.object().keys({
         .unknown(true)
     )
     .required([]),
-  totalPrice: Joi.number().integer().required(),
 });
 
 export function createValidator(req, res, next) {

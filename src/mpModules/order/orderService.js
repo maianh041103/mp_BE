@@ -1,5 +1,6 @@
 import {createWarehouseCard} from "../warehouse/warehouseService";
 import {warehouseStatus} from "../warehouse/constant";
+import {addInventory, getInventory} from "../inventory/inventoryService";
 
 const moment = require("moment");
 const {
@@ -499,7 +500,6 @@ async function handleCreateOrder(order, loginUser) {
       const productProductToBatchConditions = {
         productId: item.productId,
         storeId: loginUser.storeId,
-        branchId: order.branchId,
       };
 
       const productUnit = await models.ProductUnit.findOne({
@@ -518,7 +518,8 @@ async function handleCreateOrder(order, loginUser) {
           })
         );
       }
-      if (findProduct.inventory < item.totalQuantity * productUnit.exchangeValue) {
+      const inventory = await getInventory(order.branchId, item.productId)
+      if (inventory < item.totalQuantity * productUnit.exchangeValue) {
         throw Error(
             JSON.stringify({
               error: true,
@@ -527,6 +528,7 @@ async function handleCreateOrder(order, loginUser) {
             })
         );
       }
+
       await createWarehouseCard({
         code: generateOrderCode(newOrder.id),
         type: warehouseStatus.ORDER,
@@ -534,14 +536,11 @@ async function handleCreateOrder(order, loginUser) {
         productId: item.productId,
         branchId: order.branchId,
         changeQty: item.quantity * productUnit.exchangeValue,
-        remainQty: findProduct.inventory - item.quantity * productUnit.exchangeValue,
+        remainQty: inventory - item.quantity * productUnit.exchangeValue,
         createdAt: new Date(),
         updatedAt: new Date()
       }, t)
-
-      await models.Product.increment({inventory: -item.quantity * productUnit.exchangeValue},
-          {where: {id: findProduct.id}, transaction: t}
-      )
+      await addInventory(order.branchId, item.productId, -item.quantity * productUnit.exchangeValue, t)
 
       // Đối với sản phẩm bắt buộc quản lý theo lô
       if (findProduct.isBatchExpireControl) {

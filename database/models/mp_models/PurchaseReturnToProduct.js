@@ -19,6 +19,26 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       type: DataTypes.INTEGER(10).UNSIGNED,
     },
+    productUnitId: {
+      allowNull: true,
+      type: DataTypes.INTEGER(10).UNSIGNED,
+    },
+    quantity: {
+      allowNull: true,
+      type: DataTypes.INTEGER,
+    },
+    totalPrice: {
+      allowNull: true,
+      type: DataTypes.INTEGER,
+    },
+    discount: {
+      allowNull: true,
+      type: DataTypes.INTEGER,
+    },
+    importPrice: {
+      allowNull: true,
+      type: DataTypes.INTEGER,
+    },
     productId: {
       allowNull: true,
       type: DataTypes.INTEGER(10).UNSIGNED,
@@ -55,11 +75,17 @@ module.exports = (sequelize, DataTypes) => {
       targetKey: "id",
     });
 
-    PurchaseReturnToProduct.hasMany(models.ProductBatchHistory, {
-      as: "productBatchHistories",
-      foreignKey: 'inboundProductId',
-      sourceKey: 'id',
+    PurchaseReturnToProduct.belongsTo(models.ProductUnit, {
+      as: "productUnit",
+      foreignKey: "productUnitId",
+      targetKey: "id",
     });
+
+    PurchaseReturnToProduct.hasMany(models.PurchaseReturnItemBatch, {
+      as: "batches",
+      foreignKey: "purchaseReturnItemId",
+      sourceKey: "id"
+    })
   };
   return PurchaseReturnToProduct;
 };
