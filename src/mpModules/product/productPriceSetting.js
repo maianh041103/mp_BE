@@ -30,6 +30,13 @@ export async function indexProductPriceSettings(params, loginUser) {
       "isBaseUnit",
       "point",
     ],
+    include: [
+      {
+        model: models.Product,
+        as: "product",
+        attributes: ["id", "name", "code"]
+      }
+    ],
     offset: +limit * (+page - 1),
     limit: +limit,
     order: [["id", "DESC"]],
@@ -38,18 +45,22 @@ export async function indexProductPriceSettings(params, loginUser) {
   if (storeId) {
     where.storeId = storeId;
   }
-  if (branchId) {
-    where.branchId = branchId;
-  }
   if (keyword) {
     where[Op.or] = {
-      unitName: {
+      code: {
         [Op.like]: `%${keyword.trim()}%`,
       },
+      barCode: {
+        [Op.like]: `%${keyword.trim()}%`,
+      },
+      '$product.name$': {
+        [Op.like]: `%${keyword.trim()}%`,
+      }
     };
   }
 
   query.where = where;
+
 
   const [items, count] = await Promise.all([
     models.ProductUnit.findAll(query),

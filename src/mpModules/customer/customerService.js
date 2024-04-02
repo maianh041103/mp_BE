@@ -164,6 +164,11 @@ export async function indexCustomers(filter) {
           [Op.like]: `%${keyword.trim()}%`,
         },
       },
+      {
+        code: {
+          [Op.like]: `%${keyword.trim()}%`,
+        },
+      },
     ];
   }
 

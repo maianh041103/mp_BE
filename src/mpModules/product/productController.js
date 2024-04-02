@@ -213,6 +213,7 @@ export async function updateController(req, res) {
       dosageId: _.get(req.body, "dosageId", null),
       positionId: _.get(req.body, "positionId", null),
       isLoyaltyPoint: _.get(req.body, "isLoyaltyPoint", false),
+      isBatchExpireControl: _.get(req.body, "isBatchExpireControl", false),
       inventory: _.get(req.body, "inventory", 0),
       baseUnit: _.get(req.body, "baseUnit", null),
       productUnits: _.get(req.body, "productUnits", []),

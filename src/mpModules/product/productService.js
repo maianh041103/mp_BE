@@ -364,6 +364,7 @@ export async function indexProductCombo(params, loginUser) {
 
 // update one product
 export async function updateProduct(id, product, loginUser) {
+  console.log(product)
   const findProduct = await models.Product.findOne({
     where: {
       id,
