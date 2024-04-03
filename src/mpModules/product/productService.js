@@ -1,6 +1,8 @@
 import {getNextValue} from "./productCodeService";
-import {getInventory} from "../inventory/inventoryService";
+import {addInventory, createNewInventory, getInventory, newInventory} from "../inventory/inventoryService";
 import {raiseBadRequestError} from "../../helpers/exception";
+import {createWarehouseCard} from "../warehouse/warehouseService";
+import {warehouseStatus} from "../warehouse/constant";
 
 const moment = require("moment");
 const {
@@ -204,7 +206,20 @@ export async function createProduct(product, loginUser) {
         isBatchExpireControl: true,
       }),
     }, {transaction: t});
-
+    await newInventory(product.branchId, newProduct.id, product.inventory, t)
+    if (product.inventory) {
+      await createWarehouseCard({
+        code: "",
+        type: warehouseStatus.ADJUSTMENT,
+        partner: "",
+        productId: newProduct.id,
+        branchId: product.branchId,
+        changeQty: product.inventory,
+        remainQty: product.inventory,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }, t)
+    }
     if (!product.code) {
       const nextValue = await getNextValue(product.storeId, product.type)
       const code = generateProductCode(product.type, nextValue)
@@ -365,7 +380,6 @@ export async function indexProductCombo(params, loginUser) {
 
 // update one product
 export async function updateProduct(id, product, loginUser) {
-  console.log(product)
   const findProduct = await models.Product.findOne({
     where: {
       id,
@@ -417,78 +431,96 @@ export async function updateProduct(id, product, loginUser) {
       };
     }
   }
-
-  await models.Product.update(product, {
-    where: {
-      id,
-    },
-  });
-
-  // upsert product units
-  const productUnits = _.get(product, "productUnits", []);
-  const updatedProductUnits = [];
-  for (const item of productUnits) {
-    const upsertPayload = {
-      productId: id,
-      unitName: item.unitName,
-      exchangeValue: item.exchangeValue,
-      price: item.price,
-      isDirectSale: item.isDirectSale || false,
-      isBaseUnit: item.isBaseUnit || false,
-      code: item.code || "",
-      barCode: item.barCode || "",
-      point: item.point || 0,
-      branchId: findProduct.branchId,
-      storeId: findProduct.storeId,
-      createdBy: loginUser.id,
-    };
-    if (item.id) {
-      await models.ProductUnit.update(upsertPayload, {
-        where: {
-          id: item.id,
-        },
-      });
-    } else {
-      const instance = await models.ProductUnit.create(upsertPayload);
-      item.id = instance.id;
+  await models.sequelize.transaction(async (t) => {
+    if (product.inventory) {
+      const inventory = getInventory(product.branchId, product.id)
+      await addInventory(product.branchId, product.id, product.inventory - inventory, t)
+      if (product.inventory) {
+        await createWarehouseCard({
+          code: "",
+          type: warehouseStatus.ADJUSTMENT,
+          partner: "",
+          productId: product.id,
+          branchId: product.branchId,
+          changeQty: product.inventory,
+          remainQty: product.inventory,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }, t)
+      }
     }
-    if (item.isBaseUnit) {
-      await models.ProductUnit.update(
-        {
-          isBaseUnit: false,
-        },
-        {
+    await models.Product.update(product, {
+      where: {
+        id,
+      }, transaction: t
+    });
+    // upsert product units
+    const productUnits = _.get(product, "productUnits", []);
+    const updatedProductUnits = [];
+    for (const item of productUnits) {
+      const upsertPayload = {
+        productId: id,
+        unitName: item.unitName,
+        exchangeValue: item.exchangeValue,
+        price: item.price,
+        isDirectSale: item.isDirectSale || false,
+        isBaseUnit: item.isBaseUnit || false,
+        code: item.code || "",
+        barCode: item.barCode || "",
+        point: item.point || 0,
+        branchId: findProduct.branchId,
+        storeId: findProduct.storeId,
+        createdBy: loginUser.id,
+      };
+      if (item.id) {
+        await models.ProductUnit.update(upsertPayload, {
           where: {
-            id: {
-              [Op.ne]: item.id,
+            id: item.id,
+          }, transaction: t
+        });
+      } else {
+        const instance = await models.ProductUnit.create(upsertPayload);
+        item.id = instance.id;
+      }
+      if (item.isBaseUnit) {
+        await models.ProductUnit.update(
+            {
+              isBaseUnit: false,
             },
-            productId: id,
-            branchId: findProduct.branchId,
-            storeId: findProduct.storeId,
+            {
+              where: {
+                id: {
+                  [Op.ne]: item.id,
+                },
+                productId: id,
+                branchId: findProduct.branchId,
+                storeId: findProduct.storeId,
+              }, transaction: t
+            }
+        );
+      }
+      updatedProductUnits.push(item.id);
+    }
+
+    if (updatedProductUnits.length) {
+      await models.ProductUnit.update(
+          {
+            deletedAt: new Date(),
           },
-        }
+          {
+            where: {
+              id: {
+                [Op.notIn]: updatedProductUnits,
+              },
+              productId: id,
+              branchId: findProduct.branchId,
+              storeId: findProduct.storeId,
+            }, transaction: t
+          }
       );
     }
-    updatedProductUnits.push(item.id);
-  }
 
-  if (updatedProductUnits.length) {
-    await models.ProductUnit.update(
-      {
-        deletedAt: new Date(),
-      },
-      {
-        where: {
-          id: {
-            [Op.notIn]: updatedProductUnits,
-          },
-          productId: id,
-          branchId: findProduct.branchId,
-          storeId: findProduct.storeId,
-        },
-      }
-    );
-  }
+  })
 
   createUserTracking({
     accountId: loginUser.id,
@@ -904,7 +936,7 @@ export async function randomProducts(params) {
 }
 
 export async function indexInventory(id, storeId) {
-  return await models.Inventory.findAll({
+  const inventories =  await models.Inventory.findAll({
     where: {productId: id},
     attributes: ["id", "quantity", "productId", "branchId"],
     include: [
@@ -915,6 +947,10 @@ export async function indexInventory(id, storeId) {
       }
     ]
   })
+  return {
+    success: true,
+    data: inventories
+  }
 }
 
 export async function getProduct(id) {

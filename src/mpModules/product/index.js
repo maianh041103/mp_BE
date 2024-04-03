@@ -141,7 +141,7 @@ router.patch(
 );
 
 router.get(
-  "/product/:id/inventory",
+  "/:id/inventory",
   authenticate,
   (req, res, next) => {
     req.apiRole = "product_read";

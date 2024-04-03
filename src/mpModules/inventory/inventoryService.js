@@ -12,6 +12,13 @@ export async function createNewInventory(storeId, productId, transaction) {
     await models.Inventory.bulkCreate(inventories, {transaction: transaction})
 }
 
+export async function newInventory(branchId, productId, quantity, transaction) {
+    if (!quantity) quantity = 0
+    await models.Inventory.create({
+        branchId, productId, quantity
+    }, {transaction: transaction})
+}
+
 export async function addInventory(branchId, productId, quantity, transaction) {
     const inventory = await models.Inventory.findOne({
         where: {
