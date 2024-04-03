@@ -22,6 +22,7 @@ const {
 } = require("./productValidator");
 const express = require("express");
 const {getNextValue} = require("./productCodeService");
+const {indexInventoryController} = require("./productInventoryController");
 
 const router = express.Router();
 
@@ -139,15 +140,26 @@ router.patch(
   updateStatus
 );
 
-router.delete(
-  "/:id",
+router.get(
+  "/product/:id/inventory",
   authenticate,
   (req, res, next) => {
-    req.apiRole = "product_delete";
+    req.apiRole = "product_read";
     next();
   },
   authorize,
-  deleteController
+  indexInventoryController
+);
+
+router.delete(
+    "/:id",
+    authenticate,
+    (req, res, next) => {
+        req.apiRole = "product_delete";
+        next();
+    },
+    authorize,
+    deleteController
 );
 
 router.delete(

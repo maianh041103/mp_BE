@@ -1,6 +1,7 @@
 import {productAttributes, productIncludes} from "./constant";
 import models from "../../../database/models";
 import {productStatisticFilter} from "../productStatistic/productStatisticService";
+import {Op} from "sequelize";
 const _ = require("lodash");
 export async function queryFilter(params) {
     const {

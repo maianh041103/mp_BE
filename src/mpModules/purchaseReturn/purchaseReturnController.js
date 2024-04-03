@@ -1,3 +1,5 @@
+import {indexDelete} from "./purchaseReturnService";
+
 const _ = require("lodash");
 const {
   respondItemSuccess,
@@ -79,6 +81,20 @@ export async function updateStatus(req, res) {
   } catch (error) {
     res.json(
       respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
+export async function indexDeleteController(req, res) {
+  try {
+    const { id } = req.params;
+    const { loginUser = {} } = req;
+    const result = await indexDelete(id, loginUser);
+    if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+        respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
     );
   }
 }

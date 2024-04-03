@@ -5,11 +5,12 @@ const {
   readController,
   createController,
   updateController,
-  updateStatus,
+  updateStatus, indexDelete, indexDeleteController,
 } = require("./purchaseReturnController");
 const { createValidator, updateStatusValidator } = require("./purchaseReturnValidator");
 
 const express = require("express");
+const {deleteProducts} = require("../product/productController");
 const router = express.Router();
 
 router.post(
@@ -68,6 +69,17 @@ router.patch(
   authorize,
   updateStatusValidator,
   updateStatus
+);
+
+router.delete(
+    "/:id",
+    authenticate,
+    (req, res, next) => {
+        req.apiRole = "inbound_delete";
+        next();
+    },
+    authorize,
+    indexDeleteController
 );
 
 module.exports = router;

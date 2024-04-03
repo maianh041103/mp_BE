@@ -1,5 +1,6 @@
 import {findAllBatchByListProduct, findAllBatchByProductId} from "../batch/batchService";
 import {getInventory} from "../inventory/inventoryService";
+import {productStatuses} from "./productConstant";
 
 const { PAGE_LIMIT } = require("../../helpers/choices");
 const Sequelize = require("sequelize");
@@ -66,7 +67,7 @@ export async function indexMasterSaleProducts(params) {
           },
           slug: {
             [Op.like]: `%${keyword.trim()}%`,
-          }
+          },
         }
       }
     })
@@ -79,7 +80,6 @@ export async function indexMasterSaleProducts(params) {
         [Op.in]: productIds
       }
     } }
-
   const [items, count] = await Promise.all([
     models.ProductUnit.findAll({
       attributes: [
@@ -122,6 +122,9 @@ export async function indexMasterSaleProducts(params) {
               ],
             },
           ],
+          where: {
+            status: productStatuses.ACTIVE
+          }
         },
         ...productMasterIncludes,
       ],

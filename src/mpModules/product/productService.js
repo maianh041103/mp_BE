@@ -903,6 +903,20 @@ export async function randomProducts(params) {
   return arr;
 }
 
+export async function indexInventory(id, storeId) {
+  return await models.Inventory.findAll({
+    where: {productId: id},
+    attributes: ["id", "quantity", "productId", "branchId"],
+    include: [
+      {
+        model: models.Branch,
+        as: "branch",
+        attributes: ["id", "name", "code"]
+      }
+    ]
+  })
+}
+
 export async function getProduct(id) {
   const product = await models.Product.findOne({
     where: {

@@ -598,3 +598,34 @@ export async function updatePurchaseReturnStatus(id, payload, loginUser) {
     success: true,
   };
 }
+
+export async function indexDelete(id, loginUser) {
+  const findPurchaseReturn = await models.PurchaseReturn.findByPk(id, {
+    attributes: ["id"],
+  });
+  if (!findPurchaseReturn) {
+    return {
+      error: true,
+      code: HttpStatusCode.NOT_FOUND,
+      message: "Không tìm thấy phiếu trả hàng",
+    };
+  }
+  await models.PurchaseReturn.destroy({
+    where: {
+      id,
+    },
+  });
+  createUserTracking({
+    accountId: loginUser.id,
+    type: accountTypes.USER,
+    objectId: id,
+    action: logActions.purchase_return_delete.value,
+    data: {
+      id
+    },
+  });
+
+  return {
+    success: true,
+  };
+}

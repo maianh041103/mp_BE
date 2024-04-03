@@ -68,7 +68,7 @@ export function resetPasswordValidator(req, res, next) {
 }
 
 const updateSchema = Joi.object().keys({
-  fullName: Joi.string().max(50).required(),
+  fullName: Joi.string().max(50).allow(null).allow(""),
   code: Joi.string().allow(null).allow(""),
   phone: Joi.string().allow(null).allow(""),
   email: Joi.string().email().allow(null).allow(""),
