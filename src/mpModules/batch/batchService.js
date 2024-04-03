@@ -1,3 +1,5 @@
+import {raiseBadRequestError} from "../../helpers/exception";
+
 const Sequelize = require("sequelize");
 const _ = require("lodash");
 const { Op } = Sequelize;
@@ -280,4 +282,20 @@ export async function deleteBatch(id, loginUser) {
   return {
     success: true,
   };
+}
+
+export async function getBatch(id) {
+  const batch = await models.Batch.findOne({
+    id: id
+  })
+  if (!batch) {
+   raiseBadRequestError("Không tìm thấy lô sản phẩm")
+  }
+  return batch
+}
+
+export async function addBatchQty(id, quantity, t) {
+  await models.Batch.increment({
+    quantity: quantity
+  }, {where: {id: id}, transaction: t})
 }

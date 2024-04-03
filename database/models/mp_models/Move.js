@@ -53,7 +53,6 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     tableName: 'moves',
     timestamps: true,
-    paranoid: true,
   });
   Move.associate = function (models) {
     Move.belongsTo(models.Branch, {

@@ -666,7 +666,6 @@ export async function handleCreateInbound(inbound, loginUser) {
           updatedAt: new Date()
         }, t)
         await addInventory(inbound.branchId, item.productId,  item.totalQuantity * productUnit.exchangeValue, t)
-
       }
     }
   });

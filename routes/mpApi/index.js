@@ -42,6 +42,7 @@ import nationalPharmacySystemApiRouter from "../../src/mpModules/nationalPharmac
 import warehouseApiRouter from "../../src/mpModules/warehouse"
 const openApiDocumentation = require('../../swagger.json')
 const swaggerUi = require('swagger-ui-express');
+import moveApiRouter from "../../src/mpModules/move"
 const mpRouterManager = function (app) {
   app.use("/mp/api/address", addressApiRouter);
   app.use("/mp/api/auth", authApiRouter);
@@ -85,6 +86,7 @@ const mpRouterManager = function (app) {
   app.use("/mp/api/nps", nationalPharmacySystemApiRouter);
   app.use("/mp/api/external/image/upload", imageApiExternalRouter);
   app.use("/mp/api/warehouse", warehouseApiRouter)
+  app.use("/mp/api/move", moveApiRouter)
   app.use("/docs", swaggerUi.serve, swaggerUi.setup(openApiDocumentation))
 };
 

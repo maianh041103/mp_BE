@@ -1,5 +1,6 @@
 import {getNextValue} from "./productCodeService";
 import {getInventory} from "../inventory/inventoryService";
+import {raiseBadRequestError} from "../../helpers/exception";
 
 const moment = require("moment");
 const {
@@ -900,4 +901,16 @@ export async function randomProducts(params) {
   }
 
   return arr;
+}
+
+export async function getProduct(id) {
+  const product = await models.Product.findOne({
+    where: {
+      id: id
+    }
+  })
+  if (!product) {
+    raiseBadRequestError("Không tìm thấy sản phẩm")
+  }
+  return product
 }

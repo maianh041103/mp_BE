@@ -352,24 +352,7 @@ export async function createPurchaseReturn(purchaseReturn, loginUser) {
   try {
     return await handleCreatePurchaseReturn(purchaseReturn, loginUser);
   } catch (e) {
-    console.log(e);
-    let errorRes = {};
-    try {
-      errorRes = JSON.parse(e.message);
-    } catch {
-      errorRes = {};
-    }
-    if (errorRes.error) {
-      return errorRes;
-    }
 
-    const { errors = [] } = e;
-    const [error = {}] = errors;
-    return {
-      error: true,
-      code: HttpStatusCode.SYSTEM_ERROR,
-      message: `${e.message}: ${_.get(error, "message", "")}`,
-    };
   }
 }
 

@@ -51,7 +51,7 @@ export async function indexController(params) {
 }
 
 export async function createWarehouseCard(payload, t) {
-    const newCard = await models.WarehouseCard.create(payload);
+    const newCard = await models.WarehouseCard.create(payload, {transaction: t});
     if (!newCard.code) {
         newCard.code = generateCode(newCard.id);
         await models.WarehouseCard.update(
