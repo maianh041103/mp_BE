@@ -90,6 +90,7 @@ export async function createController(req, res) {
       storeId: loginUser.storeId,
       createdBy: loginUser.id,
       createdAt: new Date(),
+      note: _.get(req.body, "note", "")
     };
     const result = await createCustomer(customer, loginUser);
     if (result.success) res.json(respondItemSuccess(result.data));

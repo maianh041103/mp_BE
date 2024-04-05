@@ -26,6 +26,7 @@ const createSchema = Joi.object().keys({
                                 .keys({
                                     id: Joi.number().integer().required(),
                                     quantity: Joi.number().integer().required(),
+                                    expiryDate: Joi.string().allow(null).allow(""),
                                 })
                                 .allow(null).allow("")
                         )
