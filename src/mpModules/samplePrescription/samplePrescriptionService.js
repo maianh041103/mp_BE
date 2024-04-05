@@ -1,4 +1,5 @@
 import {findAllBatchByProductId} from "../batch/batchService";
+import {getInventory} from "../inventory/inventoryService";
 
 const _ = require("lodash");
 const Sequelize = require("sequelize");
@@ -8,7 +9,7 @@ const { checkUniqueValue } = require("../../helpers/utils");
 const { createUserTracking } = require("../behavior/behaviorService");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { accountTypes, logActions } = require("../../helpers/choices");
-const { productIncludes } = require("../product/productService");
+const { productIncludes } = require("../product/filter");
 const { formatDecimalTwoAfterPoint } = require("../../helpers/utils");
 
 const samplePrescriptionIncludes = [
@@ -195,7 +196,6 @@ async function readSamplePrescriptionProduct(samplePrescriptionId) {
         model: models.Product,
         as: "product",
         attributes: productAttributes,
-        include: productIncludes,
       },
       {
         model: models.ProductUnit,
@@ -213,19 +213,18 @@ export async function indexService(params) {
   const { rows, count } = await models.SamplePrescription.findAndCountAll(
     queryFilter(params)
   );
-
   const { storeId, branchId } = params;
   for (const row of rows) {
     const products = await readSamplePrescriptionProduct(row.id);
-    console.log(products.length)
+    console.log(products)
     for (const item of products) {
       item.dataValues.batches = [];
       if (!params.isSale) {
         continue;
       }
-      const totalQuantityBaseUnits = item.product.inventory
-      item.dataValues.quantity = +formatDecimalTwoAfterPoint(
-        totalQuantityBaseUnits / item.exchangeValue
+      const inventory = await getInventory(branchId, item.productId)
+      item.dataValues.quantity = parseInt(
+          inventory / item.exchangeValue
       );
 
       item.dataValues.batches = await findAllBatchByProductId(item.productId);
