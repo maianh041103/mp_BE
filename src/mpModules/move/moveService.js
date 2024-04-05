@@ -1,4 +1,4 @@
-import {moveStatus} from "./constant";
+import {moveAttributes, moveInclude, moveStatus} from "./constant";
 import {generateCode} from "../../helpers/codeGenerator";
 import {getProductUnit} from "../product/productUnitService";
 import {addInventory, getInventory} from "../inventory/inventoryService";
@@ -7,11 +7,31 @@ import {getProduct} from "../product/productService";
 import {createWarehouseCard} from "../warehouse/warehouseService";
 import {warehouseStatus} from "../warehouse/constant";
 import {addBatchQty, getBatch} from "../batch/batchService";
+import {getFilter} from "./filter";
 const _ = require("lodash");
 
 const models = require("../../../database/models");
 export async function indexList(params, loginUser) {
-
+    const filter = getFilter(params, loginUser)
+    const {limit, page} = params;
+    const [moves, count] = await Promise.all([
+        models.Move.findAll({
+            attributes: moveAttributes,
+            include: moveInclude,
+            ...filter,
+            offset: +limit * (+page - 1),
+            limit: +limit,
+            order: [["id", "desc"]]
+        }),
+        models.Move.count(filter)
+    ])
+    return {
+        success: true,
+        data: {
+            items: moves,
+            totalItem: count,
+        },
+    };
 }
 
 
@@ -97,4 +117,91 @@ async function createMoveItem(move, productsReq, t) {
 
 export async function readMove(id, loginUser) {
 
+}
+
+export async function getDetail(id) {
+    const move = await models.Move.findByPk(id, {
+        attributes: ['id', 'fromBranchId', 'toBranchId', 'code', 'status'],
+        include: [{
+            model: models.Branch,
+            as: 'fromBranch',
+            attributes: ['id', 'name'],
+        },
+            {
+                model: models.Branch,
+                as: 'toBranch',
+                attributes: ['id', 'name'],
+            },]
+    })
+    if (!move) {
+        raiseBadRequestError("Không tìm thấy phiếu chuyển haàng")
+    }
+    return move
+}
+
+export async function getMoveItem(id) {
+    const moveItem = await models.MoveItem.findByPk(id,
+        {
+            attributes: ['id', 'quantity', 'productId'],
+            include: [
+                {
+                    model: models.ProductUnit,
+                    as: 'productUnit',
+                    attributes: ['id', 'unitName', 'exchangeValue'],
+                },
+            ]})
+    if (!moveItem) {
+        raiseBadRequestError("Đơn vị sản phẩm không tồn tại")
+    }
+    return moveItem
+}
+export async function receiveMove(id, payload, loginUser) {
+    const {branchId, receivedBy, items} = payload
+    const move = await getDetail(id)
+    if (branchId !== move.toBranchId) {
+        raiseBadRequestError("Chi nhánh không phù hợp để nhận hàng")
+    }
+    if (move.status === 'RECEIVED') {
+        raiseBadRequestError("Đã nhận được hàng")
+    }
+    await models.sequelize.transaction(async (t) => {
+        await models.Move.update({
+            receivedBy: receivedBy,
+            receivedAt: new Date(),
+            status: moveStatus.RECEIVED
+        }, {
+            where: {id: id}, transaction: t
+        })
+        for (const item of items) {
+            const moveItem = await getMoveItem(item.id)
+            const exchangeValue = moveItem.productUnit.exchangeValue
+            const totalQuantity = moveItem.quantity * exchangeValue
+            await createWarehouseCard({
+                code: move.code,
+                type: warehouseStatus.MOVE_RECEIVE,
+                partner: move.fromBranch.name,
+                productId: moveItem.productId,
+                branchId: move.toBranchId,
+                changeQty: totalQuantity,
+                remainQty: await getInventory(move.toBranchId, moveItem.productId) + totalQuantity,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            }, t)
+            await addInventory(move.toBranchId, moveItem.productId, totalQuantity, t)
+            if (item.batches) {
+                for (const batchReq of item.batches) {
+                    await models.MoveItemToBatch.create({
+                        moveItemId: moveItem.id,
+                        fromBatchId: batchReq.id,
+                        quantity: batchReq.quantity
+                    }, {transaction: t})
+                    await addBatchQty(batchReq.id, batchReq.quantity * exchangeValue, t)
+                }
+            }
+        }
+    })
+    return {
+        success: true,
+        data: null
+    }
 }

@@ -1,6 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const MoveItemBatch = sequelize.define('MoveItemBatch', {
+  const MoveItemToBatch = sequelize.define('MoveItemToBatch', {
     id: {
       type: DataTypes.INTEGER(10).UNSIGNED,
       primaryKey: true,
@@ -11,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       type: DataTypes.INTEGER(10).UNSIGNED,
     },
-    fromBatchId: {
+    toBatchId: {
       allowNull: true,
       type: DataTypes.INTEGER(10).UNSIGNED,
     },
@@ -21,21 +21,21 @@ module.exports = (sequelize, DataTypes) => {
     }
   },
   {
-    tableName: 'move_item_batch',
+    tableName: 'move_item_to_batch',
     timestamps: true,
   });
-  MoveItemBatch.associate = function (models) {
-    MoveItemBatch.belongsTo(models.Batch, {
+  MoveItemToBatch.associate = function (models) {
+    MoveItemToBatch.belongsTo(models.Batch, {
       as: 'batch',
-      foreignKey: 'fromBatchId',
+      foreignKey: 'toBatchId',
       targetKey: 'id',
     });
 
-    MoveItemBatch.belongsTo(models.MoveItem, {
+    MoveItemToBatch.belongsTo(models.MoveItem, {
       as: "moveItem",
       foreignKey: "moveItemId",
       targetKey: "id",
     });
   };
-  return MoveItemBatch;
+  return MoveItemToBatch;
 };

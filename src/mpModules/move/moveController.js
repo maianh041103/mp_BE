@@ -1,4 +1,4 @@
-import {indexCreate, readMove, indexList} from "./moveService";
+import {indexCreate, readMove, indexList, receiveMove} from "./moveService";
 import {respondWithClientError} from "../../helpers/response";
 
 const _ = require("lodash");
@@ -55,20 +55,16 @@ export async function readController(req, res) {
     }
 }
 
-// export async function updateStatus(req, res) {
-//     try {
-//         const { id } = req.params;
-//         const { loginUser = {} } = req;
-//         const payload = {
-//             status: _.get(req, "body.status", null),
-//             updatedBy: loginUser.id,
-//         };
-//         const result = await updatePurchaseReturnStatus(id, payload, loginUser);
-//         if (result.success) res.json(respondItemSuccess());
-//         else res.json(respondWithError(result.code, result.message, {}));
-//     } catch (error) {
-//         res.json(
-//             respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
-//         );
-//     }
-// }
+export async function receiveController(req, res) {
+    try {
+        const { id } = req.params;
+        const { loginUser = {} } = req;
+        const result = await receiveMove(id, req.body, loginUser);
+        if (result.success) res.json(respondItemSuccess(result));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}

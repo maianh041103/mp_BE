@@ -4,10 +4,9 @@ const {
     indexController,
     readController,
     createController,
-    updateController,
-    updateStatus,
+    receiveController,
 } = require("./moveController");
-const { createValidator } = require("./moveValidator");
+const { createValidator, receiveValidator} = require("./moveValidator");
 
 const express = require("express");
 const router = express.Router();
@@ -35,28 +34,28 @@ router.get(
     indexController
 );
 
-router.get(
-    "/:id",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = "inbound_read";
-        next();
-    },
-    authorize,
-    readController
-);
-
-// router.patch(
-//   "/:id",
-//   authenticate,
-//   (req, res, next) => {
-//     req.apiRole = "inbound_update";
-//     next();
-//   },
-//   authorize,
-//   // updateValidator,
-//   updateController
+// router.get(
+//     "/:id",
+//     authenticate,
+//     (req, res, next) => {
+//         req.apiRole = "inbound_read";
+//         next();
+//     },
+//     authorize,
+//     readController
 // );
+
+router.patch(
+  "/:id/receive",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = "inbound_update";
+    next();
+  },
+  authorize,
+receiveValidator,
+    receiveController
+);
 
 // router.patch(
 //     "/:id/status",

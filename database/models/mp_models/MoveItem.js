@@ -41,8 +41,14 @@ module.exports = (sequelize, DataTypes) => {
     });
 
     MoveItem.hasMany(models.MoveItemBatch, {
-      as: "batches",
-      foreignKey: "purchaseReturnItemId",
+      as: "fromBatches",
+      foreignKey: "moveItemId",
+      sourceKey: "id"
+    })
+
+    MoveItem.hasMany(models.MoveItemToBatch, {
+      as: "toBatches",
+      foreignKey: "moveItemId",
       sourceKey: "id"
     })
   };

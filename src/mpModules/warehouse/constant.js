@@ -3,5 +3,6 @@ export const warehouseStatus = {
     ORDER: 2,
     INBOUND_RETURN: 3,
     MOVE: 4,
-    ADJUSTMENT: 5
+    ADJUSTMENT: 5,
+    MOVE_RECEIVE: 6
 };

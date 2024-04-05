@@ -65,6 +65,11 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "toBranchId",
       targetKey: "id",
     });
+    Move.hasMany(models.MoveItem, {
+      as: "items",
+      foreignKey: 'moveId',
+      sourceKey: "id",
+    })
   };
   return Move;
 };

@@ -267,6 +267,10 @@ export async function indexOrders(params, loginUser) {
     customerIds.push(customerId);
   }
 
+  if (customerIds) {
+    where.customerId = {[Op.in]: customerIds}
+  }
+
   // Tìm kiếm theo nhóm khách hàng
   if (groupCustomerId) {
     groupCustomerIds.push(groupCustomerId);

@@ -53,22 +53,44 @@ export function createValidator(req, res, next) {
     next();
 }
 
-// const updateStatusSchema = Joi.object().keys({
-//     status: Joi.string().valid([purchaseReturnStatus.DRAFT, purchaseReturnStatus.SUCCEED, purchaseReturnStatus.CANCELLED]).required(),
-// });
-//
-// export function updateStatusValidator(req, res, next) {
-//     const { body } = req;
-//     const result = Joi.validate(body, updateStatusSchema);
-//     if (result.error) {
-//         res.json(
-//             respondWithError(
-//                 HttpStatusCode.BAD_REQUEST,
-//                 result.error.message,
-//                 result.error.details
-//             )
-//         );
-//         return;
-//     }
-//     next();
-// }
+const receiveSchema = Joi.object().keys({
+    branchId: Joi.number().integer().required(),
+    receivedBy: Joi.number().integer().required(),
+    items: Joi.array()
+        .items(
+            Joi.object()
+                .keys({
+                    id: Joi.number().integer().required(),
+                    batches: Joi.array()
+                        .items(
+                            Joi.object()
+                                .keys({
+                                    id: Joi.number().integer().required(),
+                                    name: Joi.string().allow(null).allow(""),
+                                    quantity: Joi.number().integer().required(),
+                                    expiryDate: Joi.string().allow(null).allow(""),
+                                })
+                                .allow(null).allow("")
+                        )
+                        .allow([]),
+                })
+                .unknown(true)
+        )
+        .required([])
+});
+
+export function receiveValidator(req, res, next) {
+    const { body } = req;
+    const result = Joi.validate(body, receiveSchema);
+    if (result.error) {
+        res.json(
+            respondWithError(
+                HttpStatusCode.BAD_REQUEST,
+                result.error.message,
+                result.error.details
+            )
+        );
+        return;
+    }
+    next();
+}
