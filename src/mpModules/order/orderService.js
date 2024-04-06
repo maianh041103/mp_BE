@@ -267,7 +267,7 @@ export async function indexOrders(params, loginUser) {
     customerIds.push(customerId);
   }
 
-  if (customerIds) {
+  if (_.isArray(customerIds) && customerIds.length) {
     where.customerId = {[Op.in]: customerIds}
   }
 
