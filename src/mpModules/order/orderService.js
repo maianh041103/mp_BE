@@ -539,7 +539,7 @@ async function handleCreateOrder(order, loginUser) {
         partner: findCustomer.fullName,
         productId: item.productId,
         branchId: order.branchId,
-        changeQty: item.quantity * productUnit.exchangeValue,
+        changeQty: -item.quantity * productUnit.exchangeValue,
         remainQty: inventory - item.quantity * productUnit.exchangeValue,
         createdAt: new Date(),
         updatedAt: new Date()
