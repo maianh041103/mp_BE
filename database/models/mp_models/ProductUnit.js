@@ -51,11 +51,6 @@ module.exports = (sequelize, DataTypes) => {
         default: false,
         type: DataTypes.BOOLEAN,
       },
-        quantity: {
-            allowNull: false,
-            default: 0,
-            type: DataTypes.INTEGER
-        },
       storeId: {
         allowNull: true,
         type: DataTypes.INTEGER(10).UNSIGNED,

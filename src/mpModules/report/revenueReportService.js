@@ -86,6 +86,7 @@ export async function indexRevenuesReport(params, loginUser) {
     const timeKey = moment(startDate).format("DD-MM-YYYY");
     const day = moment(startDate).date();
     items.push({
+      startDate: startDate,
       date: timeKey,
       label: `${day < 10 ? "0" + day : day}`,
       revenue:
@@ -108,11 +109,11 @@ export async function indexRevenuesReport(params, loginUser) {
     }
     const result = {};
     for(const obj of items){
-      if(result[mapDays[moment(startDate).day() % 7]]){
-        result[mapDays[moment(startDate).day() % 7]] += obj.revenue;
+      if(result[mapDays[moment(obj.startDate).day() % 7]]){
+        result[mapDays[moment(obj.startDate).day() % 7]] += obj.revenue;
         continue;
       }
-      result[mapDays[moment(startDate).day() % 7]] = obj.revenue;
+      result[mapDays[moment(obj.startDate).day() % 7]] = obj.revenue;
     }
     items = [
       {
