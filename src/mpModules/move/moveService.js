@@ -99,6 +99,7 @@ async function createMoveItem(move, productsReq, t) {
                 raiseBadRequestError("Lô hàng không được để trống")
             }
             for (const batchReq of item.batches) {
+                console.log(batchReq)
                 const batch = await getBatch(batchReq.id)
                 if (batch.quantity < batchReq.quantity * productUnit.exchangeValue) {
                     raiseBadRequestError(`Lô sản phẩm ${batch.name} không đủ số lượng`)

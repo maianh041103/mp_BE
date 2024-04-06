@@ -10,7 +10,6 @@ const { createUserTracking } = require("../behavior/behaviorService");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { accountTypes, logActions } = require("../../helpers/choices");
 const { productIncludes } = require("../product/filter");
-const { formatDecimalTwoAfterPoint } = require("../../helpers/utils");
 
 const samplePrescriptionIncludes = [
   {

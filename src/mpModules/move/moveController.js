@@ -35,7 +35,6 @@ export async function createController(req, res) {
             },
             loginUser
         );
-        console.log(result)
         if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (e) {

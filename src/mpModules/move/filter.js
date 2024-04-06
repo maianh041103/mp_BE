@@ -6,6 +6,7 @@ export function getFilter(params) {
         keyword,
         fromBranchId,
         toBranchId,
+        branchId,
         movedBy,
         movedAt,
         status,
@@ -21,6 +22,12 @@ export function getFilter(params) {
                 [Op.like]: `%${keyword.trim()}%`,
             },
         };
+    }
+    if (branchId) {
+        where[Op.or] = {
+            fromBranchId: branchId,
+            toBranchId: branchId
+        }
     }
     if (fromBranchId) {
         where.fromBranchId = fromBranchId

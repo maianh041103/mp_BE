@@ -285,8 +285,7 @@ export async function deleteBatch(id, loginUser) {
 }
 
 export async function getBatch(id) {
-  const batch = await models.Batch.findOne({
-    id: id
+  const batch = await models.Batch.findOne({where: {id: id}
   })
   if (!batch) {
    raiseBadRequestError("Không tìm thấy lô sản phẩm")
