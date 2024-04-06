@@ -59,7 +59,6 @@ export const productIncludes = [
             "exchangeValue",
             "price",
             "productId",
-            "quantity",
             "code",
             "barCode",
             "isDirectSale",
