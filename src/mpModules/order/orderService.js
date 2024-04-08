@@ -512,7 +512,6 @@ async function handleCreateOrder(order, loginUser) {
           ...productProductToBatchConditions,
         },
       });
-
       if (!productUnit) {
         throw Error(
           JSON.stringify({
@@ -522,6 +521,7 @@ async function handleCreateOrder(order, loginUser) {
           })
         );
       }
+      totalPrice += +productUnit.price * +item.quantity;
       const inventory = await getInventory(order.branchId, item.productId)
       if (inventory < item.totalQuantity * productUnit.exchangeValue) {
         throw Error(
@@ -692,7 +692,7 @@ async function handleCreateOrder(order, loginUser) {
             );
           }
         }
-        totalPrice += +productUnit.price * +item.quantity;
+
 
     }
       await models.OrderProduct.create(
@@ -746,7 +746,8 @@ async function handleCreateOrder(order, loginUser) {
         })
       );
     }
-
+    console.log(order.cashOfCustomer)
+      console.log(totalPrice)
     if (
       order.paymentType === paymentTypes.DEBT &&
       order.cashOfCustomer >= totalPrice
@@ -824,7 +825,7 @@ export async function createOrder(order, loginUser) {
   }
 }
 
-export async function updateOrder(id, order) {
+export async function updateOrder(id, order)  {
   const findOrder = await models.Order.findByPk(id);
   if (findOrder) {
     if (
