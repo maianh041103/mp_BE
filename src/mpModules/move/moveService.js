@@ -125,17 +125,8 @@ export async function readMove(id, loginUser) {
 
 export async function getDetail(id) {
     const move = await models.Move.findByPk(id, {
-        attributes: ['id', 'fromBranchId', 'toBranchId', 'code', 'status'],
-        include: [{
-            model: models.Branch,
-            as: 'fromBranch',
-            attributes: ['id', 'name'],
-        },
-            {
-                model: models.Branch,
-                as: 'toBranch',
-                attributes: ['id', 'name'],
-            },]
+        attributes: moveAttributes,
+        include: moveInclude,
     })
     if (!move) {
         raiseBadRequestError("Không tìm thấy phiếu chuyển haàng")
