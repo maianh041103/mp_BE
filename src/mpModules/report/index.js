@@ -29,4 +29,15 @@ router.get(
   getRevenuesReport
 );
 
+router.get(
+    "/sales-report",
+    authenticate,
+    (req, res, next) => {
+        req.apiRole = ["sales_report_read"];
+        next();
+    },
+    authorize,
+    getRevenuesReport
+);
+
 module.exports = router;
