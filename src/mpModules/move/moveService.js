@@ -119,7 +119,7 @@ async function createMoveItem(move, productsReq, t) {
 export async function readMove(id, loginUser) {
     return {
         success: true,
-        data: getDetail(id)
+        data: await getDetail(id)
     }
 }
 
