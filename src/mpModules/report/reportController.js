@@ -31,3 +31,16 @@ export async function getRevenuesReport(req, res) {
     );
   }
 }
+
+export async function getSalesReport(req, res) {
+  try {
+    const { loginUser = {} } = req;
+    const result = await indexRevenuesReport(req.query, loginUser);
+    if (result.success) res.json(respondItemSuccess(result.data));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+        respondWithError(HttpStatusCode.BAD_REQUEST, error.message, error)
+    );
+  }
+}

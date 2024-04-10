@@ -154,3 +154,20 @@ export async function indexRevenuesReport(params, loginUser) {
     },
   };
 }
+
+
+export async function indexSalesReport(params, loginUser) {
+  const {
+    keyword,
+    branchId,
+    from,
+    to
+  } = params;
+
+  return {
+    success: true,
+    data: {
+      items,
+    },
+  };
+}
