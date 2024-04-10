@@ -7,7 +7,7 @@ export const moveStatus = {
     TRASH: "TRASH",
 };
 
-export const moveAttributes = ["id", "code", "fromBranchId", "toBranchId", "movedAt", "movedBy", "receivedAt", "receivedBy", "status", "note", "totalItem"]
+export const moveAttributes = ["id", "code", "fromBranchId", "toBranchId", "movedAt", "movedBy", "receivedAt", "receivedBy", "status", "totalPrice", "note", "totalItem", "totalPrice"]
 export const moveInclude = [
     {
         model: models.Branch,
@@ -22,7 +22,7 @@ export const moveInclude = [
     {
         model: models.MoveItem,
         as: 'items',
-        attributes: ['id', 'quantity'],
+        attributes: ['id', 'quantity', 'toQuantity', 'price'],
         include: [
             {
                 model: models.ProductUnit,
