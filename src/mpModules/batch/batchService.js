@@ -298,3 +298,19 @@ export async function addBatchQty(id, quantity, t) {
     quantity: quantity
   }, {where: {id: id}, transaction: t})
 }
+
+export async function getOrCreateBatch(storeId, branchId, productId, name, expiryDate, t) {
+  let batch = await models.Batch.findOne({where: {
+    storeId: storeId,
+    branchId: branchId,
+    productId: productId,
+    name: name,
+    expiryDate: expiryDate
+  }})
+  if (!batch) {
+    batch = await models.Batch.create({
+      storeId, branchId, productId, name, expiryDate, quantity: 0
+    }, {transaction: t})
+  }
+  return batch
+}

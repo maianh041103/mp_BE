@@ -6,7 +6,7 @@ import {raiseBadRequestError} from "../../helpers/exception";
 import {getProduct} from "../product/productService";
 import {createWarehouseCard} from "../warehouse/warehouseService";
 import {warehouseStatus} from "../warehouse/constant";
-import {addBatchQty, getBatch} from "../batch/batchService";
+import {addBatchQty, getBatch, getOrCreateBatch} from "../batch/batchService";
 import {getFilter} from "./filter";
 const _ = require("lodash");
 
@@ -39,7 +39,7 @@ export async function indexCreate(moveReq, loginUser) {
     let move;
     await models.sequelize.transaction(async (t) => {
         move = await createMove(moveReq, t)
-        const moveItems = await createMoveItem(move, moveReq.products, t)
+        const moveItems = await createMoveItem(move, moveReq.products, loginUser, t)
     })
     return {
         success: true,
@@ -56,7 +56,8 @@ async function createMove(moveReq, transaction) {
         movedBy: moveReq.movedBy,
         status: moveStatus.MOVING,
         note: moveReq.note,
-        totalItem: moveReq.totalItem
+        totalItem: moveReq.totalItem,
+        totalPrice: moveReq.totalPrice
     },
         {transaction: transaction}
     )
@@ -66,7 +67,7 @@ async function createMove(moveReq, transaction) {
     return move
 }
 
-async function createMoveItem(move, productsReq, t) {
+async function createMoveItem(move, productsReq, loginUser, t) {
     for (const item of productsReq) {
         const productUnit = await getProductUnit(item.productUnitId)
         const product = await getProduct(item.productId)
@@ -79,7 +80,8 @@ async function createMoveItem(move, productsReq, t) {
             moveId: move.id,
             productUnitId: item.productUnitId,
             productId: item.productId,
-            quantity: item.quantity
+            quantity: item.quantity,
+            price: item.price
         }, {transaction: t})
 
         await createWarehouseCard({
@@ -110,6 +112,12 @@ async function createMoveItem(move, productsReq, t) {
                     quantity: batchReq.quantity
                 }, {transaction: t})
                 await addBatchQty(batchReq.id, -batchReq.quantity*productUnit.exchangeValue, t)
+                const toBatch = await getOrCreateBatch(loginUser.storeId, move.toBranchId, product.id, batch.name, batch.expiryDate)
+                await models.MoveItemToBatch.create({
+                    moveItemId: moveItem.id,
+                    toBatchId: toBatch.id,
+                    quantity: 0
+                }, {transaction: t})
             }
         }
 
@@ -169,6 +177,9 @@ export async function receiveMove(id, payload, loginUser) {
         })
         for (const item of items) {
             const moveItem = await getMoveItem(item.id)
+            await models.MoveItem.update({
+                toQuantity: item.quantity
+            }, {where: {id: item.id}, transaction: t})
             const exchangeValue = moveItem.productUnit.exchangeValue
             const totalQuantity = moveItem.quantity * exchangeValue
             await createWarehouseCard({
@@ -185,11 +196,19 @@ export async function receiveMove(id, payload, loginUser) {
             await addInventory(move.toBranchId, moveItem.productId, totalQuantity, t)
             if (item.batches) {
                 for (const batchReq of item.batches) {
-                    await models.MoveItemToBatch.create({
-                        moveItemId: moveItem.id,
-                        fromBatchId: batchReq.id,
+                    await models.MoveItemToBatch.update({
                         quantity: batchReq.quantity
-                    }, {transaction: t})
+                    }, {
+                        where: {
+                            moveItemId: moveItem.id,
+                            toBatchId: batchReq.id
+                        }, transaction: t
+                    })
+                    // await models.MoveItemToBatch.create({
+                    //     moveItemId: moveItem.id,
+                    //     fromBatchId: batchReq.id,
+                    //     quantity: batchReq.quantity
+                    // }, {transaction: t})
                     await addBatchQty(batchReq.id, batchReq.quantity * exchangeValue, t)
                 }
             }

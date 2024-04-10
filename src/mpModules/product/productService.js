@@ -1,5 +1,5 @@
 import {getNextValue} from "./productCodeService";
-import {addInventory, createNewInventory, getInventory, newInventory} from "../inventory/inventoryService";
+import {addInventory, getInventory, newInventory} from "../inventory/inventoryService";
 import {raiseBadRequestError} from "../../helpers/exception";
 import {createWarehouseCard} from "../warehouse/warehouseService";
 import {warehouseStatus} from "../warehouse/constant";
@@ -963,4 +963,28 @@ export async function getProduct(id) {
     raiseBadRequestError("Không tìm thấy sản phẩm")
   }
   return product
+}
+
+export async function findProduct(keyword, page, limit) {
+  const where = {}
+  if (keyword) {
+    where[Op.or] = {
+      name: {
+        [Op.like]: `%${keyword.trim()}%`,
+      },
+      slug: {
+        [Op.like]: `%${keyword.trim()}%`,
+      },
+      code: {
+        [Op.like]: `%${keyword.trim()}%`,
+      },
+    };
+  }
+
+  return await models.Product.findAll({
+    where: where,
+    offset: +limit * (+page - 1),
+    limit: +limit,
+    order: [["id", "DESC"]],
+  })
 }

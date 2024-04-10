@@ -319,3 +319,7 @@ export function initRolePermissions(roleId) {
 export function removeDiacritics(inputString) {
   return inputString.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
+
+export function calculateDateDiff(from, to) {
+  to - from
+}

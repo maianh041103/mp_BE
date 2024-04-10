@@ -1,3 +1,5 @@
+import {findProduct, getProduct} from "../product/productService";
+
 const moment = require("moment");
 const { addFilterByDate } = require("../../helpers/utils");
 const Sequelize = require("sequelize");
@@ -158,11 +160,11 @@ export async function indexRevenuesReport(params, loginUser) {
 
 export async function indexSalesReport(params, loginUser) {
   const {
-    keyword,
     branchId,
     from,
     to
   } = params;
+
 
   return {
     success: true,

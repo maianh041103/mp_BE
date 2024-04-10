@@ -12,6 +12,7 @@ const createSchema = Joi.object().keys({
     toBranchId: Joi.number().integer().required(),
     movedBy: Joi.number().integer().required(),
     totalItem: Joi.number().integer().min(0).required(),
+    totalPrice: Joi.number().integer().min(0).allow(null),
     note: Joi.string().allow(null).allow(""),
     products: Joi.array()
         .items(
@@ -20,6 +21,7 @@ const createSchema = Joi.object().keys({
                     productId: Joi.number().integer().required(),
                     quantity: Joi.number().integer().required(),
                     productUnitId: Joi.number().integer().required(),
+                    price: Joi.number().integer().allow(null),
                     batches: Joi.array()
                         .items(
                             Joi.object()
@@ -61,6 +63,7 @@ const receiveSchema = Joi.object().keys({
             Joi.object()
                 .keys({
                     id: Joi.number().integer().required(),
+                    totalQuantity: Joi.number().integer().allow(null),
                     batches: Joi.array()
                         .items(
                             Joi.object()
