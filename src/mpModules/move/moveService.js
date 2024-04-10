@@ -117,7 +117,10 @@ async function createMoveItem(move, productsReq, t) {
 }
 
 export async function readMove(id, loginUser) {
-
+    return {
+        success: true,
+        data: getDetail(id)
+    }
 }
 
 export async function getDetail(id) {

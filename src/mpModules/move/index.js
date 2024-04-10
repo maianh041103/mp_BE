@@ -34,16 +34,16 @@ router.get(
     indexController
 );
 
-// router.get(
-//     "/:id",
-//     authenticate,
-//     (req, res, next) => {
-//         req.apiRole = "inbound_read";
-//         next();
-//     },
-//     authorize,
-//     readController
-// );
+router.get(
+    "/:id",
+    authenticate,
+    (req, res, next) => {
+        req.apiRole = "inbound_read";
+        next();
+    },
+    authorize,
+    readController
+);
 
 router.patch(
   "/:id/receive",
