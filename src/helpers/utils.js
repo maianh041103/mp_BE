@@ -320,6 +320,13 @@ export function removeDiacritics(inputString) {
   return inputString.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-export function calculateDateDiff(from, to) {
-  to - from
+export function getReportType(days) {
+  if (days === 1) {
+    return 'hour'
+  } else if (1 < days && days <= 31) {
+    return 'day'
+  } else if (31 < days && days <=366) {
+    return 'month'
+  }
+  return 'year'
 }

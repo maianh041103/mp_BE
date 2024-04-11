@@ -154,7 +154,7 @@ export async function getMoveItem(id) {
                 },
             ]})
     if (!moveItem) {
-        raiseBadRequestError("Đơn vị sản phẩm không tồn tại")
+        raiseBadRequestError("Sản phẩm không tồn tại")
     }
     return moveItem
 }
@@ -176,10 +176,11 @@ export async function receiveMove(id, payload, loginUser) {
             where: {id: id}, transaction: t
         })
         for (const item of items) {
+            console.log(item)
             const moveItem = await getMoveItem(item.id)
             await models.MoveItem.update({
                 toQuantity: item.totalQuantity
-            }, {where: {id: item.id}, transaction: t})
+            }, {where: {id: moveItem.id}, transaction: t})
             const exchangeValue = moveItem.productUnit.exchangeValue
             const totalQuantity = moveItem.quantity * exchangeValue
             await createWarehouseCard({

@@ -1,4 +1,5 @@
 import {findProduct, getProduct} from "../product/productService";
+import {getReportType} from "../../helpers/utils";
 
 const moment = require("moment");
 const { addFilterByDate } = require("../../helpers/utils");
@@ -164,12 +165,16 @@ export async function indexSalesReport(params, loginUser) {
     from,
     to
   } = params;
+  const fromDate = moment(from);
+  const toDate = moment(to);
+  const days = toDate.diff(fromDate, 'days');
+  const type = getReportType(days)
 
 
   return {
     success: true,
-    data: {
-      items,
-    },
+    // data: {
+    //   items,
+    // },
   };
 }

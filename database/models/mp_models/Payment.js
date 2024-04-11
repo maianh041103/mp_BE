@@ -13,6 +13,10 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       type: DataTypes.INTEGER,
     },
+    totalAmount: {
+      allowNull: false,
+      type: DataTypes.INTEGER,
+    },
     customerId: {
       allowNull: false,
       type: DataTypes.INTEGER(10).UNSIGNED,
@@ -23,6 +27,10 @@ module.exports = (sequelize, DataTypes) => {
     },
     paymentMethod: {
       allowNull: false,
+      type: DataTypes.ENUM("CASH", "BANK", "DEBT")
+    },
+    status: {
+      allowNull: true,
       type: DataTypes.STRING
     }
   }, {
