@@ -178,7 +178,7 @@ export async function receiveMove(id, payload, loginUser) {
         for (const item of items) {
             const moveItem = await getMoveItem(item.id)
             await models.MoveItem.update({
-                toQuantity: item.quantity
+                toQuantity: item.totalQuantity
             }, {where: {id: item.id}, transaction: t})
             const exchangeValue = moveItem.productUnit.exchangeValue
             const totalQuantity = moveItem.quantity * exchangeValue
