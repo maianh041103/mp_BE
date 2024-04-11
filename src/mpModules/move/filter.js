@@ -17,11 +17,9 @@ export function getFilter(params) {
     const query = {}
     const where = {}
     if (keyword) {
-        where[Op.or] = {
-            code: {
-                [Op.like]: `%${keyword.trim()}%`,
-            },
-        };
+        where.code = {
+            [Op.like]: `%${keyword.trim()}%`,
+        }
     }
     if (branchId) {
         where[Op.or] = {

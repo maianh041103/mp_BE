@@ -52,8 +52,8 @@ router.patch(
     req.apiRole = "inbound_update";
     next();
   },
-  authorize,
-receiveValidator,
+    authorize,
+    receiveValidator,
     receiveController
 );
 
