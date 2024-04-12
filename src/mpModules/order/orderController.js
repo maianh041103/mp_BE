@@ -1,3 +1,5 @@
+import {indexPayment} from "./OrderPaymentService";
+
 const _ = require("lodash");
 const {
   respondItemSuccess,
@@ -66,6 +68,20 @@ export async function readController(req, res) {
     );
   }
 }
+
+export async function readPaymentController(req, res) {
+  try {
+    const {id: orderId} = req.params
+    const result = await indexPayment({...req.query, orderId});
+    if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+        respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
 
 export async function updateController(req, res) {
   try {

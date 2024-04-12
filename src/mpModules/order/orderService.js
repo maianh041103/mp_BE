@@ -1,6 +1,7 @@
 import {createWarehouseCard} from "../warehouse/warehouseService";
 import {warehouseStatus} from "../warehouse/constant";
 import {addInventory, getInventory} from "../inventory/inventoryService";
+import {createOrderPayment} from "./OrderPaymentService";
 
 const moment = require("moment");
 const {
@@ -773,7 +774,7 @@ async function handleCreateOrder(order, loginUser) {
     if (order.paymentType === paymentTypes.DEBT) {
       customerOwes = totalPrice - (order.cashOfCustomer || 0);
     }
-
+    const code = generateOrderCode(newOrder.id)
     // Update total price
     await models.Order.update(
       {
@@ -781,7 +782,7 @@ async function handleCreateOrder(order, loginUser) {
         refund,
         customerOwes,
         discount: order.discount || 0,
-        code: generateOrderCode(newOrder.id),
+        code: code,
         status: orderStatuses.SUCCEED,
       },
       {
@@ -791,6 +792,9 @@ async function handleCreateOrder(order, loginUser) {
         transaction: t,
       }
     );
+    newOrder.totalPrice = totalPrice
+    newOrder.code = code
+    await createOrderPayment(newOrder, t)
   }});
 
   const { data: refreshOrder } = await readOrder(newOrder.id);
