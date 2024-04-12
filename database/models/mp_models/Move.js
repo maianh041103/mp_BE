@@ -42,6 +42,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(1000),
       allowNull: true
     },
+    receiveNote: {
+      type: DataTypes.STRING(1000),
+      allowNull: true
+    },
     totalItem: {
       type: DataTypes.INTEGER,
       allowNull: true

@@ -58,6 +58,7 @@ export function createValidator(req, res, next) {
 const receiveSchema = Joi.object().keys({
     branchId: Joi.number().integer().required(),
     receivedBy: Joi.number().integer().required(),
+    note: Joi.string().allow(null).allow(""),
     items: Joi.array()
         .items(
             Joi.object()

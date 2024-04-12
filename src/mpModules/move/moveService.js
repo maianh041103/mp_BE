@@ -159,7 +159,7 @@ export async function getMoveItem(id) {
     return moveItem
 }
 export async function receiveMove(id, payload, loginUser) {
-    const {branchId, receivedBy, items} = payload
+    const {branchId, receivedBy, items, note} = payload
     const move = await getDetail(id)
     if (branchId !== move.toBranchId) {
         raiseBadRequestError("Chi nhánh không phù hợp để nhận hàng")
@@ -171,12 +171,12 @@ export async function receiveMove(id, payload, loginUser) {
         await models.Move.update({
             receivedBy: receivedBy,
             receivedAt: new Date(),
+            receiveNote: note,
             status: moveStatus.RECEIVED
         }, {
             where: {id: id}, transaction: t
         })
         for (const item of items) {
-            console.log(item)
             const moveItem = await getMoveItem(item.id)
             await models.MoveItem.update({
                 toQuantity: item.totalQuantity
