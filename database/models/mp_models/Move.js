@@ -73,6 +73,16 @@ module.exports = (sequelize, DataTypes) => {
       as: "items",
       foreignKey: 'moveId',
       sourceKey: "id",
+    });
+    Move.belongsTo(models.User, {
+      as: "movedByUser",
+      foreignKey: "movedBy",
+      targetKey: "id",
+    });
+    Move.belongsTo(models.User, {
+      as: "receivedByUser",
+      foreignKey: 'receivedBy',
+      sourceKey: "id",
     })
   };
   return Move;

@@ -20,6 +20,16 @@ export const moveInclude = [
         attributes: ['id', 'name'],
     },
     {
+        model: models.User,
+        as: 'movedByUser',
+        attributes: ['id', 'username', 'fullName'],
+    },
+    {
+        model: models.User,
+        as: 'receivedByUser',
+        attributes: ['id', 'username', 'fullName'],
+    },
+    {
         model: models.MoveItem,
         as: 'items',
         attributes: ['id', 'quantity', 'toQuantity', 'price'],
