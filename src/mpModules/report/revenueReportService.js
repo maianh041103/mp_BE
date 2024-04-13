@@ -192,16 +192,16 @@ export async function indexSalesReport(params, loginUser) {
     attributes: [
       [sequelize.literal(groupBy), 'title'],
       [sequelize.fn('SUM', sequelize.col('totalPrice')), 'totalRevenue'],
-      [sequelize.fn('SUM', sequelize.col('orderProducts.price')), 'totalPrice'],
-      [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscount'],
+      // [sequelize.fn('SUM', sequelize.col('orderProducts.price')), 'totalPrice'],
+      // [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscount'],
     ],
-    include: [
-      {
-        model: models.OrderProduct,
-        as: 'orderProducts',
-        attributes: ['price', 'primePrice']
-      }
-    ],
+    // include: [
+    //   {
+    //     model: models.OrderProduct,
+    //     as: 'orderProducts',
+    //     attributes: ['price', 'primePrice']
+    //   }
+    // ],
     where: {
       createdAt: {
         [Op.and]: {
