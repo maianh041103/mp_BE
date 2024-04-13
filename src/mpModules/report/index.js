@@ -2,7 +2,7 @@ const { authenticate } = require("../../middlewares/auth");
 const { authorize } = require("../../middlewares/authorize");
 const {
   getChartProductsReport,
-  getRevenuesReport,
+  getRevenuesReport, getSalesReport,
 } = require("./reportController");
 const express = require("express");
 const router = new express.Router();
@@ -37,7 +37,7 @@ router.get(
         next();
     },
     authorize,
-    getRevenuesReport
+    getSalesReport
 );
 
 module.exports = router;

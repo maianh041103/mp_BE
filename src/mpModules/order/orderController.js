@@ -1,4 +1,5 @@
-import {indexPayment} from "./OrderPaymentService";
+import {indexCreatePayment, indexPayment} from "./OrderPaymentService";
+import {respondWithClientError} from "../../helpers/response";
 
 const _ = require("lodash");
 const {
@@ -56,6 +57,26 @@ export async function createController(req, res) {
   }
 }
 
+export async function createPaymentController(req, res) {
+  try {
+    const { loginUser = {} } = req;
+    const { id } = req.params
+    const result = await indexCreatePayment(
+        {
+          ...req.body,
+          orderId: id,
+          storeId: loginUser.storeId,
+          createdBy: loginUser.id,
+        },
+        loginUser
+    );
+    if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(respondWithClientError(e))
+  }
+}
+
 export async function readController(req, res) {
   try {
     const { id } = req.params;
@@ -63,9 +84,7 @@ export async function readController(req, res) {
     if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
-    res.json(
-      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
-    );
+    res.json(respondWithClientError(e))
   }
 }
 
@@ -76,9 +95,7 @@ export async function readPaymentController(req, res) {
     if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
-    res.json(
-        respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
-    );
+    res.json(respondWithClientError(e))
   }
 }
 

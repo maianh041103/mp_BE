@@ -321,9 +321,9 @@ export function removeDiacritics(inputString) {
 }
 
 export function getReportType(days) {
-  if (days === 1) {
+  if (days === 0) {
     return 'hour'
-  } else if (1 < days && days <= 31) {
+  } else if (0 < days && days <= 31) {
     return 'day'
   } else if (31 < days && days <=366) {
     return 'month'

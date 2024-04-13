@@ -7,7 +7,7 @@ const { productTypes } = require("../product/productConstant");
 
 const createSchema = Joi.object().keys({
   userId: Joi.number().integer().required(),
-  customerId: Joi.number().integer().required(),
+  customerId: Joi.number().integer().allow(null),
   branchId: Joi.number().integer().required(),
   prescriptionId: Joi.number().integer().allow(null).allow(""),
   paymentType: Joi.string().valid(["CASH", "BANK", "DEBT"]).required(),
@@ -68,7 +68,7 @@ export function createValidator(req, res, next) {
 
 const updateSchema = Joi.object().keys({
   userId: Joi.number().integer().required(),
-  customerId: Joi.number().integer().required(),
+  customerId: Joi.number().integer().allow(null),
   branchId: Joi.number().integer().required(),
   prescriptionId: Joi.number().integer().allow(null).allow(""),
   paymentType: Joi.string().valid(["CASH", "BANK", "DEBT"]).required(),

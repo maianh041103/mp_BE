@@ -19,8 +19,9 @@ module.exports = (sequelize, Sequelize) => {
         type: Sequelize.STRING,
       },
       phone: {
-        allowNull: false,
+        allowNull: true,
         type: Sequelize.STRING,
+          defaultValue: ""
       },
       email: {
         allowNull: true,
@@ -41,6 +42,7 @@ module.exports = (sequelize, Sequelize) => {
       password: {
         allowNull: true,
         type: Sequelize.STRING(2000),
+          defaultValue: "",
       },
       groupCustomerId: {
         allowNull: true,
@@ -111,6 +113,10 @@ module.exports = (sequelize, Sequelize) => {
         allowNull: true,
         type: Sequelize.DATE,
       },
+        isDefault: {
+          type: Sequelize.BOOLEAN,
+            defaultValue: false
+        },
       createdAt: {
         allowNull: true,
         type: Sequelize.DATE,

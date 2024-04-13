@@ -2,6 +2,7 @@ import {createWarehouseCard} from "../warehouse/warehouseService";
 import {warehouseStatus} from "../warehouse/constant";
 import {addInventory, getInventory} from "../inventory/inventoryService";
 import {createOrderPayment} from "./OrderPaymentService";
+import {raiseBadRequestError} from "../../helpers/exception";
 
 const moment = require("moment");
 const {
@@ -716,10 +717,13 @@ async function handleCreateOrder(order, loginUser) {
             comboId: null,
           },
           { transaction: t } );
+      let discountAmount = 0;
     if (order.discountType === discountTypes.MONEY) {
-      totalPrice = totalPrice - order.discount;
+      discountAmount = order.discount
+      totalPrice = totalPrice - discountAmount;
     } else if (order.discountType === discountTypes.PERCENT) {
-      totalPrice = totalPrice - Math.floor((order.discount * totalPrice) / 100);
+      discountAmount = Math.floor((order.discount * totalPrice) / 100)
+      totalPrice = totalPrice - discountAmount;
     }
 
     if (
@@ -773,6 +777,13 @@ async function handleCreateOrder(order, loginUser) {
     let customerOwes = 0;
     if (order.paymentType === paymentTypes.DEBT) {
       customerOwes = totalPrice - (order.cashOfCustomer || 0);
+      await models.CustomerDebt.create({
+        totalAmount: totalPrice,
+        debtAmount: customerOwes,
+        customerId: newOrder.customerId,
+        orderId: newOrder.id,
+        type: 'ORDER'
+      }, {transaction: t})
     }
     const code = generateOrderCode(newOrder.id)
     // Update total price
@@ -780,6 +791,7 @@ async function handleCreateOrder(order, loginUser) {
       {
         totalPrice,
         refund,
+        discountAmount,
         customerOwes,
         discount: order.discount || 0,
         code: code,
@@ -1038,4 +1050,12 @@ export async function indexProductCustomers(id) {
       ),
     },
   };
+}
+
+export async function getOrder(id) {
+  const order = await models.Order.findByPk(id)
+  if (!order) {
+    raiseBadRequestError("Đơn hàng không tồn tại")
+  }
+  return order
 }

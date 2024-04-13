@@ -169,12 +169,54 @@ export async function indexSalesReport(params, loginUser) {
   const toDate = moment(to);
   const days = toDate.diff(fromDate, 'days');
   const type = getReportType(days)
-
-
+  const sequelize = models.sequelize
+  let groupBy;
+  switch (type) {
+    case 'hour':
+      groupBy = "DATE_FORMAT(createdAt, '%H:00')"
+      break;
+    case 'day':
+      groupBy = "DATE_FORMAT(createdAt, '%d-%m-%Y')"
+      break;
+    case 'month':
+      groupBy = "DATE_FORMAT(createdAt, '%m-%Y')"
+      break;
+    case 'year':
+      groupBy = "DATE_FORMAT(createdAt, '%Y')"
+      break;
+    default:
+      groupBy = "DATE_FORMAT(createdAt, '%d-%m-%Y')"
+      break;
+  }
+  const res = await models.Order.findAll({
+    attributes: [
+      [sequelize.literal(groupBy), 'title'],
+      [sequelize.fn('SUM', sequelize.col('totalPrice')), 'totalRevenue'],
+      [sequelize.fn('SUM', sequelize.col('orderProducts.price')), 'totalPrice'],
+      [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscount'],
+    ],
+    include: [
+      {
+        model: models.OrderProduct,
+        as: 'orderProducts',
+        attributes: ['price', 'primePrice']
+      }
+    ],
+    where: {
+      createdAt: {
+        [Op.and]: {
+          [Op.gte]: moment(from).startOf("day"),
+          [Op.lte]: moment(to).endOf("day")
+        }
+      },
+      branchId: branchId
+    },
+    group: sequelize.literal(groupBy)
+  })
   return {
     success: true,
-    // data: {
-    //   items,
-    // },
+    data: {
+      items: res
+    },
   };
 }

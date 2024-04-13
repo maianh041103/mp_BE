@@ -1,4 +1,19 @@
+import {getOrder, readOrder} from "./orderService";
+
 const models = require("../../../database/models");
+function generatePaymenmtCode(no) {
+    if (no <= 0) return "TTDH000000000";
+    if (no < 10) return `TTDH00000000${no}`;
+    if (no < 100) return `TTDH0000000${no}`;
+    if (no < 1000) return `TTDH000000${no}`;
+    if (no < 10000) return `TTDH00000${no}`;
+    if (no < 100000) return `TTDH0000${no}`;
+    if (no < 1000000) return `TTDH000${no}`;
+    if (no < 10000000) return `TTDH00${no}`;
+    if (no < 100000000) return `TTDH0${no}`;
+    if (no < 1000000000) return `TTDH${no}`;
+    return no;
+}
 
 export async function indexPayment(params, loginUser) {
     let {
@@ -20,13 +35,37 @@ export async function indexPayment(params, loginUser) {
     }
 }
 
+export async function indexCreatePayment(payment) {
+    const order = await getOrder(payment.orderId)
+    await models.sequelize.transaction(async (t) => {
+        await models.Order.update({
+            cashOfCustomer: order.cashOfCustomer + payment.amount
+        })
+        await createPayment({
+            amount: payment.amount,
+            totalAmount: order.totalPrice ,
+            customerId: order.customerId,
+            orderId: order.id,
+            paymentMethod: payment.paymentMethod,
+            createdBy: payment.createdBy,
+            status: 'DONE'
+        }, t)
+        await models.CustomerDebt.increment({
+            totalDebt: -payment.amount
+        }, {transaction: t})
+    })
+}
+
 export async function createPayment(payment, transaction) {
-    await models.Payment.create(payment, {transaction: transaction})
+    const newPayment = await models.Payment.create({...payment, code: ''}, {transaction: transaction})
+    const code = generatePaymenmtCode(newPayment.id)
+    await models.Payment.update({
+        code: code
+    }, {where: {id: newPayment.id}, transaction: transaction})
 }
 
 export async function createOrderPayment(order, amount, transaction) {
-    await models.Payment.create({
-        code: order.code,
+    await createPayment({
         amount: order.totalPrice <= order.cashOfCustomer ? order.totalPrice : order.cashOfCustomer,
         totalAmount: order.totalPrice ,
         customerId: order.customerId,
@@ -34,5 +73,6 @@ export async function createOrderPayment(order, amount, transaction) {
         paymentMethod: order.paymentType,
         createdBy: order.createdBy,
         status: 'DONE'
-    }, {transaction: transaction})
+    }, transaction)
 }
+

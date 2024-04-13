@@ -72,6 +72,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         type: DataTypes.INTEGER(1).UNSIGNED,
       },
+    discountAmount: {
+        allowNull: true,
+        type: DataTypes.INTEGER(10).UNSIGNED,
+        defaultValues: 0.0,
+    },
       point: {
         allowNull: true,
         type: DataTypes.FLOAT(11, 2).UNSIGNED,

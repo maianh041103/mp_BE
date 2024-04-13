@@ -1,4 +1,5 @@
 import {insertNewCode} from "../product/productCodeService";
+import {createDefaultCustomer} from "../customer/customerService";
 
 const { createUserTracking } = require("../behavior/behaviorService");
 const Sequelize = require("sequelize");
@@ -142,8 +143,9 @@ export async function createStore(payload) {
     createdAt: new Date(),
     storeId: newStore.id,
   };
-
+  await createDefaultCustomer(newStore.id)
   const newBranch = await models.Branch.create(createBranchInput);
+  const newCustomer = await createDefaultCustomer(newStore.id);
 
   const logObject = {
     accountId: newStore.createdBy,

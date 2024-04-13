@@ -8,7 +8,7 @@ const {
   resetPassword,
   getCustomerListByGroup,
   readController,
-  updateStatus, getTotalDebtController,
+  updateStatus, getTotalDebtController, getDefaultCustomer,
 } = require("./customerController");
 const {
   updateValidator,
@@ -37,7 +37,25 @@ router.get(
 );
 
 router.get(
-    ":id/total-debt",
+    "/store/default",
+    authenticate,
+    (req, res, next) => {
+        req.apiRole = [
+            "customer_read",
+            "dashboard_read",
+            "customer_view_all",
+            "order_history_read",
+            "sales_report_read",
+            "product_link_customer_user_read",
+        ];
+        next();
+    },
+    authorize,
+    getDefaultCustomer
+);
+
+router.get(
+    "/:id/total-debt",
     authenticate,
     (req, res, next) => {
         req.apiRole = [

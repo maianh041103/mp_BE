@@ -5,7 +5,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER(1).UNSIGNED,
       primaryKey: true,
     },
-    amount: {
+    totalAmount: {
       allowNull: false,
       type: DataTypes.INTEGER,
     },
@@ -38,7 +38,7 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: 'customerId',
       targetKey: 'id',
     });
-    CustomerDebt.hasMany(models.Order, {
+    CustomerDebt.belongsTo(models.Order, {
       as: 'order',
       foreignKey: 'orderId',
       sourceKey: 'id',

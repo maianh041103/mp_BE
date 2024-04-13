@@ -1,3 +1,5 @@
+import {orderStatuses} from "../order/orderConstant";
+
 const { hashPassword } = require("../auth/authService");
 const { createUserTracking } = require("../behavior/behaviorService");
 // const {
@@ -193,7 +195,20 @@ export async function indexCustomers(filter) {
   };
 
   const { rows, count } = await models.Customer.findAndCountAll(query);
-  console.log(rows)
+  for (const item of rows) {
+    item.dataValues.totalDebt  = await models.CustomerDebt.sum('debtAmount',{
+      where: {
+        customerId: item.id,
+        debtAmount: {[Op.gt]: 0}
+      }
+    })
+    item.dataValues.totalOrderPay  = await models.Order.sum('totalPrice',{
+      where: {
+        customerId: item.id,
+        status: orderStatuses.SUCCEED
+      }
+    })
+  }
   return {
     success: true,
     data: {
@@ -210,6 +225,13 @@ export async function getTotalDebt(customerId) {
 }
 
 export async function readCustomer(id, loginUser) {
+  if (id == null) {
+    return {
+      success: true,
+      data: await readDefaultCustomer(loginUser.storeId),
+    };
+  }
+
   const findCustomer = await models.Customer.findOne({
     attributes: customerAttributes,
     include: customerIncludes,
@@ -224,6 +246,32 @@ export async function readCustomer(id, loginUser) {
       code: HttpStatusCode.NOT_FOUND,
       message: "Khách hàng không tồn tại",
     };
+  }
+  return {
+    success: true,
+    data: findCustomer,
+  };
+}
+
+export async function readDefaultCustomer(storeId) {
+  let findCustomer = await models.Customer.findOne({
+    attributes: customerAttributes,
+    include: customerIncludes,
+    where: {
+      storeId,
+      isDefault: true
+    },
+  });
+  if (!findCustomer) {
+    await createDefaultCustomer(storeId)
+    findCustomer = await models.Customer.findOne({
+      attributes: customerAttributes,
+      include: customerIncludes,
+      where: {
+        storeId,
+        isDefault: true
+      },
+    });
   }
   return {
     success: true,
@@ -313,6 +361,24 @@ export async function createCustomer(payload, loginUser) {
       include: customerIncludes,
     }),
   };
+}
+
+export async function createDefaultCustomer(storeId) {
+  const payload = {
+    storeId,
+    fullName: "Khách lẻ",
+    status: 'active',
+    isDefault: true
+  }
+  const newCustomer = await models.Customer.create(payload);
+
+  if (!payload.code) {
+    payload.code = `${generateCustomerCode(newCustomer.id)}`;
+    await models.Customer.update(
+        { code: payload.code },
+        { where: { id: newCustomer.id } }
+    );
+  }
 }
 
 export async function indexCustomersByGroup(filter) {

@@ -12,7 +12,7 @@ const {
   // getEndDate,
   // confirmPayment,
   getProductCustomer,
-  getOrderHistory, readPaymentController,
+  getOrderHistory, readPaymentController, createPaymentController,
 } = require("./orderController");
 const {
   createValidator,
@@ -77,6 +77,17 @@ router.get(
     },
     authorize,
     readPaymentController
+);
+
+router.post(
+    "/:id/payment",
+    authenticate,
+    (req, res, next) => {
+        req.apiRole = "order_create";
+        next();
+    },
+    authorize,
+    createPaymentController
 );
 
 router.patch(

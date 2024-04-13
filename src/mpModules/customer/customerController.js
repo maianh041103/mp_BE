@@ -1,3 +1,6 @@
+import {readDefaultCustomer} from "./customerService";
+import {indexOrderDebt} from "./CustomerDebtService";
+
 const _ = require("lodash");
 const moment = require("moment");
 const {
@@ -39,9 +42,10 @@ export async function getTotalDebtController(req, res) {
   try {
     const { loginUser = {} } = req;
     const { id } = req.params;
-    const result = await indexCustomers({
+    const result = await indexOrderDebt({
       ...req.query,
       storeId: loginUser.storeId,
+      customerId: id
     });
     if (result.success) res.json(respondItemSuccess(result.data));
     else res.json(respondWithError(result.code, result.message, {}));
@@ -51,6 +55,21 @@ export async function getTotalDebtController(req, res) {
     );
   }
 }
+
+export async function getDefaultCustomer(req, res) {
+  try {
+    const { loginUser = {} } = req;
+    const result = await readDefaultCustomer(loginUser.storeId);
+    if (result.success) res.json(respondItemSuccess(result.data));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+        respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
+
 
 export async function readController(req, res) {
   try {
