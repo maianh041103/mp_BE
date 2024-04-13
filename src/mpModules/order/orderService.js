@@ -1052,8 +1052,11 @@ export async function indexProductCustomers(id) {
   };
 }
 
-export async function getOrder(id) {
-  const order = await models.Order.findByPk(id)
+export async function getOrder(orderId) {
+  const order = await models.Order.findOne({
+    attributes: ["id", "totalPrice", "customerId", "cashOfCustomer"],
+    where: {id: orderId}
+  })
   if (!order) {
     raiseBadRequestError("Đơn hàng không tồn tại")
   }

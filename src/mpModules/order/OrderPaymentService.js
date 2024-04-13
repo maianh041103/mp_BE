@@ -40,7 +40,7 @@ export async function indexCreatePayment(payment) {
     await models.sequelize.transaction(async (t) => {
         await models.Order.update({
             cashOfCustomer: order.cashOfCustomer + payment.amount
-        })
+        }, {where: {id: order.id}})
         await createPayment({
             amount: payment.amount,
             totalAmount: order.totalPrice ,
@@ -51,9 +51,12 @@ export async function indexCreatePayment(payment) {
             status: 'DONE'
         }, t)
         await models.CustomerDebt.increment({
-            totalDebt: -payment.amount
-        }, {transaction: t})
+            debtAmount: -payment.amount
+        }, {where: {orderId: order.id}, transaction: t})
     })
+    return {
+        success: true
+    }
 }
 
 export async function createPayment(payment, transaction) {

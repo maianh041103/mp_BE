@@ -73,7 +73,7 @@ export async function createPaymentController(req, res) {
     if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
-    res.json(respondWithClientError(e))
+    res.json(respondWithClientError(error))
   }
 }
 
@@ -84,7 +84,7 @@ export async function readController(req, res) {
     if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
-    res.json(respondWithClientError(e))
+    res.json(respondWithClientError(error))
   }
 }
 
@@ -95,7 +95,7 @@ export async function readPaymentController(req, res) {
     if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
-    res.json(respondWithClientError(e))
+    res.json(respondWithClientError(error))
   }
 }
 
