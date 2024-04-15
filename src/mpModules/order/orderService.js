@@ -28,7 +28,6 @@ const {
   sendNotificationThroughSms,
 } = require("../notification/smsIntegrationService");
 const { indexUsers, readUser } = require("../user/userService");
-readBranch;
 const { readBranch } = require("../branch/branchService");
 const {
   updateProductStatistic,
@@ -444,7 +443,7 @@ async function handleCreateOrder(order, loginUser) {
         code: `${loginUser.storeId || ""}S${randomString(12)}`,
         description: order.description,
         userId: order.userId,
-        customerId: order.customerId,
+        customerId: findCustomer.id,
         prescriptionId: order.prescriptionId,
         groupCustomerId: findCustomer.groupCustomerId,
         totalPrice: 0,

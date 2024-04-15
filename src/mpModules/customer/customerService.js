@@ -225,10 +225,12 @@ export async function getTotalDebt(customerId) {
 }
 
 export async function readCustomer(id, loginUser) {
-  if (id == null) {
+  if (!id) {
+    console.log("Test")
+    const defaultCust = await readDefaultCustomer(loginUser.storeId)
     return {
       success: true,
-      data: await readDefaultCustomer(loginUser.storeId),
+      data: defaultCust.data,
     };
   }
 

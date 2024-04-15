@@ -1,7 +1,7 @@
 import {getOrder, readOrder} from "./orderService";
 
 const models = require("../../../database/models");
-function generatePaymenmtCode(no) {
+function generatePaymentCode(no) {
     if (no <= 0) return "TTDH000000000";
     if (no < 10) return `TTDH00000000${no}`;
     if (no < 100) return `TTDH0000000${no}`;
@@ -61,21 +61,24 @@ export async function indexCreatePayment(payment) {
 
 export async function createPayment(payment, transaction) {
     const newPayment = await models.Payment.create({...payment, code: ''}, {transaction: transaction})
-    const code = generatePaymenmtCode(newPayment.id)
+    console.log(newPayment)
+    const code = generatePaymentCode(newPayment.id)
     await models.Payment.update({
         code: code
     }, {where: {id: newPayment.id}, transaction: transaction})
 }
 
 export async function createOrderPayment(order, amount, transaction) {
-    await createPayment({
-        amount: order.totalPrice <= order.cashOfCustomer ? order.totalPrice : order.cashOfCustomer,
-        totalAmount: order.totalPrice ,
-        customerId: order.customerId,
-        orderId: order.id,
-        paymentMethod: order.paymentType,
-        createdBy: order.createdBy,
-        status: 'DONE'
-    }, transaction)
+    if (order.cashOfCustomer > 0) {
+        await createPayment({
+            amount: order.totalPrice <= order.cashOfCustomer ? order.totalPrice : order.cashOfCustomer,
+            totalAmount: order.totalPrice,
+            customerId: order.customerId,
+            orderId: order.id,
+            paymentMethod: order.paymentType,
+            createdBy: order.createdBy,
+            status: 'DONE'
+        }, transaction)
+    }
 }
 
