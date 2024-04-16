@@ -233,7 +233,7 @@ async function getReportByDiscount(from, to, branchId) {
     success: true,
     data: {
       items: res,
-      summary: calculateSummary(res, ['totalPrice', 'totalDiscount', 'totalRevenue', 'totalPrime', 'profit'])
+      summary: calculateSummary(res, ['totalOrder', 'totalDiscount', 'totalPrice'])
     }
   };
 }
