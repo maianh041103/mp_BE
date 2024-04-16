@@ -215,7 +215,7 @@ async function getReportByDiscount(from, to, branchId) {
   const res = await models.Order.findAll({
     attributes: [
       [sequelize.literal(groupBy), 'title'],
-      [sequelize.fn('COUNT', sequelize.col('id')), 'totalOrder'],
+      [sequelize.fn('COUNT', sequelize.col('Order.id')), 'totalOrder'],
       [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscount'],
       [sequelize.fn('SUM', sequelize.col('orderProducts.price')), 'totalPrice'],
     ],
