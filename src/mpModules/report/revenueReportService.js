@@ -1,5 +1,5 @@
-import {findProduct, getProduct} from "../product/productService";
-import {getReportType} from "../../helpers/utils";
+import {SALES_CONCERN} from "./contant";
+import {groupByField, getFilter} from "./util";
 
 const moment = require("moment");
 const { addFilterByDate } = require("../../helpers/utils");
@@ -7,6 +7,7 @@ const Sequelize = require("sequelize");
 const _ = require("lodash");
 const { Op } = Sequelize;
 const models = require("../../../database/models");
+const sequelize = models.sequelize
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { orderStatuses } = require("../order/orderConstant");
 
@@ -159,49 +160,44 @@ export async function indexRevenuesReport(params, loginUser) {
 }
 
 
-export async function indexSalesReport(params, loginUser) {
-  const {
-    branchId,
-    from,
-    to
-  } = params;
-  const fromDate = moment(from);
-  const toDate = moment(to);
-  const days = toDate.diff(fromDate, 'days');
-  const type = getReportType(days)
-  const sequelize = models.sequelize
-  let groupBy;
-  switch (type) {
-    case 'hour':
-      groupBy = "DATE_FORMAT(createdAt, '%H:00')"
-      break;
-    case 'day':
-      groupBy = "DATE_FORMAT(createdAt, '%d-%m-%Y')"
-      break;
-    case 'month':
-      groupBy = "DATE_FORMAT(createdAt, '%m-%Y')"
-      break;
-    case 'year':
-      groupBy = "DATE_FORMAT(createdAt, '%Y')"
-      break;
-    default:
-      groupBy = "DATE_FORMAT(createdAt, '%d-%m-%Y')"
-      break;
-  }
+async function getReportByTime(from, to, branchId) {
+  const groupBy = groupByField('Order.createdAt', from, to);
   const res = await models.Order.findAll({
     attributes: [
       [sequelize.literal(groupBy), 'title'],
       [sequelize.fn('SUM', sequelize.col('totalPrice')), 'totalRevenue'],
-      // [sequelize.fn('SUM', sequelize.col('orderProducts.price')), 'totalPrice'],
-      // [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscount'],
+      [sequelize.literal('0'), 'saleReturn'],
+      [sequelize.fn('SUM', sequelize.col('totalPrice')), 'realRevenue'],
     ],
-    // include: [
-    //   {
-    //     model: models.OrderProduct,
-    //     as: 'orderProducts',
-    //     attributes: ['price', 'primePrice']
-    //   }
-    // ],
+    where: getFilter(from, to, branchId),
+    group: sequelize.literal(groupBy)
+  })
+  return {
+    success: true,
+    data: {
+      items: res,
+      summary: calculateSummary(res, ['totalRevenue', 'saleReturn', 'realRevenue'])
+    }
+  };
+}
+async function getReportByRevenue(from, to, branchId) {
+  const groupBy = groupByField('Order.createdAt', from, to);
+  const res = await models.Order.findAll({
+    attributes: [
+      [sequelize.literal(groupBy), 'title'],
+      [sequelize.fn('SUM', sequelize.col('orderProducts.price')), 'totalPrice'],
+      [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscount'],
+      [sequelize.fn('SUM', sequelize.col('totalPrice')), 'totalRevenue'],
+      [sequelize.fn('SUM', sequelize.col('orderProducts.primePrice')), 'totalPrime'],
+      [sequelize.literal('SUM(totalPrice) - SUM(orderProducts.primePrice)'), 'profit']
+    ],
+    include: [
+      {
+        model: models.OrderProduct,
+        as: 'orderProducts',
+        attributes: []
+      }
+    ],
     where: {
       createdAt: {
         [Op.and]: {
@@ -216,7 +212,85 @@ export async function indexSalesReport(params, loginUser) {
   return {
     success: true,
     data: {
-      items: res
-    },
+      items: res,
+      summary: calculateSummary(res, ['totalPrice', 'totalDiscount', 'totalRevenue', 'totalPrime', 'profit'])
+    }
   };
+}
+
+async function getReportByDiscount(from, to, branchId) {
+  const groupBy = groupByField('Order.createdAt', from, to);
+  const res = await models.Order.findAll({
+    attributes: [
+      [sequelize.literal(groupBy), 'title'],
+      [sequelize.fn('SUM', sequelize.col('orderProducts.price')), 'totalPrice'],
+      [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscount'],
+      [sequelize.fn('SUM', sequelize.col('totalPrice')), 'totalRevenue'],
+      [sequelize.fn('SUM', sequelize.col('orderProducts.primePrice')), 'totalPrime'],
+      [sequelize.literal('SUM(totalPrice) - SUM(orderProducts.primePrice)'), 'profit']
+    ],
+    include: [
+      {
+        model: models.OrderProduct,
+        as: 'orderProducts',
+        attributes: []
+      }
+    ],
+    where: {
+      createdAt: {
+        [Op.and]: {
+          [Op.gte]: moment(from).startOf("day"),
+          [Op.lte]: moment(to).endOf("day")
+        }
+      },
+      branchId: branchId
+    },
+    group: sequelize.literal(groupBy)
+  })
+  return {
+    success: true,
+    data: {
+      items: res,
+      summary: calculateSummary(res, ['totalPrice', 'totalDiscount', 'totalRevenue', 'totalPrime', 'profit'])
+    }
+  };
+}
+
+export async function indexSalesReport(params, loginUser) {
+  const {
+    branchId,
+    from,
+    to,
+    concern
+  } = params;
+
+  switch (concern) {
+    case SALES_CONCERN.TIME:
+      return await getReportByTime(from, to, branchId);
+    case SALES_CONCERN.REVENUE:
+      return await getReportByRevenue(from, to, branchId)
+    case SALES_CONCERN.DISCOUNT:
+      return await getReportByRevenue(from, to, branchId)
+    default:
+      return await getReportByTime(from, to, branchId);
+  }
+
+
+}
+
+function calculateSummary(res, properties) {
+  // Khởi tạo đối tượng chứa tổng của mỗi thuộc tính
+  const summary = properties.reduce((acc, property) => {
+    acc[property] = 0; // Khởi tạo tổng của mỗi thuộc tính bằng 0
+    return acc;
+  }, {});
+
+  // Tính tổng của các thuộc tính trong mảng res
+  res.forEach(item => {
+    properties.forEach(property => {
+      summary[property] += parseInt(item.dataValues[property]) || 0;
+    });
+  });
+
+  return summary;
 }

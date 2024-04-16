@@ -163,15 +163,15 @@ export async function getOrderHistory(req, res) {
   }
 }
 
-// export async function deleteController(req, res) {
-//     try {
-//         const { id } = req.params;
-//         const { loginUser = {} } = req;
-//         const result = await deleteOrder(id, loginUser);
-//         if (result.success) res.json(respondItemSuccess());
-//         else res.json(respondWithError(result.code, result.message, {}));
-//     } catch (error) {
-//         res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
-//     }
-// }
+export async function deleteController(req, res) {
+    try {
+        const { id } = req.params;
+        const { loginUser = {} } = req;
+        const result = await deleteOrder(id, loginUser);
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
+    }
+}
 

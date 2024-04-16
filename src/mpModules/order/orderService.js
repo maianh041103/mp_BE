@@ -206,9 +206,7 @@ export async function indexOrders(params, loginUser) {
   };
 
   const where = {
-    status: {
-      [Op.ne]: orderStatuses.DRAFT,
-    },
+    status: orderStatuses.SUCCEED
   };
 
   if (storeId) {
@@ -1061,3 +1059,34 @@ export async function getOrder(orderId) {
   }
   return order
 }
+
+export async function deleteOrder(id, loginUser) {
+  const order = await models.Order.findByPk(id, {
+    attributes: ["id"],
+  });
+  if (!order) {
+    return {
+      error: true,
+      code: HttpStatusCode.NOT_FOUND,
+      message: "Không tìm thấy đơn hàng",
+    };
+  }
+  await models.Order.destroy({
+    where: {
+      id,
+    },
+  });
+  createUserTracking({
+    accountId: loginUser.id,
+    type: accountTypes.USER,
+    objectId: id,
+    action: logActions.order_delete.value,
+    data: {
+      id
+    },
+  });
+  return {
+    success: true,
+  };
+}
+

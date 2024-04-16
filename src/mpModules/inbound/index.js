@@ -6,7 +6,7 @@ const {
   createController,
   updateController,
   updateStatus,
-  getProductCustomer,
+  getProductCustomer, indexDelete,
   // getOrderHistory,
 } = require("./inboundController");
 const { createValidator, updateStatusValidator } = require("./inboundValidator");
@@ -70,6 +70,17 @@ router.patch(
   authorize,
   updateStatusValidator,
   updateStatus
+);
+
+router.delete(
+    "/:id",
+    authenticate,
+    (req, res, next) => {
+        req.apiRole = "inbound_delete";
+        next();
+    },
+    authorize,
+    indexDelete
 );
 
 module.exports = router;

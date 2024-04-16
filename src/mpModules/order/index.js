@@ -6,7 +6,7 @@ const {
   readController,
   createController,
   updateController,
-  // deleteController,
+  deleteController,
   updateStatus,
   // exportOrder,
   // getEndDate,
@@ -115,12 +115,12 @@ router.patch(
   updateStatus
 );
 
-// router.delete('/:id',
-//     authenticate,
-//     (req, res, next) => { req.apiRole = 'order_delete'; next(); },
-//     authorize,
-//     deleteController
-// );
+router.delete('/:id',
+    authenticate,
+    (req, res, next) => { req.apiRole = 'order_delete'; next(); },
+    authorize,
+    deleteController
+);
 
 // Xác nhận thanh toán
 // router.post('/confirm-payment',

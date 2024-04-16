@@ -725,3 +725,33 @@ export async function updateInboundStatus(id, payload, loginUser) {
     success: true,
   };
 }
+
+export async function deleteInbound(id, loginUser) {
+  const inbound = await models.Inbound.findByPk(id, {
+    attributes: ["id"],
+  });
+  if (!inbound) {
+    return {
+      error: true,
+      code: HttpStatusCode.NOT_FOUND,
+      message: "Không tìm thấy nhập saản phẩm",
+    };
+  }
+  await models.Inbound.destroy({
+    where: {
+      id,
+    },
+  });
+  createUserTracking({
+    accountId: loginUser.id,
+    type: accountTypes.USER,
+    objectId: id,
+    action: logActions.inbound_delete.value,
+    data: {
+      id
+    },
+  });
+  return {
+    success: true,
+  };
+}

@@ -1,0 +1,7 @@
+export const SALES_CONCERN = {
+    TIME: "TIME",
+    REVENUE: "REVENUE",
+    DISCOUNT: "DISCOUNT",
+    SALE_RETURN: "SALE_RETURN",
+    EMPLOYEE: "EMPLOYEE"
+};
