@@ -238,6 +238,35 @@ async function getReportByDiscount(from, to, branchId) {
   };
 }
 
+async function getReportByEmployee(from, to, branchId) {
+  const groupBy = 'creator.fullName'
+  const res = await models.Order.findAll({
+    attributes: [
+      [sequelize.literal(groupBy), 'title'],
+      'createdBy',
+      [sequelize.fn('SUM', sequelize.col('totalPrice')), 'totalRevenue'],
+      [sequelize.literal('0'), 'saleReturn'],
+      [sequelize.fn('SUM', sequelize.col('totalPrice')), 'realRevenue'],
+    ],
+    include: [
+      {
+        model: models.User,
+        as: 'creator',
+        attributes: []
+      }
+    ],
+    where: getFilter(from, to, branchId),
+    group: sequelize.literal(groupBy)
+  })
+  return {
+    success: true,
+    data: {
+      items: res,
+      summary: calculateSummary(res, ['totalRevenue', 'saleReturn', 'realRevenue'])
+    }
+  };
+}
+
 export async function indexSalesReport(params, loginUser) {
   const {
     branchId,
@@ -256,7 +285,7 @@ export async function indexSalesReport(params, loginUser) {
     case SALES_CONCERN.SALE_RETURN:
       return await getReportByTime(from, to, branchId)
     case SALES_CONCERN.EMPLOYEE:
-      return await getReportByTime(from, to, branchId)
+      return await getReportByEmployee(from, to, branchId)
     default:
       return await getReportByTime(from, to, branchId);
   }
