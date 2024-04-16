@@ -198,15 +198,7 @@ async function getReportByRevenue(from, to, branchId) {
         attributes: []
       }
     ],
-    where: {
-      createdAt: {
-        [Op.and]: {
-          [Op.gte]: moment(from).startOf("day"),
-          [Op.lte]: moment(to).endOf("day")
-        }
-      },
-      branchId: branchId
-    },
+    where: getFilter(from, to, branchId),
     group: sequelize.literal(groupBy)
   })
   return {
@@ -223,11 +215,9 @@ async function getReportByDiscount(from, to, branchId) {
   const res = await models.Order.findAll({
     attributes: [
       [sequelize.literal(groupBy), 'title'],
-      [sequelize.fn('SUM', sequelize.col('orderProducts.price')), 'totalPrice'],
+      [sequelize.fn('COUNT', sequelize.col('id')), 'totalOrder'],
       [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscount'],
-      [sequelize.fn('SUM', sequelize.col('totalPrice')), 'totalRevenue'],
-      [sequelize.fn('SUM', sequelize.col('orderProducts.primePrice')), 'totalPrime'],
-      [sequelize.literal('SUM(totalPrice) - SUM(orderProducts.primePrice)'), 'profit']
+      [sequelize.fn('SUM', sequelize.col('orderProducts.price')), 'totalPrice'],
     ],
     include: [
       {
@@ -236,15 +226,7 @@ async function getReportByDiscount(from, to, branchId) {
         attributes: []
       }
     ],
-    where: {
-      createdAt: {
-        [Op.and]: {
-          [Op.gte]: moment(from).startOf("day"),
-          [Op.lte]: moment(to).endOf("day")
-        }
-      },
-      branchId: branchId
-    },
+    where: getFilter(from, to, branchId),
     group: sequelize.literal(groupBy)
   })
   return {
@@ -270,7 +252,11 @@ export async function indexSalesReport(params, loginUser) {
     case SALES_CONCERN.REVENUE:
       return await getReportByRevenue(from, to, branchId)
     case SALES_CONCERN.DISCOUNT:
-      return await getReportByRevenue(from, to, branchId)
+      return await getReportByDiscount(from, to, branchId)
+    case SALES_CONCERN.SALE_RETURN:
+      return await getReportByTime(from, to, branchId)
+    case SALES_CONCERN.EMPLOYEE:
+      return await getReportByTime(from, to, branchId)
     default:
       return await getReportByTime(from, to, branchId);
   }

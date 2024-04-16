@@ -195,6 +195,8 @@ export async function indexOrders(params, loginUser) {
     paymentType = "",
     positions = [],
     dateRange = {},
+    from,
+    to
   } = params;
   const query = {
     attributes: orderAttributes,
@@ -308,6 +310,15 @@ export async function indexOrders(params, loginUser) {
     where.createdBy = {
       [Op.in]: userIds,
     };
+  }
+
+  if (from && to) {
+    where.createdAt = {
+      [Op.and]: {
+        [Op.gte]: moment(from),
+        [Op.lte]: moment(to)
+      }
+    }
   }
 
   query.where = where;
