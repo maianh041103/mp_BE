@@ -239,11 +239,11 @@ async function getReportByDiscount(from, to, branchId) {
 }
 
 async function getReportByEmployee(from, to, branchId) {
-  const groupBy = 'creator.fullName'
+  const groupBy = 'user.fullName'
   const res = await models.Order.findAll({
     attributes: [
       [sequelize.literal(groupBy), 'title'],
-      'createdBy',
+      'userId',
       [sequelize.fn('SUM', sequelize.col('totalPrice')), 'totalRevenue'],
       [sequelize.literal('0'), 'saleReturn'],
       [sequelize.fn('SUM', sequelize.col('totalPrice')), 'realRevenue'],
@@ -251,7 +251,7 @@ async function getReportByEmployee(from, to, branchId) {
     include: [
       {
         model: models.User,
-        as: 'creator',
+        as: 'user',
         attributes: []
       }
     ],
