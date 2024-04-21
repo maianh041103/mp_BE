@@ -289,8 +289,6 @@ export async function indexSalesReport(params, loginUser) {
     default:
       return await getReportByTime(from, to, branchId);
   }
-
-
 }
 
 function calculateSummary(res, properties) {
