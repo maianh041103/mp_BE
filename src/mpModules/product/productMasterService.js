@@ -76,6 +76,9 @@ export async function indexMasterSaleProducts(params) {
       code: {
         [Op.like]: `%${keyword.trim()}%`,
       },
+      barCode: {
+        [Op.like]: `%${keyword.trim()}%`,
+      },
       productId: {
         [Op.in]: productIds
       }
