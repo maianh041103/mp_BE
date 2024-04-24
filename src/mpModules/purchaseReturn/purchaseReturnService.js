@@ -1,4 +1,3 @@
-import {findAllBatchByProductId} from "../batch/batchService";
 import {createWarehouseCard} from "../warehouse/warehouseService";
 import {warehouseStatus} from "../warehouse/constant";
 import {addInventory, getInventory} from "../inventory/inventoryService";

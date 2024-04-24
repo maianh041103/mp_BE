@@ -165,7 +165,7 @@ export async function indexMasterSaleProducts(params) {
       item.dataValues.batches = [];
       continue;
     }
-    item.dataValues.batches = await findAllBatchByProductId(item.productId);
+    item.dataValues.batches = await findAllBatchByProductId(item.productId, branchId);
   }
 
   return {

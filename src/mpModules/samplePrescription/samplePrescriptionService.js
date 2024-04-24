@@ -226,7 +226,7 @@ export async function indexService(params) {
           inventory / item.exchangeValue
       );
 
-      item.dataValues.batches = await findAllBatchByProductId(item.productId);
+      item.dataValues.batches = await findAllBatchByProductId(item.productId, branchId);
     }
     row.dataValues.products = products;
   }
