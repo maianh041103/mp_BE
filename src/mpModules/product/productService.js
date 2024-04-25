@@ -461,8 +461,8 @@ export async function updateProduct(id, product, loginUser) {
         price: item.price,
         isDirectSale: item.isDirectSale || false,
         isBaseUnit: item.isBaseUnit || false,
-        code: item.code || "",
-        barCode: item.barCode || "",
+        code: item.isBaseUnit ? product.code : (item.code || ""),
+        barCode: item.isBaseUnit ? product.barCode : (item.barCode || ""),
         point: item.point || 0,
         branchId: findProduct.branchId,
         storeId: findProduct.storeId,
@@ -477,6 +477,14 @@ export async function updateProduct(id, product, loginUser) {
       } else {
         const instance = await models.ProductUnit.create(upsertPayload);
         item.id = instance.id;
+        if (!instance.code) {
+          const nextValue = await getNextValue(product.storeId, product.type)
+          item.code = generateProductCode(product.type, nextValue)
+        }
+        if (!instance.barCode) {
+          item.barCode = item.code
+        }
+        await models.ProductUnit.update({code: item.code, barCode: item.barCode}, {where: {id: item.id}, transaction: t })
       }
       if (item.isBaseUnit) {
         await models.ProductUnit.update(
