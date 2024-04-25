@@ -250,12 +250,8 @@ export async function createProduct(product, loginUser) {
     }));
     for (const productUnit of productUnits) {
       if (productUnit.isBaseUnit) {
-        if (!productUnit.code) {
-          productUnit.code = product.code
-          if (!productUnit.barCode) {
-            productUnit.barCode = productUnit.code
-          }
-        }
+        productUnit.code = product.code
+        productUnit.barCode = product.barCode
       } else {
         if (!productUnit.code) {
           const nextValue = await getNextValue(product.storeId, product.type)
