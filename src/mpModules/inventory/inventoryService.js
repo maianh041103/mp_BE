@@ -20,6 +20,7 @@ export async function newInventory(branchId, productId, quantity, transaction) {
 }
 
 export async function addInventory(branchId, productId, quantity, transaction) {
+    if (!quantity) return
     const inventory = await models.Inventory.findOne({
         where: {
             productId: productId,

@@ -429,21 +429,25 @@ export async function updateProduct(id, product, loginUser) {
   }
   await models.sequelize.transaction(async (t) => {
     if (product.inventory) {
-      const inventory = getInventory(product.branchId, product.id)
-      await addInventory(product.branchId, product.id, product.inventory - inventory, t)
-      if (product.inventory) {
-        await createWarehouseCard({
-          code: "",
-          type: warehouseStatus.ADJUSTMENT,
-          partner: "",
-          productId: product.id,
-          branchId: product.branchId,
-          changeQty: product.inventory,
-          remainQty: product.inventory,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }, t)
+      const inventory = await getInventory(product.branchId, id)
+      const change = product.inventory - inventory;
+      if (change) {
+        await addInventory(product.branchId, id, change, t)
+        if (product.inventory) {
+          await createWarehouseCard({
+            code: "",
+            type: warehouseStatus.ADJUSTMENT,
+            partner: "",
+            productId: id,
+            branchId: product.branchId,
+            changeQty: product.inventory,
+            remainQty: product.inventory,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }, t)
+        }
       }
+
     }
     await models.Product.update(product, {
       where: {
