@@ -185,7 +185,7 @@ export async function updateController(req, res) {
     const product = {
       name: _.get(req.body, "name", ""),
       slug: _.get(req.body, "slug", ""),
-      // code: _.get(req.body, "code", ""),
+      code: _.get(req.body, "code", ""),
       barCode: _.get(req.body, "barCode", ""),
       shortName: _.get(req.body, "shortName", ""),
       groupProductId: _.get(req.body, "groupProductId", null),
