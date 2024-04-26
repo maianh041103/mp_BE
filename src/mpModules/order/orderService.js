@@ -540,7 +540,9 @@ async function handleCreateOrder(order, loginUser) {
       totalPrice += +productUnit.price * +item.quantity;
       totalItemPrice += +productUnit.price * +item.quantity;
       const inventory = await getInventory(order.branchId, item.productId)
-      if (inventory < item.totalQuantity * productUnit.exchangeValue) {
+      console.log(inventory)
+      console.log(item.quantity * productUnit.exchangeValue)
+      if (inventory < item.quantity * productUnit.exchangeValue) {
         throw Error(
             JSON.stringify({
               error: true,
