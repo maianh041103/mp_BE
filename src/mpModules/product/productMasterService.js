@@ -186,7 +186,6 @@ export async function indexMasterInboundProducts(params) {
   }
   if (params.keyword) {
     const keyword = params.keyword
-    where.code = {[Op.like]: `%${keyword.trim()}%`}
     const _products = await models.Product.findAll({
       attributes: ['id'],
       where: {
