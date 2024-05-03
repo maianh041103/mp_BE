@@ -180,7 +180,11 @@ export async function indexCustomers(filter) {
   if (groupCustomerId) conditions.groupCustomerId = groupCustomerId;
   if (position) conditions.position = position;
   if (status) conditions.status = status;
-  if (isDefault) conditions.isDefault = isDefault;
+  if (isDefault) {
+    conditions.isDefault = true;
+  } else {
+    conditions.isDefault = {[Op.or]: [false, null]}
+  }
   if (_.isArray(listCustomer) && listCustomer.length) {
     conditions.id = listCustomer;
   }
