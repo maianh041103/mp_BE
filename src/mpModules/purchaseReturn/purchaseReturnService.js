@@ -1,6 +1,7 @@
 import {createWarehouseCard} from "../warehouse/warehouseService";
 import {warehouseStatus} from "../warehouse/constant";
 import {addInventory, getInventory} from "../inventory/inventoryService";
+import {userAttributes} from "../user/attributes";
 
 const _ = require("lodash");
 const Sequelize = require("sequelize");
@@ -21,15 +22,6 @@ const {
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { accountTypes, logActions } = require("../../helpers/choices");
 const { createUserTracking } = require("../behavior/behaviorService");
-
-const userAttributes = [
-  "id",
-  "username",
-  "email",
-  "fullName",
-  "avatarId",
-  "phone",
-];
 
 const purchaseReturnIncludes = [
   {

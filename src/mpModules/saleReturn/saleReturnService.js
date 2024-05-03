@@ -1,0 +1,400 @@
+import {createWarehouseCard} from "../warehouse/warehouseService";
+import {warehouseStatus} from "../warehouse/constant";
+import {addInventory, getInventory} from "../inventory/inventoryService";
+import {readCustomer} from "../customer/customerService";
+import {getOrder} from "../order/orderService";
+import {saleReturnAttributes, saleReturnIncludes} from "./attributes";
+
+const _ = require("lodash");
+const Sequelize = require("sequelize");
+const { Op } = Sequelize;
+const models = require("../../../database/models");
+const { readUser } = require("../user/userService");
+const { readBranch } = require("../branch/branchService");
+const { readSupplier } = require("../supplier/supplierService");
+const { readBatch } = require("../batch/batchService");
+const { readProductUnit } = require("../product/productUnitService");
+const {
+  SaleReturnStatus,
+} = require("../saleReturn/saleReturnConstant");
+const {
+  addFilterByDate,
+  formatDecimalTwoAfterPoint,
+} = require("../../helpers/utils");
+const { HttpStatusCode } = require("../../helpers/errorCodes");
+const { accountTypes, logActions } = require("../../helpers/choices");
+const { createUserTracking } = require("../behavior/behaviorService");
+
+
+
+export async function indexList(params, loginUser) {
+  const {
+    page = 1,
+    limit = 10,
+    keyword = "",
+    code = "",
+    userId,
+    branchId,
+    storeId,
+    createdAt = [],
+    status,
+    statuses = [],
+    paymentType,
+    creatorId,
+    supplierId,
+  } = params;
+
+  const query = {
+    attributes: saleReturnAttributes,
+    offset: +limit * (+page - 1),
+    include: saleReturnIncludes,
+    limit: +limit,
+    order: [["id", "DESC"]],
+  };
+
+  const where = {
+    status: {
+      [Op.ne]: SaleReturnStatus.TRASH,
+    },
+  };
+
+  if (storeId) {
+    where.storeId = storeId;
+  }
+
+  if (branchId) {
+    where.branchId = branchId;
+  }
+
+  if (status) {
+    where.status = status;
+  }
+
+  if (code) {
+    where.code = status;
+  }
+
+  if (keyword) {
+    where.code = {
+      [Op.like]: `%${keyword.trim()}%`,
+    };
+  }
+
+  if (_.isArray(statuses) && statuses.length) {
+    where.status = {
+      [Op.in]: statuses,
+    };
+  }
+
+  if (_.isArray(createdAt) && createdAt.length) {
+    where.createdAt = addFilterByDate(createdAt);
+  }
+
+  if (paymentType) {
+    where.paymentType = paymentType;
+  }
+
+  if (userId) {
+    where.userId = userId;
+  }
+
+  if (creatorId) {
+    where.createdBy = creatorId;
+  }
+
+  if (supplierId) {
+    where.supplierId = supplierId;
+  }
+
+  if (params.dateRange) {
+    try {
+      const dateRange = JSON.parse(params.dateRange);
+      const { startDate, endDate } = dateRange;
+      where.createdAt = addFilterByDate([startDate, endDate]);
+    } catch (e) {}
+  }
+
+  query.where = where;
+
+  const [items, totalItem] = await Promise.all([
+    models.saleReturn.findAll(query),
+    models.saleReturn.count(query),
+  ]);
+
+  return {
+    success: true,
+    data: {
+      items,
+      totalItem,
+    },
+  };
+}
+
+export async function indexDetail(id, loginUser) {
+  const findSaleReturn = await models.SaleReturn.findOne({
+    include: saleReturnIncludes,
+    attributes: saleReturnAttributes,
+    where: {
+      id,
+      storeId: loginUser.storeId,
+    },
+  });
+
+  if (!findSaleReturn) {
+    return {
+      error: true,
+      code: HttpStatusCode.NOT_FOUND,
+      message: "Phiếu trả hàng không tồn tại",
+    };
+  }
+
+
+  return {
+    success: true,
+    data: {
+      saleReturn: findSaleReturn,
+    },
+  };
+}
+
+function generatesaleReturnCode(no) {
+  if (no <= 0) return "TSP000000000";
+  if (no < 10) return `TSP00000000${no}`;
+  if (no < 100) return `TSP0000000${no}`;
+  if (no < 1000) return `TSP000000${no}`;
+  if (no < 10000) return `TSP00000${no}`;
+  if (no < 100000) return `TSP0000${no}`;
+  if (no < 1000000) return `TSP000${no}`;
+  if (no < 10000000) return `TSP00${no}`;
+  if (no < 100000000) return `TSP0${no}`;
+  if (no < 1000000000) return `TSP${no}`;
+  return no;
+}
+
+function calculateTotalItemPrice(products) {
+  let sumPrice = 0;
+  for (var i = 0; i < products.length; i++) {
+    const product = products[i];
+    const totalProductPrice = product.price * product.totalQuantity;
+    sumPrice += totalProductPrice;
+  }
+  return sumPrice;
+}
+
+export async function indexCreate(saleReturn, loginUser) {
+  if (!saleReturn.products || !saleReturn.products.length) {
+    return {
+      error: true,
+      code: HttpStatusCode.BAD_REQUEST,
+      message: `Bạn cần chọn sản phẩm để tiến hành trả hàng`,
+    };
+  }
+
+  // Validate thông tin nhà cung cấp, nhân viên, chi nhánh
+  const [responseReadCustomer, responseReadUser, responseReadBranch, order] =
+    await Promise.all([
+      readCustomer(saleReturn.customerId, loginUser),
+      readUser(saleReturn.userId, loginUser),
+      readBranch(saleReturn.branchId, loginUser),
+      getOrder(saleReturn.orderId)
+    ]);
+  if (responseReadCustomer.error) {
+    return responseReadCustomer;
+  }
+  if (responseReadUser.error) {
+    return responseReadUser;
+  }
+  if (responseReadBranch.error) {
+    return responseReadBranch;
+  }
+
+  // Validate thông tin sản phẩm, lô
+  const customer = responseReadCustomer.data
+
+  var newSaleReturn;
+  await models.sequelize.transaction(async (t) => {
+    const itemPrice = calculateTotalItemPrice(saleReturn.products);
+    const discount = saleReturn.discount || 0;
+    const returnFee = saleReturn.returnFee || 0;
+    const totalPrice = itemPrice - discount - returnFee;
+    const paid = saleReturn.paid || 0;
+    // Tạo nháp phiếu trả hàng
+    newSaleReturn = await models.SaleReturn.create(
+      {
+        storeId: loginUser.storeId,
+        branchId: saleReturn.branchId,
+        userId: saleReturn.userId,
+        customerId: saleReturn.customerId,
+        orderId: saleReturn.orderId,
+        returnFee: returnFee,
+        paymentType: saleReturn.paymentType,
+        discount: discount,
+        itemPrice: itemPrice,
+        totalPrice: totalPrice,
+        debt: totalPrice - paid,
+        paid: paid,
+        status: SaleReturnStatus.TRASH,
+        createdBy: loginUser.id,
+      },
+      { transaction: t }
+    );
+    const code = generatesaleReturnCode(newSaleReturn.id);
+    await models.SaleReturn.update(
+        {
+          code: code
+        },
+        {
+          where: {
+            id: newSaleReturn.id,
+          },
+          transaction: t,
+        }
+    );
+    for (const item of saleReturn.products) {
+      const findProduct = await models.Product.findOne({
+        where: {
+          id: item.productId,
+          storeId: loginUser.storeId,
+        },
+      });
+      if (!findProduct) {
+        return {
+          error: true,
+          code: HttpStatusCode.BAD_REQUEST,
+          message: `Sản phẩm có id = ${item.productId} không tồn tại`,
+        };
+      }
+      const responseReadProductUnit = await readProductUnit(item.productUnitId, loginUser)
+      if (responseReadProductUnit.error) {
+        return responseReadProductUnit;
+      }
+      const productUnit = responseReadProductUnit.data
+
+      await createWarehouseCard({
+        code: code,
+        type: warehouseStatus.INBOUND_RETURN,
+        partner: customer.name,
+        productId: item.productId,
+        branchId: saleReturn.branchId,
+        changeQty: item.quantity * productUnit.exchangeValue,
+        remainQty: await getInventory(saleReturn.branchId, item.productId) + item.quantity * productUnit.exchangeValue,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }, t)
+      await addInventory(saleReturn.branchId, item.productId,item.quantity * productUnit.exchangeValue, t)
+      const saleReturnItem = await models.SaleReturnItem.create(
+       {
+         storeId: loginUser.storeId,
+         branchId: saleReturn.branchId,
+         saleReturnId: newSaleReturn.id,
+         productUnitId: item.productUnitId,
+         quantity: item.quantity,
+         discount: item.discount || 0,
+         createdBy: loginUser.id,
+         price: item.price,
+         totalPrice: item.price * item.totalQuantity
+       },
+       { transaction: t }
+   );
+
+      if (findProduct.isBatchExpireControl) {
+        for (const _batch of item.batches) {
+          const responseReadBatch = await readBatch(_batch.id, loginUser);
+          if (responseReadBatch.error) {
+            return responseReadBatch;
+          }
+          await models.SaleReturnBatch.create({
+            saleReturnItemId: saleReturnItem.id,
+            batchId: _batch.id,
+            quantity: _batch.quantity
+          }, {transaction: t})
+          const batch = responseReadBatch.data
+          await models.Batch.increment({
+            quantity: _batch.quantity * productUnit.exchangeValue
+          }, {where: {
+              id: _batch.id
+            }, transaction : t})
+        }
+      }
+    }
+  });
+  const refresh = await indexDetail(newSaleReturn.id, loginUser)
+  return {
+    success: true,
+    data: refresh.data,
+  };
+
+}
+
+export async function updatesaleReturnStatus(id, payload, loginUser) {
+  const findsaleReturn = await models.saleReturn.findOne({
+    where: {
+      id,
+      storeId: loginUser.storeId,
+    },
+  });
+
+  if (!findsaleReturn) {
+    return {
+      error: true,
+      code: HttpStatusCode.NOT_FOUND,
+      message: "Phiếu trả hàng không tồn tại",
+    };
+  }
+
+  await models.saleReturn.update(
+    {
+      status: payload.status,
+    },
+    {
+      where: {
+        id,
+      },
+    }
+  );
+
+  // TODO::Xử lý case từ lưu tạm sang hoàn thành và ngược lại
+
+  createUserTracking({
+    accountId: loginUser.id,
+    type: accountTypes.USER,
+    objectId: id,
+    action: logActions.purchase_return_update.value,
+    data: { id, ...payload },
+  });
+
+  return {
+    success: true,
+  };
+}
+
+export async function indexDelete(id, loginUser) {
+  const findsaleReturn = await models.saleReturn.findByPk(id, {
+    attributes: ["id"],
+  });
+  if (!findsaleReturn) {
+    return {
+      error: true,
+      code: HttpStatusCode.NOT_FOUND,
+      message: "Không tìm thấy phiếu trả hàng",
+    };
+  }
+  await models.saleReturn.destroy({
+    where: {
+      id,
+    },
+  });
+  createUserTracking({
+    accountId: loginUser.id,
+    type: accountTypes.USER,
+    objectId: id,
+    action: logActions.purchase_return_delete.value,
+    data: {
+      id
+    },
+  });
+
+  return {
+    success: true,
+  };
+}

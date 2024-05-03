@@ -4,5 +4,6 @@ export const warehouseStatus = {
     INBOUND_RETURN: 3,
     MOVE: 4,
     ADJUSTMENT: 5,
-    MOVE_RECEIVE: 6
+    MOVE_RECEIVE: 6,
+    SALE_RETURN: 7,
 };
