@@ -145,7 +145,6 @@ export async function createStore(payload) {
   };
   await createDefaultCustomer(newStore.id)
   const newBranch = await models.Branch.create(createBranchInput);
-  const newCustomer = await createDefaultCustomer(newStore.id);
 
   const logObject = {
     accountId: newStore.createdBy,

@@ -146,6 +146,7 @@ export async function indexCustomers(filter) {
     phone = "",
     listCustomer = [],
     storeId,
+    isDefault
   } = filter;
 
   const conditions = {};
@@ -179,7 +180,7 @@ export async function indexCustomers(filter) {
   if (groupCustomerId) conditions.groupCustomerId = groupCustomerId;
   if (position) conditions.position = position;
   if (status) conditions.status = status;
-
+  if (isDefault) conditions.isDefault = isDefault;
   if (_.isArray(listCustomer) && listCustomer.length) {
     conditions.id = listCustomer;
   }
