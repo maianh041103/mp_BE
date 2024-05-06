@@ -177,6 +177,18 @@ const orderProductIncludes = [
       },
     ],
   },
+  {
+    model: models.OrderProductBatch,
+    as: "batches",
+    attributes: ["id", "quantity"],
+    include: [
+      {
+        model: models.Batch,
+        as: "batch",
+        attributes: ["id", "name", "quantity", "expiryDate"],
+      },
+    ],
+  },
 ];
 
 export async function indexOrders(params, loginUser) {
@@ -437,7 +449,6 @@ async function handleCreateOrder(order, loginUser) {
       readUser(order.userId, loginUser),
       readBranch(order.branchId, loginUser),
     ]);
-
   if (responseReadCustomer.error) {
     return responseReadCustomer;
   }
@@ -447,7 +458,6 @@ async function handleCreateOrder(order, loginUser) {
   if (responseReadBranch.error) {
     return responseReadBranch;
   }
-
   const findCustomer = responseReadCustomer.data;
   let newOrder;
   await models.sequelize.transaction(async (t) => {
@@ -516,16 +526,11 @@ async function handleCreateOrder(order, loginUser) {
             })
         );
       }
-
-      const productProductToBatchConditions = {
-        productId: item.productId,
-        storeId: loginUser.storeId,
-      };
-
       const productUnit = await models.ProductUnit.findOne({
         where: {
           id: item.productUnitId,
-          ...productProductToBatchConditions,
+          productId: item.productId,
+          storeId: loginUser.storeId,
         },
       });
       if (!productUnit) {
@@ -537,11 +542,9 @@ async function handleCreateOrder(order, loginUser) {
             })
         );
       }
-      totalPrice += +productUnit.price * +item.quantity;
-      totalItemPrice += +productUnit.price * +item.quantity;
+      totalPrice += productUnit.price * item.quantity;
+      totalItemPrice += productUnit.price * item.quantity;
       const inventory = await getInventory(order.branchId, item.productId)
-      console.log(inventory)
-      console.log(item.quantity * productUnit.exchangeValue)
       if (inventory < item.quantity * productUnit.exchangeValue) {
         throw Error(
             JSON.stringify({
@@ -564,157 +567,7 @@ async function handleCreateOrder(order, loginUser) {
         updatedAt: new Date()
       }, t)
       await addInventory(order.branchId, item.productId, -item.quantity * productUnit.exchangeValue, t)
-
-      // Đối với sản phẩm bắt buộc quản lý theo lô
-      if (findProduct.isBatchExpireControl) {
-        // Trả về tất cả lô của sản phẩm
-        const batches = await models.ProductToBatch.findAll({
-          attributes: ["batchId", "productUnitId", "quantity", "expiryDate"],
-          include: [
-            {
-              model: models.ProductUnit,
-              as: "productUnit",
-              attributes: [
-                "id",
-                "unitName",
-                "exchangeValue",
-                "price",
-                "isBaseUnit",
-              ],
-            },
-          ],
-          where: productProductToBatchConditions,
-          order: [["expiryDate", "ASC"]],
-        });
-
-        const batchInfoMapping = {};
-        for (const batchInstance of batches) {
-          if (batchInfoMapping[batchInstance.batchId]) {
-            batchInfoMapping[batchInstance.batchId].quantity +=
-                +formatDecimalTwoAfterPoint(
-                    (batchInstance.quantity *
-                        batchInstance.productUnit.exchangeValue) /
-                    productUnit.exchangeValue
-                );
-          } else {
-            batchInfoMapping[batchInstance.batchId] = {
-              batchId: batchInstance.batchId,
-              productUnitId: batchInstance.productUnitId,
-              quantity: +formatDecimalTwoAfterPoint(
-                  (batchInstance.quantity *
-                      batchInstance.productUnit.exchangeValue) /
-                  productUnit.exchangeValue
-              ),
-              expiryDate: batchInstance.expiryDate,
-              productUnit: batchInstance.productUnit,
-            };
-          }
-        }
-
-        let totalQuantityOfProduct = 0;
-        for (const batch of item.batches) {
-          if (!batchInfoMapping[batch.id]) {
-            throw Error(
-                JSON.stringify({
-                  error: true,
-                  code: HttpStatusCode.BAD_REQUEST,
-                  message: `Thông tin lô bán theo sản phẩm không tồn tại`,
-                })
-            );
-          }
-
-          totalQuantityOfProduct += batch.quantity;
-          const responseReadBatch = await readBatch(batch.id, loginUser);
-          if (responseReadBatch.error) {
-            return responseReadBatch;
-          }
-          const findBatch = responseReadBatch.data;
-          if (batch.quantity > batchInfoMapping[batch.id].quantity) {
-            throw Error(
-                JSON.stringify({
-                  error: true,
-                  code: HttpStatusCode.BAD_REQUEST,
-                  message: `Số lượng sản phẩm trong lô "${findBatch.name}"(${
-                      batchInfoMapping[batch.id].quantity || 0
-                  } ${productUnit.name}) không đủ`,
-                })
-            );
-          }
-
-          await models.Batch.increment({
-            quantity: -productUnit.exchangeValue * batch.quantity
-          }, {where: {id: batch.id}, transaction: t})
-
-          // Trừ số lượng sản phẩm trong lô
-          const findProductBatches = await models.ProductToBatch.findAll({
-            where: {
-              ...productProductToBatchConditions,
-              batchId: batch.id,
-            },
-            order: [["expiryDate", "ASC"]],
-          });
-
-          let remainQuantity = batch.quantity;
-          const selectedProductUnitQuantityMapping = {};
-          for (const productBatch of findProductBatches) {
-            let productBatchInstance;
-            if (item.productUnitId !== productBatch.productUnitId) {
-              productBatchInstance = await models.ProductUnit.findOne({
-                where: {
-                  id: productBatch.productUnitId,
-                  ...productProductToBatchConditions,
-                },
-              });
-              if (!productBatchInstance) {
-                throw Error(
-                    JSON.stringify({
-                      error: true,
-                      code: HttpStatusCode.BAD_REQUEST,
-                      message: `Đơn vị sản phẩm id = ${productBatch.productUnitId} không tồn tại`,
-                    })
-                );
-              }
-              remainQuantity = +formatDecimalTwoAfterPoint(
-                  (remainQuantity * productUnit.exchangeValue) /
-                  productBatchInstance.exchangeValue
-              );
-            }
-
-            if (remainQuantity <= productBatch.quantity) {
-              // Trừ số lượng sản phẩm trong product to batch
-              await models.ProductToBatch.increment("quantity", {
-                by: -remainQuantity,
-                where: {id: productBatch.id},
-                transaction: t,
-              });
-              // Ghi log đã trừ đi số lượng của productUnitId nào?
-              selectedProductUnitQuantityMapping[productBatch.productUnitId] =
-                  remainQuantity;
-              remainQuantity = 0;
-            } else {
-              await models.ProductToBatch.increment("quantity", {
-                by: -productBatch.quantity,
-                where: {id: productBatch.id},
-                transaction: t,
-              });
-              // Ghi log đã trừ đi số lượng của productUnitId nào?
-              selectedProductUnitQuantityMapping[productBatch.productUnitId] =
-                  productBatch.quantity;
-              remainQuantity -= productBatch.quantity;
-            }
-
-            if (remainQuantity <= 0) break;
-
-            remainQuantity = +formatDecimalTwoAfterPoint(
-                (remainQuantity * productBatchInstance.exchangeValue) /
-                productUnit.exchangeValue
-            );
-          }
-        }
-
-
-      }
-      productItems.push(await models.OrderProduct.create(
+      const orderProduct = await models.OrderProduct.create(
           {
             orderId: newOrder.id,
             productId: item.productId,
@@ -733,7 +586,36 @@ async function handleCreateOrder(order, loginUser) {
             createdAt: new Date(),
             comboId: null,
           },
-          {transaction: t}));
+          {transaction: t})
+      productItems.push(orderProduct);
+      if (findProduct.isBatchExpireControl) {
+        for (const _batch of item.batches) {
+          const responseReadBatch = await readBatch(_batch.id, loginUser);
+          if (responseReadBatch.error) {
+            return responseReadBatch;
+          }
+          await models.OrderProductBatch.create({
+            orderProductId: orderProduct.id,
+            batchId: _batch.id,
+            quantity: _batch.quantity
+          }, {transaction: t})
+          const batch = responseReadBatch.data
+          if ( batch.quantity < _batch.quantity * productUnit.exchangeValue) {
+            throw Error(
+                JSON.stringify({
+                  error: true,
+                  code: HttpStatusCode.BAD_REQUEST,
+                  message: `Sản phẩm (${findProduct.code}) không đủ số lượng tồn`,
+                })
+            );
+          }
+          await models.Batch.increment({
+            quantity: -_batch.quantity * productUnit.exchangeValue
+          }, {where: {
+              id: _batch.id
+            }, transaction : t})
+        }
+      }
     }
 
     let discountAmount = 0;
@@ -842,6 +724,7 @@ export async function createOrder(order, loginUser) {
   try {
     return await handleCreateOrder(order, loginUser);
   } catch (e) {
+    console.error(e);
     let errorRes = {};
     try {
       errorRes = JSON.parse(e.message);

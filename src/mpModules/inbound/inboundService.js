@@ -161,6 +161,26 @@ const inboundProductIncludes = [
       },
     ],
   },
+  {
+    model: models.InboundProductBatch,
+    as: "batches",
+    attributes: [
+      "id",
+      "quantity",
+    ],
+    include: [
+      {
+        model: models.Batch,
+        as: "batch",
+        attributes: [
+          "id",
+          "name",
+          "quantity",
+          "expiryDate",
+        ]
+      }
+    ]
+  }
 ];
 
 export async function indexInbounds(params, loginUser) {
@@ -405,7 +425,7 @@ export async function handleCreateInbound(inbound, loginUser) {
         discount: inbound.discount || 0,
         debt: inbound.debt || 0,
         paid: inbound.paid || 0,
-        status: inboundStatus.TRASH,
+        status: inboundStatus.SUCCEED,
         description: inbound.description,
         storeId: loginUser.storeId,
         branchId: inbound.branchId,
@@ -478,6 +498,10 @@ export async function handleCreateInbound(inbound, loginUser) {
           storeId: loginUser.storeId,
           branchId: inbound.branchId,
           inboundId: newInbound.id,
+          quantity: inbound.totalQuantity,
+          price: inbound.importPrice,
+          discount: inbound.discount,
+          productUnitId: item.productUnitId,
           productId: item.productId,
           createdBy: newInbound.createdBy,
         },
@@ -498,59 +522,11 @@ export async function handleCreateInbound(inbound, loginUser) {
                 where: {id: _batch.id},
                 transaction: t
               })
-          const isExistProductBatch = await models.ProductToBatch.findOne({
-            where: {
-              storeId: loginUser.storeId,
-              branchId: inbound.branchId,
-              productId: item.productId,
-              batchId: batch.id,
-              productUnitId: item.productUnitId,
-            },
-          });
-
-          const newProductBatchPayload = {
-            storeId: loginUser.storeId,
-            branchId: inbound.branchId,
-            productId: item.productId,
-            batchId: batch.id,
-            productUnitId: item.productUnitId,
-            expiryDate: batch.expiryDate,
-            createdBy: loginUser.id,
-
-            importPrice: item.importPrice,
-            totalPrice: item.totalPrice,
-            discount: item.discount,
-          };
-
-          // Tồn tại thì cộng số lượng sản phẩm
-          if (isExistProductBatch) {
-            await models.ProductToBatch.increment("quantity", {
-              by: batch.quantity,
-              where: { id: isExistProductBatch.id },
-              transaction: t,
-            });
-          } else {
-            // Chưa tồn tại, thêm mới record
-            await models.ProductToBatch.create(
-              {
-                ...newProductBatchPayload,
+            await models.InboundProductBatch.create({
+                inboundProductId: newInboundProduct.id,
+                batchId: _batch.id,
                 quantity: batch.quantity,
-              },
-              { transaction: t }
-            );
-          }
-
-          await models.ProductBatchHistory.create(
-            {
-              ...newProductBatchPayload,
-              inboundProductId: newInboundProduct.id,
-              quantity: batch.quantity,
-              initQuantity: isExistProductBatch
-                ? isExistProductBatch.quantity
-                : batch.quantity,
-            },
-            { transaction: t }
-          );
+            }, { transaction: t });
         }
 
         if (totalProductQuantity !== item.totalQuantity) {

@@ -4,8 +4,10 @@ import {addInventory, getInventory} from "../inventory/inventoryService";
 import {readCustomer} from "../customer/customerService";
 import {getOrder} from "../order/orderService";
 import {saleReturnAttributes, saleReturnIncludes} from "./attributes";
+import {getFilter} from "./filter";
+import {moveAttributes, moveInclude} from "../move/constant";
 
-const _ = require("lodash");
+
 const Sequelize = require("sequelize");
 const { Op } = Sequelize;
 const models = require("../../../database/models");
@@ -25,100 +27,19 @@ const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { accountTypes, logActions } = require("../../helpers/choices");
 const { createUserTracking } = require("../behavior/behaviorService");
 
-
-
 export async function indexList(params, loginUser) {
-  const {
-    page = 1,
-    limit = 10,
-    keyword = "",
-    code = "",
-    userId,
-    branchId,
-    storeId,
-    createdAt = [],
-    status,
-    statuses = [],
-    paymentType,
-    creatorId,
-    supplierId,
-  } = params;
-
-  const query = {
-    attributes: saleReturnAttributes,
-    offset: +limit * (+page - 1),
-    include: saleReturnIncludes,
-    limit: +limit,
-    order: [["id", "DESC"]],
-  };
-
-  const where = {
-    status: {
-      [Op.ne]: SaleReturnStatus.TRASH,
-    },
-  };
-
-  if (storeId) {
-    where.storeId = storeId;
-  }
-
-  if (branchId) {
-    where.branchId = branchId;
-  }
-
-  if (status) {
-    where.status = status;
-  }
-
-  if (code) {
-    where.code = status;
-  }
-
-  if (keyword) {
-    where.code = {
-      [Op.like]: `%${keyword.trim()}%`,
-    };
-  }
-
-  if (_.isArray(statuses) && statuses.length) {
-    where.status = {
-      [Op.in]: statuses,
-    };
-  }
-
-  if (_.isArray(createdAt) && createdAt.length) {
-    where.createdAt = addFilterByDate(createdAt);
-  }
-
-  if (paymentType) {
-    where.paymentType = paymentType;
-  }
-
-  if (userId) {
-    where.userId = userId;
-  }
-
-  if (creatorId) {
-    where.createdBy = creatorId;
-  }
-
-  if (supplierId) {
-    where.supplierId = supplierId;
-  }
-
-  if (params.dateRange) {
-    try {
-      const dateRange = JSON.parse(params.dateRange);
-      const { startDate, endDate } = dateRange;
-      where.createdAt = addFilterByDate([startDate, endDate]);
-    } catch (e) {}
-  }
-
-  query.where = where;
-
+  const filter = getFilter(params, loginUser);
+  const {limit, page} = params;
   const [items, totalItem] = await Promise.all([
-    models.saleReturn.findAll(query),
-    models.saleReturn.count(query),
+    models.SaleReturn.findAll({
+      attributes: saleReturnAttributes,
+      include: saleReturnIncludes,
+      ...filter,
+      offset: +limit * (+page - 1),
+      limit: +limit,
+      order: [["id", "desc"]]
+    }),
+    models.SaleReturn.count(filter),
   ]);
 
   return {
@@ -233,7 +154,7 @@ export async function indexCreate(saleReturn, loginUser) {
         totalPrice: totalPrice,
         debt: totalPrice - paid,
         paid: paid,
-        status: SaleReturnStatus.TRASH,
+        status: SaleReturnStatus.SUCCEED,
         createdBy: loginUser.id,
       },
       { transaction: t }
@@ -326,7 +247,7 @@ export async function indexCreate(saleReturn, loginUser) {
 
 }
 
-export async function updatesaleReturnStatus(id, payload, loginUser) {
+export async function indexUpdate(id, payload, loginUser) {
   const findsaleReturn = await models.saleReturn.findOne({
     where: {
       id,

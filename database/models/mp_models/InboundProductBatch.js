@@ -1,13 +1,13 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  const OrderProductBatch = sequelize.define('OrderProductBatch', {
+  const InboundProductBatch = sequelize.define('InboundProductBatch', {
     id: {
       type: DataTypes.INTEGER(10).UNSIGNED,
       primaryKey: true,
       autoIncrement: true,
       allowNull: false,
     },
-    orderProductId: {
+    inboundProductId: {
       allowNull: true,
       type: DataTypes.INTEGER(10).UNSIGNED,
     },
@@ -20,22 +20,22 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER(10).UNSIGNED,
     }
   }, {
-    tableName: 'order_product_batch',
+    tableName: 'inbound_product_batch',
     timestamps: true,
     paranoid: true,
   });
-  OrderProductBatch.associate = function (models) {
-    OrderProductBatch.belongsTo(models.Batch, {
+  InboundProductBatch.associate = function (models) {
+    InboundProductBatch.belongsTo(models.Batch, {
       as: 'batch',
       foreignKey: 'batchId',
       targetKey: 'id',
     });
 
-    OrderProductBatch.belongsTo(models.OrderProduct, {
-      as: "orderProduct",
-      foreignKey: "orderProductId",
+    InboundProductBatch.belongsTo(models.InboundToProduct, {
+      as: "inboundProduct",
+      foreignKey: "inboundProductId",
       targetKey: "id",
     });
   };
-  return OrderProductBatch;
+  return InboundProductBatch;
 };

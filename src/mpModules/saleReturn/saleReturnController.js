@@ -1,4 +1,4 @@
-import {indexCreate} from "./saleReturnService";
+import {indexCreate, indexList} from "./saleReturnService";
 
 const _ = require("lodash");
 const {
@@ -10,7 +10,7 @@ const { HttpStatusCode } = require("../../helpers/errorCodes");
 export async function indexController(req, res) {
   try {
     const { loginUser = {} } = req;
-    const result = await indexPurchaseReturns(
+    const result = await indexList(
       {
         ...req.query,
         storeId: loginUser.storeId,
