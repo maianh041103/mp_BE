@@ -20,10 +20,10 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         type: DataTypes.INTEGER(10).UNSIGNED,
       },
-    orderId: {
-        allowNull: false,
-        type: DataTypes.INTEGER(10).UNSIGNED,
-    },
+      orderId: {
+          allowNull: false,
+          type: DataTypes.INTEGER(10).UNSIGNED,
+      },
       branchId: {
         allowNull: false,
         type: DataTypes.INTEGER(10).UNSIGNED,

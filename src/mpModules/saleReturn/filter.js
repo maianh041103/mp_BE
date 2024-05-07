@@ -11,6 +11,7 @@ export function getFilter(params) {
         code = "",
         userId,
         branchId,
+        orderId,
         storeId,
         from,
         to,
@@ -39,6 +40,10 @@ export function getFilter(params) {
 
     if (branchId) {
         where.branchId = branchId;
+    }
+
+    if (orderId) {
+        where.orderId = orderId;
     }
 
     if (status) {
