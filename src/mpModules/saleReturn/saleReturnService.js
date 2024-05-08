@@ -194,7 +194,7 @@ export async function indexCreate(saleReturn, loginUser) {
       await createWarehouseCard({
         code: code,
         type: warehouseStatus.SALE_RETURN,
-        partner: customer.name,
+        partner: customer.fullName,
         productId: item.productId,
         branchId: saleReturn.branchId,
         changeQty: item.quantity * productUnit.exchangeValue,

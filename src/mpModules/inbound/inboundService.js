@@ -305,7 +305,7 @@ export async function readInbound(id, loginUser) {
   }
 
   const products = await models.InboundToProduct.findAll({
-    attributes: ["id", "productId", "inboundId"],
+    attributes: ["id", "productId", "inboundId", "quantity", "productUnitId", "price", "discount"],
     include: inboundProductIncludes,
     where: {
       inboundId: id,
