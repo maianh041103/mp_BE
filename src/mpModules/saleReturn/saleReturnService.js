@@ -193,7 +193,7 @@ export async function indexCreate(saleReturn, loginUser) {
 
       await createWarehouseCard({
         code: code,
-        type: warehouseStatus.INBOUND_RETURN,
+        type: warehouseStatus.SALE_RETURN,
         partner: customer.name,
         productId: item.productId,
         branchId: saleReturn.branchId,
