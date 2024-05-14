@@ -1,6 +1,6 @@
-import {createWarehouseCard} from "../warehouse/warehouseService";
-import {warehouseStatus} from "../warehouse/constant";
-import {addInventory, getInventory} from "../inventory/inventoryService";
+import { createWarehouseCard } from "../warehouse/warehouseService";
+import { warehouseStatus } from "../warehouse/constant";
+import { addInventory, getInventory } from "../inventory/inventoryService";
 
 const _ = require("lodash");
 const Sequelize = require("sequelize");
@@ -132,36 +132,6 @@ const inboundProductIncludes = [
     ],
   },
   {
-    model: models.ProductBatchHistory,
-    as: "productBatchHistories",
-    attributes: [
-      "id",
-      "storeId",
-      "branchId",
-      "productId",
-      "batchId",
-      "productUnitId",
-      "quantity",
-      "expiryDate",
-      "importPrice",
-      "discount",
-      "totalPrice",
-    ],
-    include: [
-      {
-        model: models.Batch,
-        as: "batch",
-        attributes: ["id", "name", "quantity", "expiryDate"],
-        order: [["expiryDate", "ASC"]],
-      },
-      {
-        model: models.ProductUnit,
-        as: "productUnit",
-        attributes: ["id", "unitName", "exchangeValue", "price", "isBaseUnit"],
-      },
-    ],
-  },
-  {
     model: models.InboundProductBatch,
     as: "batches",
     attributes: [
@@ -180,7 +150,12 @@ const inboundProductIncludes = [
         ]
       }
     ]
-  }
+  },
+  {
+    model: models.ProductUnit,
+    as: "productUnit",
+    attributes: ["id", "unitName", "exchangeValue", "price", "isBaseUnit"],
+  },
 ];
 
 export async function indexInbounds(params, loginUser) {
@@ -267,7 +242,7 @@ export async function indexInbounds(params, loginUser) {
       const dateRange = JSON.parse(params.dateRange);
       const { startDate, endDate } = dateRange;
       where.createdAt = addFilterByDate([startDate, endDate]);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   query.where = where;
@@ -416,8 +391,8 @@ export async function handleCreateInbound(inbound, loginUser) {
   }
 
   let newInbound;
-    // Tạo nháp phiếu nhập hàng
- await models.sequelize.transaction(async (t) => {
+  // Tạo nháp phiếu nhập hàng
+  await models.sequelize.transaction(async (t) => {
     // Tạo nháp phiếu nhập hàng
     newInbound = await models.Inbound.create(
       {
@@ -473,16 +448,16 @@ export async function handleCreateInbound(inbound, loginUser) {
           }
           totalProductQuantity += batch.quantity;
           const _batch = responseReadBatch.data;
-          await models.Batch.increment({quantity: item.productUnit.exchangeValue * batch.quantity},
-              {
-                where: {id: _batch.id},
-                transaction: t
-              })
-            await models.InboundProductBatch.create({
-                inboundProductId: newInboundProduct.id,
-                batchId: _batch.id,
-                quantity: batch.quantity,
-            }, { transaction: t });
+          await models.Batch.increment({ quantity: item.productUnit.exchangeValue * batch.quantity },
+            {
+              where: { id: _batch.id },
+              transaction: t
+            })
+          await models.InboundProductBatch.create({
+            inboundProductId: newInboundProduct.id,
+            batchId: _batch.id,
+            quantity: batch.quantity,
+          }, { transaction: t });
         }
 
         if (totalProductQuantity !== item.totalQuantity) {
@@ -495,7 +470,7 @@ export async function handleCreateInbound(inbound, loginUser) {
           );
         }
       }
-      else{
+      else {
         // Đối với sản phẩm (hàng hóa) không có lô
         await models.ProductBatchHistory.create(
           {
@@ -579,11 +554,11 @@ export async function handleCreateInbound(inbound, loginUser) {
         })
         if (!productUnit) {
           throw Error(
-              JSON.stringify({
-                error: true,
-                code: HttpStatusCode.BAD_REQUEST,
-                message: `Không tìm thấy đơn vị thuốc`,
-              })
+            JSON.stringify({
+              error: true,
+              code: HttpStatusCode.BAD_REQUEST,
+              message: `Không tìm thấy đơn vị thuốc`,
+            })
           );
         }
         await createWarehouseCard({
@@ -597,7 +572,7 @@ export async function handleCreateInbound(inbound, loginUser) {
           createdAt: new Date(),
           updatedAt: new Date()
         }, t)
-        await addInventory(inbound.branchId, item.productId,  item.totalQuantity * productUnit.exchangeValue, t)
+        await addInventory(inbound.branchId, item.productId, item.totalQuantity * productUnit.exchangeValue, t)
       }
     }
   });
