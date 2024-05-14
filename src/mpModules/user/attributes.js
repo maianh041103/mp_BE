@@ -1,4 +1,5 @@
 export const userAttributes = [
     "id",
-    "username"
+    "username",
+    "fullName"
 ];
