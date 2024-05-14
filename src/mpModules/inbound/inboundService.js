@@ -378,44 +378,46 @@ export async function handleCreateInbound(inbound, loginUser) {
   if (responseReadSupplier.error) {
     return responseReadSupplier;
   }
+  const supplier = responseReadSupplier.data
   if (responseReadUser.error) {
     return responseReadUser;
   }
   if (responseReadBranch.error) {
     return responseReadBranch;
   }
-
   // Validate thông tin sản phẩm, lô
   for (const item of inbound.products) {
-    const findProduct = await models.Product.findOne({
+    const productExist = await models.Product.findOne({
       where: {
         id: item.productId,
         storeId: loginUser.storeId,
       },
     });
-    if (!findProduct) {
+    if (!productExist) {
       return {
         error: true,
         code: HttpStatusCode.BAD_REQUEST,
         message: `Sản phẩm có id = ${item.productId} không tồn tại`,
       };
     }
+    item.product = productExist
+    const responseReadProductUnit = await readProductUnit(item.productUnitId, loginUser)
+    if (responseReadProductUnit.error) {
+      return responseReadProductUnit;
+    }
+    item.productUnit = responseReadProductUnit.data
     for (const batch of item.batches) {
-      const [responseReadBatch, responseReadProductUnit] = await Promise.all([
-        readBatch(batch.id, loginUser),
-        readProductUnit(item.productUnitId, loginUser),
-      ]);
+      const responseReadBatch = await readBatch(batch.id, loginUser);
       if (responseReadBatch.error) {
         return responseReadBatch;
       }
-      if (responseReadProductUnit.error) {
-        return responseReadProductUnit;
-      }
+      batch.batch = responseReadBatch.data
     }
   }
 
   let newInbound;
-  await models.sequelize.transaction(async (t) => {
+    // Tạo nháp phiếu nhập hàng
+ await models.sequelize.transaction(async (t) => {
     // Tạo nháp phiếu nhập hàng
     newInbound = await models.Inbound.create(
       {
@@ -433,54 +435,8 @@ export async function handleCreateInbound(inbound, loginUser) {
       },
       { transaction: t }
     );
-    const supplier = await models.Supplier.findOne({
-      attributes: ["name"],
-      where: {
-        id: inbound.supplierId,
-        storeId: loginUser.storeId,
-      },
-    });
-    if (!supplier) {
-      throw Error(
-          JSON.stringify({
-            error: true,
-            code: HttpStatusCode.BAD_REQUEST,
-            message: `Nhà cung cấp không hợp lệ`,
-          })
-      );
-    }
-
     let sumPrice = 0;
     for (const item of inbound.products) {
-      var findProduct = await models.Product.findOne({
-        where: {
-          id: item.productId,
-        },
-      });
-      if (!findProduct) {
-        throw Error(
-          JSON.stringify({
-            error: true,
-            code: HttpStatusCode.BAD_REQUEST,
-            message: `Sản phẩm (${item.productId}) không tồn tại`,
-          })
-        );
-      }
-      let findProductUnit = await models.ProductUnit.findOne({
-        where: {
-          id: item.productUnitId
-        }
-      })
-      if (!findProductUnit) {
-        throw Error(
-            JSON.stringify({
-              error: true,
-              code: HttpStatusCode.BAD_REQUEST,
-              message: `Không tìm thấy đơn vị của sản phẩm (${item.productId}) `,
-            })
-        );
-      }
-
       // Tiền sản phẩm = Giá nhập * Số lượng - Giảm giá
       const totalProductPrice =
         item.importPrice * item.totalQuantity - (item.discount || 0);
@@ -489,7 +445,7 @@ export async function handleCreateInbound(inbound, loginUser) {
           JSON.stringify({
             error: true,
             code: HttpStatusCode.BAD_REQUEST,
-            message: `Sản phẩm (${item.productId}) có mã ${findProduct.code} sai thông tin về số lượng, đơn giá, giảm giá và thành tiền`,
+            message: `Sản phẩm (${item.productId}) có mã ${item.product.code} sai thông tin về số lượng, đơn giá, giảm giá và thành tiền`,
           })
         );
       }
@@ -498,9 +454,9 @@ export async function handleCreateInbound(inbound, loginUser) {
           storeId: loginUser.storeId,
           branchId: inbound.branchId,
           inboundId: newInbound.id,
-          quantity: inbound.totalQuantity,
-          price: inbound.importPrice,
-          discount: inbound.discount,
+          quantity: item.totalQuantity,
+          price: item.importPrice,
+          discount: item.discount,
           productUnitId: item.productUnitId,
           productId: item.productId,
           createdBy: newInbound.createdBy,
@@ -509,7 +465,7 @@ export async function handleCreateInbound(inbound, loginUser) {
       );
       let totalProductQuantity = 0;
 
-      if (findProduct.isBatchExpireControl) {
+      if (item.product.isBatchExpireControl) {
         for (const batch of item.batches) {
           const responseReadBatch = await readBatch(batch.id, loginUser);
           if (responseReadBatch.error) {
@@ -517,7 +473,7 @@ export async function handleCreateInbound(inbound, loginUser) {
           }
           totalProductQuantity += batch.quantity;
           const _batch = responseReadBatch.data;
-          await models.Batch.increment({quantity: findProductUnit.exchangeValue * batch.quantity},
+          await models.Batch.increment({quantity: item.productUnit.exchangeValue * batch.quantity},
               {
                 where: {id: _batch.id},
                 transaction: t
@@ -534,7 +490,7 @@ export async function handleCreateInbound(inbound, loginUser) {
             JSON.stringify({
               error: true,
               code: HttpStatusCode.BAD_REQUEST,
-              message: `Sản phẩm có mã ${findProduct.code} có tổng ${totalProductQuantity} sản phẩm trong lô không bằng tổng sổ lượng sản phẩm đã nhập (${item.totalQuantity})`,
+              message: `Sản phẩm có mã ${item.product.code} có tổng ${totalProductQuantity} sản phẩm trong lô không bằng tổng sổ lượng sản phẩm đã nhập (${item.totalQuantity})`,
             })
           );
         }
