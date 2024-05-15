@@ -1,4 +1,5 @@
-import {orderStatuses} from "../order/orderConstant";
+import moment from "moment";
+import { orderStatuses } from "../order/orderConstant";
 
 const { hashPassword } = require("../auth/authService");
 const { createUserTracking } = require("../behavior/behaviorService");
@@ -12,6 +13,7 @@ const models = require("../../../database/models");
 const { checkUniqueValue, randomString } = require("../../helpers/utils");
 const { customerStatus } = require("./customerConstant");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
+const { addFilterByDate } = require("../../helpers/utils");
 const {
   accountTypes,
   logActions,
@@ -146,7 +148,16 @@ export async function indexCustomers(filter) {
     phone = "",
     listCustomer = [],
     storeId,
-    isDefault
+    branchId,
+    isDefault,
+    createdBy,
+    createdAtRange = {},
+    birthdayRange = {},
+    totalDebtRange = {},
+    totalOrderPayRange = {},
+    pointRange = {},
+    type,
+    gender,
   } = filter;
 
   const conditions = {};
@@ -184,11 +195,61 @@ export async function indexCustomers(filter) {
     if (isDefault === true) {
       conditions.isDefault = true;
     } else {
-      conditions.isDefault = {[Op.or]: [false, null]}
+      conditions.isDefault = { [Op.or]: [false, null] }
     }
   }
   if (_.isArray(listCustomer) && listCustomer.length) {
     conditions.id = listCustomer;
+  }
+
+  if (branchId) {
+    const storeIdByBranchId = (await models.Branch.findByPk(branchId)).storeId;
+    if (storeIdByBranchId) {
+      conditions.storeId = storeIdByBranchId;
+    }
+  }
+
+  if (createdBy) {
+    conditions.createdBy = createdBy;
+  }
+
+  if (createdAtRange) {
+    let {
+      createdAtStart = moment().startOf("month"),
+      createdAtEnd = moment().endOf("month")
+    } = createdAtRange;
+    createdAtStart = moment(createdAtStart).format("YYYY-MM-DD");
+    createdAtEnd = moment(createdAtEnd).format("YYYY-MM-DD");
+    conditions.createdAt = addFilterByDate([createdAtStart, createdAtEnd]);
+  }
+
+  if (birthdayRange) {
+    let {
+      birthdayStart = moment().startOf("month"),
+      birthdayEnd = moment().endOf("month")
+    } = birthdayRange;
+    birthdayStart = moment(birthdayStart).format("YYYY-MM-DD");
+    birthdayEnd = moment(birthdayEnd).format("YYYY-MM-DD");
+    conditions.birthday = addFilterByDate([birthdayStart, birthdayEnd]);
+  }
+
+  if (pointRange) {
+    let {
+      pointStart = 0,
+      pointEnd = 10 ** 9
+    } = pointRange;
+
+    conditions.point = {
+      [Op.between]: [pointStart, pointEnd]
+    }
+  }
+
+  if (type) {
+    conditions.type = type;
+  }
+
+  if (gender) {
+    conditions.gender = gender;
   }
 
   const query = {
@@ -202,24 +263,45 @@ export async function indexCustomers(filter) {
   };
 
   const { rows, count } = await models.Customer.findAndCountAll(query);
+  let result = [];
   for (const item of rows) {
-    item.dataValues.totalDebt  = await models.CustomerDebt.sum('debtAmount',{
+    item.dataValues.totalDebt = (await models.CustomerDebt.sum('debtAmount', {
       where: {
         customerId: item.id,
-        debtAmount: {[Op.gt]: 0}
+        debtAmount: { [Op.gt]: 0 }
       }
-    })
-    item.dataValues.totalOrderPay  = await models.Order.sum('totalPrice',{
+    })) || 0;
+
+    item.dataValues.totalOrderPay = (await models.Order.sum('totalPrice', {
       where: {
         customerId: item.id,
         status: orderStatuses.SUCCEED
       }
-    })
+    })) || 0;
+
+    if (totalDebtRange || totalOrderPayRange) {
+      let {
+        totalDebtStart = 0,
+        totalDebtEnd = 10 ** 99
+      } = totalDebtRange;
+      let {
+        totalOrderPayStart = 0,
+        totalOrderPayEnd = 10 ** 99
+      } = totalOrderPayRange;
+
+      if (item.dataValues.totalDebt >= totalDebtStart && item.dataValues.totalDebt <= totalDebtEnd
+        && item.dataValues.totalOrderPay >= totalOrderPayStart && item.dataValues.totalOrderPay <= totalOrderPayEnd) {
+        result.push(item);
+      }
+    } else {
+      result.push(item);
+    }
   }
+
   return {
     success: true,
     data: {
-      items: rows,
+      items: result,
       totalItem: count,
     },
   };
@@ -305,7 +387,7 @@ export async function updateCustomer(id, payload, loginUser) {
       message: "Khách hàng không tồn tại",
     };
   }
-  if(!findCustomer.code && !payload.code){
+  if (!findCustomer.code && !payload.code) {
     payload.code = `${generateCustomerCode(findCustomer.id)}`;
   }
   await models.Customer.update(payload, {
@@ -384,8 +466,8 @@ export async function createDefaultCustomer(storeId) {
   if (!payload.code) {
     payload.code = `${generateCustomerCode(newCustomer.id)}`;
     await models.Customer.update(
-        { code: payload.code },
-        { where: { id: newCustomer.id } }
+      { code: payload.code },
+      { where: { id: newCustomer.id } }
     );
   }
 }

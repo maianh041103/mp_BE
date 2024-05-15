@@ -21,7 +21,7 @@ module.exports = (sequelize, Sequelize) => {
       phone: {
         allowNull: true,
         type: Sequelize.STRING,
-          defaultValue: ""
+        defaultValue: ""
       },
       email: {
         allowNull: true,
@@ -42,7 +42,7 @@ module.exports = (sequelize, Sequelize) => {
       password: {
         allowNull: true,
         type: Sequelize.STRING(2000),
-          defaultValue: "",
+        defaultValue: "",
       },
       groupCustomerId: {
         allowNull: true,
@@ -93,7 +93,7 @@ module.exports = (sequelize, Sequelize) => {
       // Loại tài khoản
       type: {
         allowNull: true,
-        type: Sequelize.INTEGER(1).UNSIGNED, 
+        type: Sequelize.INTEGER(1).UNSIGNED,
         defaultValue: 1, // 1 - Cá nhân, 2 - Công ty
       },
       storeId: {
@@ -113,10 +113,10 @@ module.exports = (sequelize, Sequelize) => {
         allowNull: true,
         type: Sequelize.DATE,
       },
-        isDefault: {
-          type: Sequelize.BOOLEAN,
-            defaultValue: false
-        },
+      isDefault: {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
+      },
       createdAt: {
         allowNull: true,
         type: Sequelize.DATE,
@@ -182,9 +182,9 @@ module.exports = (sequelize, Sequelize) => {
     });
 
     Customer.belongsTo(models.User, {
-        as: "created_by",
-        foreignKey: "createdBy",
-        targetKey: "id"
+      as: "created_by",
+      foreignKey: "createdBy",
+      targetKey: "id"
     })
   };
   return Customer;
