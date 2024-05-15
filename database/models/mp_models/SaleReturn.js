@@ -98,7 +98,11 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "storeId",
       targetKey: "id",
     });
-
+    SaleReturn.belongsTo(models.Order, {
+      as: "order",
+      foreignKey: "orderId",
+      targetKey: "id",
+    });
       SaleReturn.belongsTo(models.Branch, {
       as: "branch",
       foreignKey: "branchId",

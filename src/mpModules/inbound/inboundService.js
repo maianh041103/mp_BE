@@ -202,7 +202,7 @@ export async function indexInbounds(params, loginUser) {
   }
 
   if (code) {
-    where.code = status;
+    where.code = code;
   }
 
   if (keyword) {
