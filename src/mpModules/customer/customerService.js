@@ -302,7 +302,7 @@ export async function indexCustomers(filter) {
     success: true,
     data: {
       items: result,
-      totalItem: count,
+      totalItem: result.length,
     },
   };
 }
