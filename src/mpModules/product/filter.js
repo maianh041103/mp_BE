@@ -1,7 +1,7 @@
-import {productAttributes, productIncludes} from "./constant";
+import { productAttributes, productIncludes } from "./constant";
 import models from "../../../database/models";
-import {productStatisticFilter} from "../productStatistic/productStatisticService";
-import {Op} from "sequelize";
+import { productStatisticFilter } from "../productStatistic/productStatisticService";
+import { Op } from "sequelize";
 const _ = require("lodash");
 export async function queryFilter(params) {
     const {
@@ -124,6 +124,13 @@ export async function queryFilter(params) {
         where.id = tagToProducts;
     }
 
+    const code = keyword.trim();
+    const productIdByCodeProductUnit = ((await models.ProductUnit.findOne({
+        where: {
+            code: code
+        }
+    })).productId) || -1;
+
     if (keyword) {
         where[Op.or] = {
             name: {
@@ -132,8 +139,8 @@ export async function queryFilter(params) {
             slug: {
                 [Op.like]: `%${keyword.trim()}%`,
             },
-            code: {
-                [Op.like]: `%${keyword.trim()}%`,
+            id: {
+                [Op.like]: productIdByCodeProductUnit,
             },
         };
     }
