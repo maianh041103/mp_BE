@@ -48,7 +48,7 @@ module.exports = (sequelize, DataTypes) => {
     tableName: 'provinces',
     timestamps: false
   });
-  Province.associate = function(models) {
+  Province.associate = function (models) {
     // associations can be defined here
     Province.hasMany(models.District, {
       as: 'districts',

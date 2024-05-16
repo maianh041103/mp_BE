@@ -1,6 +1,5 @@
 import moment from "moment";
 import { orderStatuses } from "../order/orderConstant";
-
 const { hashPassword } = require("../auth/authService");
 const { createUserTracking } = require("../behavior/behaviorService");
 // const {
@@ -10,6 +9,7 @@ const _ = require("lodash");
 const Sequelize = require("sequelize");
 const { Op } = Sequelize;
 const models = require("../../../database/models");
+const sequelize = models.sequelize
 const { checkUniqueValue, randomString } = require("../../helpers/utils");
 const { customerStatus } = require("./customerConstant");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
@@ -41,7 +41,13 @@ const customerAttributes = [
   "storeId",
   "createdAt",
   "createdBy",
-  "note"
+  "note",
+  [Sequelize.literal(`(SELECT COALESCE(SUM(debtAmount), 0) 
+  FROM customer_debts 
+  WHERE Customer.id = customer_debts.customerId)`), 'totalDebt'],
+  [Sequelize.literal(`(SELECT COALESCE(SUM(totalPrice), 0) 
+  FROM orders 
+  WHERE Customer.id = orders.customerId and status = 'SUCCEED')`), 'totalOrderPay'],
 ];
 
 const customerIncludes = [
@@ -74,7 +80,7 @@ const customerIncludes = [
     model: models.User,
     as: "created_by",
     attributes: ["id", "username"],
-  },
+  }
 ];
 
 export async function customerFilter(params) {
@@ -252,57 +258,46 @@ export async function indexCustomers(filter) {
     conditions.gender = gender;
   }
 
-  const query = {
+
+  let {
+    totalDebtStart = -1,
+    totalDebtEnd = 10 ** 99
+  } = totalDebtRange;
+  let {
+    totalOrderPayStart = -1,
+    totalOrderPayEnd = 10 ** 99
+  } = totalOrderPayRange;
+
+  let query = {
     attributes: customerAttributes,
     include: customerIncludes,
     distinct: true,
     where: conditions,
+    having: {
+      totalDebt: {
+        [Op.and]: {
+          [Op.lt]: totalDebtEnd,
+          [Op.gt]: totalDebtStart
+        }
+      },
+      totalOrderPay: {
+        [Op.and]: {
+          [Op.gt]: totalOrderPayStart,
+          [Op.lt]: totalOrderPayEnd
+        }
+      }
+    },
     limit: +limit,
     offset: +limit * (+page - 1),
-    order: [["id", "DESC"]],
+    order: [["id", "DESC"]]
   };
 
-  const { rows, count } = await models.Customer.findAndCountAll(query);
-  let result = [];
-  for (const item of rows) {
-    item.dataValues.totalDebt = (await models.CustomerDebt.sum('debtAmount', {
-      where: {
-        customerId: item.id,
-        debtAmount: { [Op.gt]: 0 }
-      }
-    })) || 0;
-
-    item.dataValues.totalOrderPay = (await models.Order.sum('totalPrice', {
-      where: {
-        customerId: item.id,
-        status: orderStatuses.SUCCEED
-      }
-    })) || 0;
-
-    if (totalDebtRange || totalOrderPayRange) {
-      let {
-        totalDebtStart = 0,
-        totalDebtEnd = 10 ** 99
-      } = totalDebtRange;
-      let {
-        totalOrderPayStart = 0,
-        totalOrderPayEnd = 10 ** 99
-      } = totalOrderPayRange;
-
-      if (item.dataValues.totalDebt >= totalDebtStart && item.dataValues.totalDebt <= totalDebtEnd
-        && item.dataValues.totalOrderPay >= totalOrderPayStart && item.dataValues.totalOrderPay <= totalOrderPayEnd) {
-        result.push(item);
-      }
-    } else {
-      result.push(item);
-    }
-  }
+  const rows = await models.Customer.findAll(query);
 
   return {
     success: true,
     data: {
-      items: result,
-      totalItem: result.length,
+      items: rows
     },
   };
 }

@@ -185,6 +185,12 @@ module.exports = (sequelize, Sequelize) => {
       as: "created_by",
       foreignKey: "createdBy",
       targetKey: "id"
+    });
+
+    Customer.hasMany(models.CustomerDebt, {
+      as: "customerDebt",
+      foreignKey: "customerId",
+      sourceKey: 'id',
     })
   };
   return Customer;
