@@ -169,6 +169,7 @@ const orderProductIncludes = [
     model: models.ProductUnit,
     as: "productUnit",
     attributes: ["id", "unitName", "exchangeValue", "price", "isBaseUnit"],
+    paranoid: false
   },
   {
     model: models.Product,
@@ -359,7 +360,7 @@ export async function indexOrders(params, loginUser) {
         comboId: {
           [Op.eq]: null,
         },
-      },
+      }
     });
     item.dataValues.products = products;
     item.dataValues.totalProducts = products.length;

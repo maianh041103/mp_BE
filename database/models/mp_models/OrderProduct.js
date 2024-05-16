@@ -110,7 +110,7 @@ module.exports = (sequelize, DataTypes) => {
     });
 
     OrderProduct.hasMany(models.OrderProductBatch, {
-        as: "batches",
+      as: "batches",
       foreignKey: "orderProductId",
       sourceKey: "id",
     })
