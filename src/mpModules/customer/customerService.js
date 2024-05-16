@@ -276,14 +276,14 @@ export async function indexCustomers(filter) {
     having: {
       totalDebt: {
         [Op.and]: {
-          [Op.lt]: totalDebtEnd,
-          [Op.gt]: totalDebtStart
+          [Op.lte]: totalDebtEnd,
+          [Op.gte]: totalDebtStart
         }
       },
       totalOrderPay: {
         [Op.and]: {
-          [Op.gt]: totalOrderPayStart,
-          [Op.lt]: totalOrderPayEnd
+          [Op.gte]: totalOrderPayStart,
+          [Op.lte]: totalOrderPayEnd
         }
       }
     },
