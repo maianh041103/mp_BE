@@ -301,7 +301,7 @@ export async function indexCustomers(filter) {
     success: true,
     data: {
       items: rows,
-      count: count
+      totalItem: count
     },
   };
 }
