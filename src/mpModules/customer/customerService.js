@@ -44,7 +44,7 @@ const customerAttributes = [
   "note",
   [Sequelize.literal(`(SELECT COALESCE(SUM(debtAmount), 0) 
   FROM customer_debts 
-  WHERE Customer.id = customer_debts.customerId)`), 'totalDebt'],
+  WHERE Customer.id = customer_debts.customerId and customer_debts.debtAmount >= 0)`), 'totalDebt'],
   [Sequelize.literal(`(SELECT COALESCE(SUM(totalPrice), 0) 
   FROM orders 
   WHERE Customer.id = orders.customerId and status = 'SUCCEED')`), 'totalOrderPay'],
@@ -154,7 +154,6 @@ export async function indexCustomers(filter) {
     phone = "",
     listCustomer = [],
     storeId,
-    branchId,
     isDefault,
     createdBy,
     createdAtRange = {},
@@ -208,34 +207,23 @@ export async function indexCustomers(filter) {
     conditions.id = listCustomer;
   }
 
-  if (branchId) {
-    const storeIdByBranchId = (await models.Branch.findByPk(branchId)).storeId;
-    if (storeIdByBranchId) {
-      conditions.storeId = storeIdByBranchId;
-    }
-  }
-
   if (createdBy) {
     conditions.createdBy = createdBy;
   }
 
   if (createdAtRange) {
     let {
-      createdAtStart = moment().startOf("month"),
-      createdAtEnd = moment().endOf("month")
+      createdAtStart,
+      createdAtEnd
     } = createdAtRange;
-    createdAtStart = moment(createdAtStart).format("YYYY-MM-DD");
-    createdAtEnd = moment(createdAtEnd).format("YYYY-MM-DD");
     conditions.createdAt = addFilterByDate([createdAtStart, createdAtEnd]);
   }
 
   if (birthdayRange) {
     let {
-      birthdayStart = moment().startOf("month"),
-      birthdayEnd = moment().endOf("month")
+      birthdayStart,
+      birthdayEnd
     } = birthdayRange;
-    birthdayStart = moment(birthdayStart).format("YYYY-MM-DD");
-    birthdayEnd = moment(birthdayEnd).format("YYYY-MM-DD");
     conditions.birthday = addFilterByDate([birthdayStart, birthdayEnd]);
   }
 
@@ -301,7 +289,7 @@ export async function indexCustomers(filter) {
     success: true,
     data: {
       items: rows,
-      totalItem: count
+      totalItem: count || 0
     },
   };
 }
