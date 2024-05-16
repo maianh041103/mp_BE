@@ -56,7 +56,7 @@ module.exports = (sequelize, Sequelize) => {
     businessRegistrationNumber: {
       allowNull: false,
       type: Sequelize.STRING
-    },   
+    },
     expiredDate: {
       allowNull: true,
       type: Sequelize.DATE
@@ -91,7 +91,7 @@ module.exports = (sequelize, Sequelize) => {
     timestamps: true,
     paranoid: true,
   });
-  
+
   Store.associate = function (models) {
     Store.belongsTo(models.Province, {
       as: 'province',

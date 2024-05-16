@@ -1,5 +1,5 @@
-import {SALES_CONCERN} from "./contant";
-import {groupByField, getFilter} from "./util";
+import { SALES_CONCERN } from "./contant";
+import { groupByField, getFilter } from "./util";
 
 const moment = require("moment");
 const { addFilterByDate } = require("../../helpers/utils");
@@ -112,8 +112,8 @@ export async function indexRevenuesReport(params, loginUser) {
       6: "T7",
     }
     const result = {};
-    for(const obj of items){
-      if(result[mapDays[moment(obj.startDate).day() % 7]]){
+    for (const obj of items) {
+      if (result[mapDays[moment(obj.startDate).day() % 7]]) {
         result[mapDays[moment(obj.startDate).day() % 7]] += obj.revenue;
         continue;
       }
