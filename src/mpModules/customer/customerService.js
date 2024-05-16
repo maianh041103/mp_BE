@@ -44,7 +44,7 @@ const customerAttributes = [
   "note",
   [Sequelize.literal(`(SELECT COALESCE(SUM(debtAmount), 0) 
   FROM customer_debts 
-  WHERE Customer.id = customer_debts.customerId)`), 'totalDebt'],
+  WHERE Customer.id = customer_debts.customerId and customer_debts.debtAmount >= 0)`), 'totalDebt'],
   [Sequelize.literal(`(SELECT COALESCE(SUM(totalPrice), 0) 
   FROM orders 
   WHERE Customer.id = orders.customerId and status = 'SUCCEED')`), 'totalOrderPay'],
