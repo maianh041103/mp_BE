@@ -210,7 +210,7 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "createdBy",
       targetKey: "id",
     });
-
+  
     Order.belongsTo(models.Customer, {
       as: "customer",
       foreignKey: "customerId",
@@ -222,7 +222,11 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "orderId",
       sourceKey: "id",
     });
-
+    Order.hasMany(models.SaleReturn, {
+      as: "saleReturn",
+      foreignKey: "orderId",
+      sourceKey: "id",
+    });
     Order.hasMany(models.OrderLog, {
       as: "orderLogs",
       foreignKey: "orderId",
