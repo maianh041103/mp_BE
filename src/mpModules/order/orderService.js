@@ -1,8 +1,8 @@
-import {createWarehouseCard} from "../warehouse/warehouseService";
-import {warehouseStatus} from "../warehouse/constant";
-import {addInventory, getInventory} from "../inventory/inventoryService";
-import {createOrderPayment} from "./OrderPaymentService";
-import {raiseBadRequestError} from "../../helpers/exception";
+import { createWarehouseCard } from "../warehouse/warehouseService";
+import { warehouseStatus } from "../warehouse/constant";
+import { addInventory, getInventory } from "../inventory/inventoryService";
+import { createOrderPayment } from "./OrderPaymentService";
+import { raiseBadRequestError } from "../../helpers/exception";
 
 const moment = require("moment");
 const {
@@ -154,7 +154,7 @@ const orderAttributes = [
   "isVatInvoice",
   "status",
   "createdAt",
-    "createdBy"
+  "createdBy"
 ];
 
 const productAttributes = ["name", "shortName", "code", "barCode", "imageId"];
@@ -164,6 +164,7 @@ const orderProductIncludes = [
     model: models.ProductUnit,
     as: "productUnit",
     attributes: ["id", "unitName", "exchangeValue", "price", "isBaseUnit"],
+    paranoid: false
   },
   {
     model: models.Product,
@@ -247,9 +248,9 @@ export async function indexOrders(params, loginUser) {
   }
 
   if (keyword) {
-      where.code = {
-        [Op.like]: `%${keyword.trim()}%`,
-      };
+    where.code = {
+      [Op.like]: `%${keyword.trim()}%`,
+    };
   }
 
   // Tìm kiếm theo trạng thái đơn hàng
@@ -286,7 +287,7 @@ export async function indexOrders(params, loginUser) {
   }
 
   if (_.isArray(customerIds) && customerIds.length) {
-    where.customerId = {[Op.in]: customerIds}
+    where.customerId = { [Op.in]: customerIds }
   }
 
   // Tìm kiếm theo nhóm khách hàng
@@ -353,7 +354,7 @@ export async function indexOrders(params, loginUser) {
         comboId: {
           [Op.eq]: null,
         },
-      },
+      }
     });
     item.dataValues.products = products;
     item.dataValues.totalProducts = products.length;
@@ -519,11 +520,11 @@ async function handleCreateOrder(order, loginUser) {
       });
       if (!findProduct) {
         throw Error(
-            JSON.stringify({
-              error: true,
-              code: HttpStatusCode.BAD_REQUEST,
-              message: `Sản phẩm (${item.productId}) không tồn tại`,
-            })
+          JSON.stringify({
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Sản phẩm (${item.productId}) không tồn tại`,
+          })
         );
       }
       const productUnit = await models.ProductUnit.findOne({
@@ -535,11 +536,11 @@ async function handleCreateOrder(order, loginUser) {
       });
       if (!productUnit) {
         throw Error(
-            JSON.stringify({
-              error: true,
-              code: HttpStatusCode.BAD_REQUEST,
-              message: `Đơn vị sản phẩm không tồn tại`,
-            })
+          JSON.stringify({
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Đơn vị sản phẩm không tồn tại`,
+          })
         );
       }
       totalPrice += productUnit.price * item.quantity;
@@ -547,11 +548,11 @@ async function handleCreateOrder(order, loginUser) {
       const inventory = await getInventory(order.branchId, item.productId)
       if (inventory < item.quantity * productUnit.exchangeValue) {
         throw Error(
-            JSON.stringify({
-              error: true,
-              code: HttpStatusCode.BAD_REQUEST,
-              message: `Sản phẩm ${findProduct.name} không đủ số lượng`,
-            })
+          JSON.stringify({
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Sản phẩm ${findProduct.name} không đủ số lượng`,
+          })
         );
       }
 
@@ -568,25 +569,25 @@ async function handleCreateOrder(order, loginUser) {
       }, t)
       await addInventory(order.branchId, item.productId, -item.quantity * productUnit.exchangeValue, t)
       const orderProduct = await models.OrderProduct.create(
-          {
-            orderId: newOrder.id,
-            productId: item.productId,
-            productUnitId: productUnit.id,
-            productUnitData: JSON.stringify(productUnit),
-            price: +productUnit.price * +item.quantity,
-            quantityBaseUnit: +productUnit.exchangeValue * +item.quantity,
-            quantity: item.quantity,
-            discount: 0,
-            primePrice: findProduct.primePrice,
-            userId: newOrder.userId,
-            customerId: newOrder.customerId,
-            groupCustomerId: newOrder.groupCustomerId,
-            createdBy: newOrder.createdBy,
-            updatedBy: newOrder.createdBy,
-            createdAt: new Date(),
-            comboId: null,
-          },
-          {transaction: t})
+        {
+          orderId: newOrder.id,
+          productId: item.productId,
+          productUnitId: productUnit.id,
+          productUnitData: JSON.stringify(productUnit),
+          price: +productUnit.price * +item.quantity,
+          quantityBaseUnit: +productUnit.exchangeValue * +item.quantity,
+          quantity: item.quantity,
+          discount: 0,
+          primePrice: findProduct.primePrice,
+          userId: newOrder.userId,
+          customerId: newOrder.customerId,
+          groupCustomerId: newOrder.groupCustomerId,
+          createdBy: newOrder.createdBy,
+          updatedBy: newOrder.createdBy,
+          createdAt: new Date(),
+          comboId: null,
+        },
+        { transaction: t })
       productItems.push(orderProduct);
       if (findProduct.isBatchExpireControl) {
         for (const _batch of item.batches) {
@@ -598,22 +599,24 @@ async function handleCreateOrder(order, loginUser) {
             orderProductId: orderProduct.id,
             batchId: _batch.id,
             quantity: _batch.quantity
-          }, {transaction: t})
+          }, { transaction: t })
           const batch = responseReadBatch.data
-          if ( batch.quantity < _batch.quantity * productUnit.exchangeValue) {
+          if (batch.quantity < _batch.quantity * productUnit.exchangeValue) {
             throw Error(
-                JSON.stringify({
-                  error: true,
-                  code: HttpStatusCode.BAD_REQUEST,
-                  message: `Sản phẩm (${findProduct.code}) không đủ số lượng tồn`,
-                })
+              JSON.stringify({
+                error: true,
+                code: HttpStatusCode.BAD_REQUEST,
+                message: `Sản phẩm (${findProduct.code}) không đủ số lượng tồn`,
+              })
             );
           }
           await models.Batch.increment({
             quantity: -_batch.quantity * productUnit.exchangeValue
-          }, {where: {
+          }, {
+            where: {
               id: _batch.id
-            }, transaction : t})
+            }, transaction: t
+          })
         }
       }
     }
@@ -682,7 +685,7 @@ async function handleCreateOrder(order, loginUser) {
         customerId: newOrder.customerId,
         orderId: newOrder.id,
         type: 'ORDER'
-      }, {transaction: t})
+      }, { transaction: t })
     }
     const code = generateOrderCode(newOrder.id)
     // Update total price
@@ -708,7 +711,7 @@ async function handleCreateOrder(order, loginUser) {
     await createOrderPayment(newOrder, t)
     for (const orderProduct of productItems) {
       const weight = orderProduct.price / totalItemPrice
-      await models.OrderProduct.update({discount: Math.round(weight * discountAmount)}, {where: {id: orderProduct.id}, transaction: t})
+      await models.OrderProduct.update({ discount: Math.round(weight * discountAmount) }, { where: { id: orderProduct.id }, transaction: t })
     }
   });
 
@@ -745,7 +748,7 @@ export async function createOrder(order, loginUser) {
   }
 }
 
-export async function updateOrder(id, order)  {
+export async function updateOrder(id, order) {
   const findOrder = await models.Order.findByPk(id);
   if (findOrder) {
     if (
@@ -959,7 +962,7 @@ export async function indexProductCustomers(id) {
 export async function getOrder(orderId) {
   const order = await models.Order.findOne({
     attributes: ["id", "totalPrice", "customerId", "cashOfCustomer"],
-    where: {id: orderId}
+    where: { id: orderId }
   })
   if (!order) {
     raiseBadRequestError("Đơn hàng không tồn tại")
