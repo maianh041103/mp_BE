@@ -260,11 +260,11 @@ export async function indexCustomers(filter) {
 
 
   let {
-    totalDebtStart = -1,
+    totalDebtStart = -(10 ** 99),
     totalDebtEnd = 10 ** 99
   } = totalDebtRange;
   let {
-    totalOrderPayStart = -1,
+    totalOrderPayStart = -(10 ** 99),
     totalOrderPayEnd = 10 ** 99
   } = totalOrderPayRange;
 
@@ -292,12 +292,16 @@ export async function indexCustomers(filter) {
     order: [["id", "DESC"]]
   };
 
-  const rows = await models.Customer.findAll(query);
+  const [rows, count] = await Promise.all([
+    models.Customer.findAll(query),
+    models.Customer.count(query)
+  ]);
 
   return {
     success: true,
     data: {
-      items: rows
+      items: rows,
+      count: count
     },
   };
 }
