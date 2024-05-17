@@ -1,3 +1,4 @@
+import { getCustomer } from "../customer/customerService";
 import {getOrder, readOrder} from "./orderService";
 
 const models = require("../../../database/models");
@@ -34,9 +35,28 @@ export async function indexPayment(params, loginUser) {
         data: payments
     }
 }
-
+const userAttributes = [
+    "id",
+    "username",
+    "email",
+    "fullName",
+    "avatarId",
+    "birthday",
+    "gender",
+    "phone",
+    "roleId",
+    "position",
+    "lastLoginAt",
+    "createdAt",
+    "status",
+  ];
 export async function indexCreatePayment(payment) {
     const order = await getOrder(payment.orderId)
+    const findUser = await models.User.findByPk(order.createdBy, {
+        attributes: ["id", "fullName"], // Thêm thuộc tính "name" vào đây
+        raw: true // Lấy dữ liệu dưới dạng JSON
+    });
+      console.log(findUser)
     await models.sequelize.transaction(async (t) => {
         await models.Order.update({
             cashOfCustomer: order.cashOfCustomer + payment.amount
@@ -45,6 +65,7 @@ export async function indexCreatePayment(payment) {
             amount: payment.amount,
             totalAmount: order.totalPrice ,
             customerId: order.customerId,
+            createdByPeople:findUser.fullName,
             orderId: order.id,
             paymentMethod: payment.paymentMethod,
             createdBy: payment.createdBy,
@@ -70,10 +91,16 @@ export async function createPayment(payment, transaction) {
 
 export async function createOrderPayment(order, amount, transaction) {
     if (order.cashOfCustomer > 0) {
+        const findUser = await models.User.findByPk(order.createdBy, {
+            attributes: ["id", "fullName"], // Thêm thuộc tính "name" vào đây
+            raw: true // Lấy dữ liệu dưới dạng JSON
+        });
+          console.log(findUser)
         await createPayment({
             amount: order.totalPrice <= order.cashOfCustomer ? order.totalPrice : order.cashOfCustomer,
             totalAmount: order.totalPrice,
             customerId: order.customerId,
+            createdByPeople:findUser.fullName,
             orderId: order.id,
             paymentMethod: order.paymentType,
             createdBy: order.createdBy,

@@ -23,6 +23,10 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       type: DataTypes.INTEGER(10).UNSIGNED,
     },
+    createdByPeople: {
+      allowNull: true,
+      type: DataTypes.STRING,
+    },
     orderId: {
       allowNull: false,
       type: DataTypes.INTEGER(10).UNSIGNED,
