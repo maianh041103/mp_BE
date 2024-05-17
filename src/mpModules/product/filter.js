@@ -123,26 +123,28 @@ export async function queryFilter(params) {
         const tagToProducts = await tagToProductFilter({ tag });
         where.id = tagToProducts;
     }
-
-    const code = keyword.trim();
-    const productIdByCodeProductUnit = ((await models.ProductUnit.findOne({
-        where: {
-            code: code
-        }
-    })).productId) || -1;
-
     if (keyword) {
+        const code = keyword.trim();
+        let productId = null;
+        const productIdByCodeProductUnit = ((await models.ProductUnit.findOne({
+            where: {
+                code: code
+            }
+        })));
+        if (productIdByCodeProductUnit) {
+            productId = productIdByCodeProductUnit.productId;
+        }
         where[Op.or] = {
             name: {
                 [Op.like]: `%${keyword.trim()}%`,
             },
             slug: {
                 [Op.like]: `%${keyword.trim()}%`,
-            },
-            id: {
-                [Op.like]: productIdByCodeProductUnit,
-            },
+            }
         };
+        if (productId) {
+            where[Op.or].id = productId;
+        }
     }
 
     if (name) {
