@@ -1,4 +1,5 @@
 import models from "../../../database/models";
+const Sequelize = require("sequelize");
 
 export const productIncludes = [
     {
@@ -117,5 +118,8 @@ export const productAttributes = [
     "expiryPeriod",
     "status",
     "createdAt",
-    "drugCode"
+    "drugCode",
+    [Sequelize.literal(`(SELECT COALESCE(SUM(quantity), 0)
+    FROM inventories 
+    WHERE Product.id = inventories.productId and Product.branchId = inventories.branchId)`), 'inventoryQuantity'],
 ];

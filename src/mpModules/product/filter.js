@@ -1,8 +1,12 @@
-import {productAttributes, productIncludes} from "./constant";
-import models from "../../../database/models";
-import {productStatisticFilter} from "../productStatistic/productStatisticService";
-import {Op} from "sequelize";
+import { productAttributes, productIncludes } from "./constant";
+import models, { Sequelize } from "../../../database/models";
+import { productStatisticFilter } from "../productStatistic/productStatisticService";
+import { Op } from "sequelize";
 const _ = require("lodash");
+import { inventoryService } from "../inventory/inventoryService";
+import { productConstant } from "./productConstant";
+
+
 export async function queryFilter(params) {
     const {
         page = 1,
@@ -20,7 +24,6 @@ export async function queryFilter(params) {
         listProductId = [],
         notEqualId,
         order = [["id", "DESC"]],
-        tag,
         newest,
         bestseller,
         az,
@@ -31,6 +34,7 @@ export async function queryFilter(params) {
         raw = false,
         storeId,
         isSale,
+        filterInventory
     } = params;
 
     const query = {
@@ -119,11 +123,6 @@ export async function queryFilter(params) {
         where.id = listProductId;
     }
 
-    if (tag) {
-        const tagToProducts = await tagToProductFilter({ tag });
-        where.id = tagToProducts;
-    }
-
     if (keyword) {
         where[Op.or] = {
             name: {
@@ -168,6 +167,45 @@ export async function queryFilter(params) {
     }
 
     query.where = where;
+
+    let having = {};
+
+    if (filterInventory) {
+        if (parseInt(filterInventory) === 1) {
+            having = {
+                inventoryQuantity: {
+                    [Op.gt]: Sequelize.col("maxInventory")
+                }
+            }
+            where.maxInventory = {
+                [Op.ne]: null
+            }
+        } else if (parseInt(filterInventory) === 2) {
+
+            having = {
+                inventoryQuantity: {
+                    [Op.lt]: Sequelize.col("minInventory")
+                }
+            }
+            where.minInventory = {
+                [Op.ne]: null
+            }
+        } else if (parseInt(filterInventory) === 3) {
+            having = {
+                inventoryQuantity: {
+                    [Op.gt]: 0
+                }
+            }
+        } else if (parseInt(filterInventory) === 4) {
+            having = {
+                inventoryQuantity: {
+                    [Op.lte]: 0
+                }
+            }
+        }
+    }
+
+    query.having = having;
 
     return query;
 }
