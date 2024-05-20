@@ -122,19 +122,28 @@ export async function queryFilter(params) {
     if (_.isArray(listProductId) && listProductId.length) {
         where.id = listProductId;
     }
-
     if (keyword) {
+        const code = keyword.trim();
+        let productId = null;
+        const productIdByCodeProductUnit = ((await models.ProductUnit.findOne({
+            where: {
+                code: code
+            }
+        })));
+        if (productIdByCodeProductUnit) {
+            productId = productIdByCodeProductUnit.productId;
+        }
         where[Op.or] = {
             name: {
                 [Op.like]: `%${keyword.trim()}%`,
             },
             slug: {
                 [Op.like]: `%${keyword.trim()}%`,
-            },
-            code: {
-                [Op.like]: `%${keyword.trim()}%`,
-            },
+            }
         };
+        if (productId) {
+            where[Op.or].id = productId;
+        }
     }
 
     if (name) {

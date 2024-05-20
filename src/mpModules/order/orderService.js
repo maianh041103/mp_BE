@@ -95,6 +95,11 @@ const orderIncludes = [
     ],
   },
   {
+    model: models.SaleReturn,
+    as: "saleReturn",
+    attributes: ["code"],
+  },
+  {
     model: models.Branch,
     as: "branch",
     attributes: [
@@ -178,6 +183,7 @@ const orderProductIncludes = [
       },
     ],
   },
+
   {
     model: models.OrderProductBatch,
     as: "batches",
@@ -189,7 +195,7 @@ const orderProductIncludes = [
         attributes: ["id", "name", "quantity", "expiryDate"],
       },
     ],
-  },
+  }
 ];
 
 export async function indexOrders(params, loginUser) {

@@ -59,7 +59,7 @@ module.exports = (sequelize, DataTypes) => {
             }
         },
         {
-            tableName: "discountItem",
+            tableName: "discount_items",
             timestamps: false,
         }
     );
