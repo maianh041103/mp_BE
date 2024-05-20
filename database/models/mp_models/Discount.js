@@ -73,7 +73,28 @@ module.exports = (sequelize, DataTypes) => {
         }
     );
 
-    Discount.associate = function (models) { };
+    Discount.associate = function (models) {
+        Discount.hasMany(models.DiscountItem, {
+            as: 'discountItem',
+            foreignKey: 'discountId',
+            sourceKey: 'id',
+        });
+        Discount.hasMany(models.DiscountTime, {
+            as: 'discountTime',
+            foreignKey: 'discountId',
+            sourceKey: 'id',
+        });
+        Discount.hasMany(models.DiscountBranch, {
+            as: 'discountBranch',
+            foreignKey: 'discountId',
+            sourceKey: 'id',
+        });
+        Discount.hasMany(models.DiscountCustomer, {
+            as: 'discountCustomer',
+            foreignKey: 'discountId',
+            sourceKey: 'id',
+        })
+    };
 
     return Discount;
 };

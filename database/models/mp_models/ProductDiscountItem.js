@@ -18,11 +18,11 @@ module.exports = (sequelize, DataTypes) => {
             },
             productId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
-                allowNull: false,
+                allowNull: true,
             },
             groupId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
-                allowNull: false,
+                allowNull: true,
             },
             isCondition: {
                 //True la hàng mua, False là hàng áp dụng

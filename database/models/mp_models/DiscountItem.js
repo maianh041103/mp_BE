@@ -49,7 +49,7 @@ module.exports = (sequelize, DataTypes) => {
                 ),
                 allowNull: true,
             },
-            isGiff: {
+            isGift: {
                 type: DataTypes.BOOLEAN,
                 defaultValue: false,
             },
