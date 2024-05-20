@@ -1,3 +1,4 @@
+import { getCustomer } from "../customer/customerService";
 import {getOrder, readOrder} from "./orderService";
 
 const models = require("../../../database/models");
@@ -24,17 +25,41 @@ export async function indexPayment(params, loginUser) {
     const payments = await models.Payment.findAll({
         offset: +limit * (+page - 1),
         limit: +limit,
+        include: orderIncludes,
         order: [["id", "DESC"]],
         where: {
             orderId: orderId,
         }
+
     })
     return {
         success: true,
         data: payments
     }
 }
-
+const orderIncludes = [
+    {
+      model: models.User,
+      as: "fullnameCreator",
+      attributes: ["id", "fullName", ],
+    
+}
+];
+const userAttributes = [
+    "id",
+    "username",
+    "email",
+    "fullName",
+    "avatarId",
+    "birthday",
+    "gender",
+    "phone",
+    "roleId",
+    "position",
+    "lastLoginAt",
+    "createdAt",
+    "status",
+  ];
 export async function indexCreatePayment(payment) {
     const order = await getOrder(payment.orderId)
     await models.sequelize.transaction(async (t) => {

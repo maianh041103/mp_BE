@@ -23,6 +23,10 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       type: DataTypes.INTEGER(10).UNSIGNED,
     },
+    createdBy: {
+      allowNull: false,
+      type: DataTypes.INTEGER(11).UNSIGNED,
+    },
     orderId: {
       allowNull: false,
       type: DataTypes.INTEGER(10).UNSIGNED,
@@ -51,6 +55,11 @@ module.exports = (sequelize, DataTypes) => {
     Payment.hasMany(models.Order, {
       as: 'order',
       foreignKey: 'orderId',
+      sourceKey: 'id',
+    });
+    Payment.belongsTo(models.User, {
+      as: 'fullnameCreator',
+      foreignKey: 'createdBy',
       sourceKey: 'id',
     });
   };
