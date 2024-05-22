@@ -32,11 +32,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         type: DataTypes.STRING,
       },
-      // Mã thuốc
-      drugCode: {
-        allowNull: false,
-        type: DataTypes.STRING,
-      },
+        // Mã thuốc
+        drugCode: {
+            allowNull: false,
+            type: DataTypes.STRING,
+        },
       // Nhóm sản phẩm
       groupProductId: {
         allowNull: true,
@@ -249,13 +249,13 @@ module.exports = (sequelize, DataTypes) => {
 
     Product.belongsTo(models.Position, {
       as: 'productPosition',
-      foreignKey: 'positionId',
+      foreignKey: 'positionId', 
       targetKey: 'id',
     });
 
     Product.belongsTo(models.CountryProduce, {
       as: 'country',
-      foreignKey: 'countryId',
+      foreignKey: 'countryId', 
       targetKey: 'id',
     });
 
@@ -277,12 +277,11 @@ module.exports = (sequelize, DataTypes) => {
       targetKey: "productId",
     });
 
-    Product.hasMany(models.Inventory, {
-      as: "inventoryQuantity",
-      sourceKey: "id",
-      targetKey: "productId",
-    });
-
+      Product.hasMany(models.Inventory, {
+          as: "inventories",
+          sourceKey: "id",
+          targetKey: "productId",
+      });
   };
   return Product;
 };
