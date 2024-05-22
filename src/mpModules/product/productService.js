@@ -1,8 +1,8 @@
-import {getNextValue} from "./productCodeService";
-import {addInventory, getInventory, newInventory} from "../inventory/inventoryService";
-import {raiseBadRequestError} from "../../helpers/exception";
-import {createWarehouseCard} from "../warehouse/warehouseService";
-import {warehouseStatus} from "../warehouse/constant";
+import { getNextValue } from "./productCodeService";
+import { addInventory, getInventory, newInventory } from "../inventory/inventoryService";
+import { raiseBadRequestError } from "../../helpers/exception";
+import { createWarehouseCard } from "../warehouse/warehouseService";
+import { warehouseStatus } from "../warehouse/constant";
 
 const moment = require("moment");
 const {
@@ -38,8 +38,8 @@ const {
 } = require("../customer/customerConstant");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { accountTypes, logActions } = require("../../helpers/choices");
-const {productIncludes, productAttributes} = require("./constant")
-const {queryFilter} = require("./filter")
+const { productIncludes, productAttributes } = require("./constant")
+const { queryFilter } = require("./filter")
 
 export async function productFilter(params) {
   try {
@@ -67,9 +67,10 @@ export async function countProduct(query) {
 
 export async function indexProducts(params) {
   const query = await queryFilter(params);
+  console.log(query)
   const [items, count] = await Promise.all([
     models.Product.findAll(query),
-    countProduct(query),
+    countProduct(query)
   ]);
   for (const item of items) {
     item.dataValues.inventory = await getInventory(params.branchId, item.id)
@@ -143,15 +144,15 @@ export async function indexProducts(params) {
 function getCode(type) {
   switch (type) {
     case productTypes.THUOC:
-      return  productTypeCharacters.THUOC;
+      return productTypeCharacters.THUOC;
     case productTypes.HANGHOA:
-      return  productTypeCharacters.HANGHOA;
+      return productTypeCharacters.HANGHOA;
     case productTypes.COMBO:
-      return  productTypeCharacters.COMBO;
+      return productTypeCharacters.COMBO;
     case productTypes.DONTHUOC:
-      return  productTypeCharacters.DONTHUOC;
+      return productTypeCharacters.DONTHUOC;
     default:
-      return  "";
+      return "";
   }
 }
 function generateProductCode(type, no) {
@@ -207,7 +208,7 @@ export async function createProduct(product, loginUser) {
       ...(product.type === productTypeCharacters.THUOC && {
         isBatchExpireControl: true,
       }),
-    }, {transaction: t});
+    }, { transaction: t });
     await newInventory(product.branchId, newProduct.id, product.inventory, t)
     if (product.inventory) {
       await createWarehouseCard({
@@ -230,8 +231,8 @@ export async function createProduct(product, loginUser) {
         product.barCode = code
       }
       await models.Product.update(
-          {code: code, barCode: product.barCode},
-          {where: {id: newProduct.id}, transaction: t}
+        { code: code, barCode: product.barCode },
+        { where: { id: newProduct.id }, transaction: t }
       );
     }
 
@@ -264,7 +265,7 @@ export async function createProduct(product, loginUser) {
         }
       }
     }
-    await models.ProductUnit.bulkCreate(productUnits, {transaction: t});
+    await models.ProductUnit.bulkCreate(productUnits, { transaction: t });
     // sendTelegram({ message: 'Tạo thành công sản phẩm:' + JSON.stringify(newProduct) });
   })
   createUserTracking({
@@ -490,23 +491,23 @@ export async function updateProduct(id, product, loginUser) {
         if (!instance.barCode) {
           item.barCode = item.code
         }
-        await models.ProductUnit.update({code: item.code, barCode: item.barCode}, {where: {id: item.id}, transaction: t })
+        await models.ProductUnit.update({ code: item.code, barCode: item.barCode }, { where: { id: item.id }, transaction: t })
       }
       if (item.isBaseUnit) {
         await models.ProductUnit.update(
-            {
-              isBaseUnit: false,
-            },
-            {
-              where: {
-                id: {
-                  [Op.ne]: item.id,
-                },
-                productId: id,
-                branchId: findProduct.branchId,
-                storeId: findProduct.storeId,
-              }, transaction: t
-            }
+          {
+            isBaseUnit: false,
+          },
+          {
+            where: {
+              id: {
+                [Op.ne]: item.id,
+              },
+              productId: id,
+              branchId: findProduct.branchId,
+              storeId: findProduct.storeId,
+            }, transaction: t
+          }
         );
       }
       updatedProductUnits.push(item.id);
@@ -514,19 +515,19 @@ export async function updateProduct(id, product, loginUser) {
 
     if (updatedProductUnits.length) {
       await models.ProductUnit.update(
-          {
-            deletedAt: new Date(),
-          },
-          {
-            where: {
-              id: {
-                [Op.notIn]: updatedProductUnits,
-              },
-              productId: id,
-              branchId: findProduct.branchId,
-              storeId: findProduct.storeId,
-            }, transaction: t
-          }
+        {
+          deletedAt: new Date(),
+        },
+        {
+          where: {
+            id: {
+              [Op.notIn]: updatedProductUnits,
+            },
+            productId: id,
+            branchId: findProduct.branchId,
+            storeId: findProduct.storeId,
+          }, transaction: t
+        }
       );
     }
 
@@ -946,8 +947,8 @@ export async function randomProducts(params) {
 }
 
 export async function indexInventory(id, storeId) {
-  const inventories =  await models.Inventory.findAll({
-    where: {productId: id},
+  const inventories = await models.Inventory.findAll({
+    where: { productId: id },
     attributes: ["id", "quantity", "productId", "branchId"],
     include: [
       {

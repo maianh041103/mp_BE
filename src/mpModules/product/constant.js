@@ -1,4 +1,5 @@
 import models from "../../../database/models";
+const Sequelize = require("sequelize");
 
 export const productIncludes = [
     {
