@@ -119,3 +119,10 @@ export const productAttributes = [
     "createdAt",
     "drugCode"
 ];
+
+export const filterInventories = {
+    VUOTDINHMUC: 1,
+    DUOIDINHMUC: 2,
+    CONHANG: 3,
+    HETHANG: 4
+}
