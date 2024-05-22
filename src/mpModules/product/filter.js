@@ -1,8 +1,41 @@
-import { productAttributes, productIncludes } from "./constant";
+import {filterInventories, productAttributes, productIncludes} from "./constant";
 import models from "../../../database/models";
 import { productStatisticFilter } from "../productStatistic/productStatisticService";
 import { Op } from "sequelize";
+import {getInventory} from "../inventory/inventoryService";
 const _ = require("lodash");
+
+export function getInventoryInclude(branchId, inventoryType) {
+    const invInclude = {
+        model: models.Inventory,
+        as: 'inventories',
+        required: true,
+        where: {
+            branchId: branchId,
+        }
+    }
+    const type = parseInt(inventoryType);
+    if (type === 1) {
+        console.log('DUOIDINHMUC')
+        invInclude.where['quantity'] = {
+            [Op.lte]: models.Sequelize.col("Product.minInventory")
+        }
+    } else if (type === 2) {
+        invInclude.where['quantity'] = {
+            [Op.gte]: models.Sequelize.col("Product.maxInventory")
+        }
+    } else if (type === 3) {
+        invInclude.where['quantity'] = {
+            [Op.gt]: 0
+        }
+    } else if (type === 4) {
+        invInclude.where['quantity'] = {
+            [Op.lte]: 0
+        }
+    }
+    return invInclude;
+}
+
 export async function queryFilter(params) {
     const {
         page = 1,
@@ -31,6 +64,8 @@ export async function queryFilter(params) {
         raw = false,
         storeId,
         isSale,
+        branchId,
+        inventoryType
     } = params;
 
     const query = {
@@ -174,6 +209,10 @@ export async function queryFilter(params) {
         query.order = [["cost", "DESC"]];
     } else if (price == "asc") {
         query.order = [["cost", "ASC"]];
+    }
+    if (branchId) {
+        const invInclude = getInventoryInclude(branchId, inventoryType);
+        include.push(invInclude)
     }
 
     query.where = where;

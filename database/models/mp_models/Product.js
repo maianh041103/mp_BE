@@ -276,6 +276,12 @@ module.exports = (sequelize, DataTypes) => {
       sourceKey: "id",
       targetKey: "productId",
     });
+
+      Product.hasMany(models.Inventory, {
+          as: "inventories",
+          sourceKey: "id",
+          targetKey: "productId",
+      });
   };
   return Product;
 };
