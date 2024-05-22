@@ -4,8 +4,8 @@ create table discounts
 		primary key,
 	code varchar(255) not null,
     name varchar(255) not null,
-	status enum('active','inactive') default 'active' null,
-	note varchar(255) not null,
+	status enum('active','inactive') default 'active' not null,
+	note varchar(255) null,
     target enum('order','product') default 'order' not null,
     type enum('order_price','product_price','gift','loyalty','price_by_buy_number') default 'order_price' not null,
     isMultiple bool default true,
@@ -63,6 +63,8 @@ create table discount_items(
     pointType enum('amount','percent') null,
     isGift bool default false null,
     pointValue int unsigned null,
+	fixedPrice int unsigned null,
+	changeType enum('type_discount','type_price') null,
 	constraint discountItem_ibfk_1
 		foreign key (discountId) references discounts(id)
 )

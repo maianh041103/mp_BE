@@ -56,6 +56,17 @@ module.exports = (sequelize, DataTypes) => {
             pointValue: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: true,
+            },
+            fixedPrice: {
+                type: DataTypes.INTEGER(11).UNSIGNED,
+                allowNull: true
+            },
+            changeType: {
+                type: DataTypes.ENUM(
+                    discountContant.discountDiscountType.TYPE_PRICE,
+                    discountContant.discountDiscountType.TYPE_DISCOUNT,
+                ),
+                allowNull: true,
             }
         },
         {

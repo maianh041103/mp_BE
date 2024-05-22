@@ -18,5 +18,7 @@ export const discountType = {
 
 export const discountDiscountType = {
     AMOUNT: "amount", //số lượng
-    PERCENT: "percent"
+    PERCENT: "percent",
+    TYPE_PRICE: "type_price",
+    TYPE_DISCOUNT: "type_discount"
 }

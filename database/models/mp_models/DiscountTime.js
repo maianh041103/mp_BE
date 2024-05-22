@@ -16,11 +16,11 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false,
             },
-            from: {
+            dateFrom: {
                 type: Sequelize.DATE,
                 allowNull: false,
             },
-            to: {
+            dateTo: {
                 type: Sequelize.DATE,
                 allowNull: false
             },
@@ -46,7 +46,7 @@ module.exports = (sequelize, DataTypes) => {
                 type: Sequelize.BOOLEAN,
                 defaultValue: false
             },
-            isBirthDay: {
+            isBirthday: {
                 type: Sequelize.BOOLEAN,
                 defaultValue: false
             }
