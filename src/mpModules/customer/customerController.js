@@ -1,5 +1,5 @@
-import {readDefaultCustomer} from "./customerService";
-import {indexOrderDebt} from "./CustomerDebtService";
+import { readDefaultCustomer } from "./customerService";
+import { indexOrderDebt } from "./CustomerDebtService";
 
 const _ = require("lodash");
 const moment = require("moment");
@@ -51,7 +51,7 @@ export async function getTotalDebtController(req, res) {
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
     res.json(
-        respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
     );
   }
 }
@@ -64,7 +64,7 @@ export async function getDefaultCustomer(req, res) {
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
     res.json(
-        respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
     );
   }
 }
