@@ -25,7 +25,7 @@ const discountIncludes = [
     {
         model: models.DiscountTime,
         as: "discountTime",
-        attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthDay"]
+        attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday"]
     },
     {
         model: models.DiscountBranch,

@@ -85,7 +85,7 @@ create table discount_times(
     byHour nvarchar(255) null,
     byWeekDay nvarchar(255) null,
     isWarning bool default false null,
-    isBirthDay bool default false null,
+    isBirthday bool default false null,
 	constraint discountTime_ibfk_1
 		foreign key (discountId) references discounts(id)
 )
