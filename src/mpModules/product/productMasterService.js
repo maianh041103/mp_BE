@@ -140,7 +140,6 @@ export async function indexMasterSaleProducts(params) {
     }),
     models.ProductUnit.count({ where }),
   ]);
-
   for (const item of items) {
     item.dataValues.productUnit = {
       id: item.id,
