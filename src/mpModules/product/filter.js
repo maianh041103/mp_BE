@@ -159,11 +159,13 @@ export async function queryFilter(params) {
         where.id = tagToProducts;
     }
     if (keyword) {
-        const code = keyword.trim();
         let productId = null;
         const productIdByCodeProductUnit = ((await models.ProductUnit.findOne({
             where: {
-                code: code
+                code: {
+                    [Op.like]: `%${keyword.trim()}%`,
+                },
+                storeId: storeId
             }
         })));
         if (productIdByCodeProductUnit) {
