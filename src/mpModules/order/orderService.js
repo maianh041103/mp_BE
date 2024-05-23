@@ -159,7 +159,8 @@ const orderAttributes = [
   "isVatInvoice",
   "status",
   "createdAt",
-  "createdBy"
+  "createdBy",
+  "canReturn"
 ];
 
 const productAttributes = ["name", "shortName", "code", "barCode", "imageId"];
@@ -207,6 +208,7 @@ export async function indexOrders(params, loginUser) {
     phone = "",
     userId,
     branchId,
+    canReturn,
     storeId,
     status,
     userIds = [],
@@ -238,7 +240,10 @@ export async function indexOrders(params, loginUser) {
   if (storeId) {
     where.storeId = storeId;
   }
-
+  if (canReturn !== undefined && typeof canReturn === 'boolean') {
+    where.canReturn = canReturn; 
+  }
+  
   if (branchId) {
     where.branchId = branchId;
   }

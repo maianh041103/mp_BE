@@ -69,6 +69,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.FLOAT(),
         defaultValues: 0,
       },
+      quantityLast: {
+        allowNull: false,
+        type: DataTypes.INTEGER(5).UNSIGNED,
+      },
     },
     {
       tableName: "order_products",
