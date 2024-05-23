@@ -212,10 +212,10 @@ export async function queryFilter(params) {
     } else if (price == "asc") {
         query.order = [["cost", "ASC"]];
     }
-    if (branchId) {
-        const invInclude = getInventoryInclude(branchId, inventoryType);
-        include.push(invInclude)
-    }
+    // if (branchId) {
+    //     const invInclude = getInventoryInclude(branchId, inventoryType);
+    //     include.push(invInclude)
+    // }
 
     query.where = where;
 
