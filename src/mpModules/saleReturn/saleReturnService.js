@@ -149,6 +149,7 @@ export async function indexCreate(saleReturn, loginUser) {
         orderId: saleReturn.orderId,
         returnFee: returnFee,
         paymentType: saleReturn.paymentType,
+        description: saleReturn.description,
         discount: discount,
         itemPrice: itemPrice,
         totalPrice: totalPrice,

@@ -12,6 +12,7 @@ const createSchema = Joi.object().keys({
     discount: Joi.number().integer().allow(null),
     returnFee: Joi.number().integer().allow(null),
     paid: Joi.number().integer().allow(null),
+    description: Joi.string().allow(null),
     paymentType: Joi.string().valid("CASH", "BANK", "DEBT").allow(null),
     products: Joi.array()
         .items(
