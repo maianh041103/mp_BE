@@ -35,3 +35,31 @@ module.exports.create = async (req, res) => {
         res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
     }
 }
+
+//[GET] /mp/api/discount
+module.exports.getAll = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
+
+        const condition = req.query;
+        const filter = {
+            page: condition.page || 1,
+            limit: condition.limit || 20,
+            keyword: condition.keyword || "",
+            effective: condition.effective,
+            target: condition.target,
+            type: condition.method,
+            status: condition.status
+        }
+
+        const result = await discountService.getAll(filter, loginUser);
+        if (result.success) {
+            res.json(respondItemSuccess(result));
+        }
+        else
+            res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        console.log(error);
+        res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
+    }
+}
