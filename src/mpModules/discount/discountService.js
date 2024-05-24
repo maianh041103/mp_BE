@@ -1,6 +1,8 @@
 const models = require('../../../database/models/index');
 const discountContant = require('./discountContant');
 const { HttpStatusCode } = require('../../helpers/errorCodes');
+const Discount = require('../../../database/models/mp_models/Discount');
+const { Sequelize, Op } = require("sequelize");
 
 const discountAttributes = [
     "id",
@@ -224,4 +226,110 @@ module.exports.create = async (discount, loginUser) => {
         },
     }
 
+}
+
+module.exports.getAll = async (filter, loginUser) => {
+    const {
+        page, limit, keyword, effective, target, type, status
+    } = filter;
+
+    let where = {};
+    if (keyword) {
+        where = {
+            [Op.or]: {
+                name: {
+                    [Op.like]: `%${keyword.trim()}%`
+                },
+                code: {
+                    [Op.like]: `%${keyword.trim()}%`
+                }
+            }
+        }
+    }
+
+    if (effective) {
+        let tmp = {};
+        if (effective == 1) {
+            discountIncludes[1] = {
+                model: models.DiscountTime,
+                as: "discountTime",
+                where: {
+                    [Op.and]: {
+                        dateFrom: {
+                            [Op.gt]: Date.now(),
+                        }
+                    }
+                },
+                attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday"]
+            }
+        }
+        else if (effective == 2) {
+            discountIncludes[1] = {
+                model: models.DiscountTime,
+                as: "discountTime",
+                where: {
+                    [Op.and]: {
+                        dateFrom: {
+                            [Op.lte]: Date.now(),
+                        },
+                        dateTo: {
+                            [Op.gte]: Date.now(),
+                        }
+                    }
+                },
+                attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday"]
+            }
+        }
+        else if (effective == 3) {
+            discountIncludes[1] = {
+                model: models.DiscountTime,
+                as: "discountTime",
+                where: {
+                    [Op.and]: {
+                        dateTo: {
+                            [Op.lt]: Date.now(),
+                        }
+                    }
+                },
+                attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday"]
+            }
+        }
+    }
+
+    if (target) {
+        where.target = target.trim();
+    }
+
+    if (type) {
+        where.type = type.trim()
+    }
+
+    if (status) {
+        where.status = status.trim();
+    }
+
+    const rows = await models.Discount.findAll({
+        where,
+        attributes: discountAttributes,
+        include: discountIncludes,
+        limit: parseInt(limit),
+        offset: (page - 1) * limit
+    });
+
+    const count = await models.Discount.count({
+        where,
+        attributes: ["id"],
+        include: [discountIncludes[1]],
+        limit: parseInt(limit),
+        offset: (page - 1) * limit,
+        raw: true
+    });
+
+    return {
+        success: true,
+        data: {
+            items: rows,
+            totalItem: count
+        }
+    }
 }

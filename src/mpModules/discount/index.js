@@ -9,4 +9,9 @@ router.post("/", authenticate, (req, res, next) => {
     next();
 }, authorize, discountController.create);
 
+router.get("/", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, discountController.getAll);
+
 module.exports = router;
