@@ -22,3 +22,9 @@ export const discountDiscountType = {
     TYPE_PRICE: "type_price",
     TYPE_DISCOUNT: "type_discount"
 }
+
+export const effective = {
+    SAPDIENRA: 1,
+    DANGDIENRA: 2,
+    HETHIEULUC: 3
+}
