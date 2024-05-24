@@ -52,11 +52,9 @@ export async function productFilter(params) {
 
 export async function countProduct(query) {
   try {
-    const invInclude = query.include.find(x => x.as === 'inventories')
+    // const invInclude = query.include.find(x => x.as === 'inventories')
     delete query.order
     delete query.include
-    console.log(invInclude)
-    query.include = [invInclude]
     query.attributes = ["id"]
     return await models.Product.count(query);
   } catch (e) {
