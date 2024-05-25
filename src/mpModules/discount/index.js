@@ -14,4 +14,9 @@ router.get("/", authenticate, (req, res, next) => {
     next();
 }, authorize, discountController.getAll);
 
+router.put("/:discountId", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, discountController.update)
+
 module.exports = router;
