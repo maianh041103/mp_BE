@@ -73,161 +73,166 @@ const checkExistsCode = async (id, code) => {
 }
 
 module.exports.create = async (discount, loginUser) => {
-    //Check mã code
-    if (discount.code != "" && (await checkExistsCode(-1, discount.code))) {
-        return {
-            error: true,
-            status: HttpStatusCode.BAD_REQUEST,
-            message: `Mã code ${discount.code} đã tồn tại`
+    var newDiscountId;
+    const t = await models.sequelize.transaction(async (t) => {
+
+        //Check mã code
+        if (discount.code != "" && (await checkExistsCode(-1, discount.code))) {
+            return {
+                error: true,
+                status: HttpStatusCode.BAD_REQUEST,
+                message: `Mã code ${discount.code} đã tồn tại`
+            }
         }
-    }
 
-    //Tạo bảng discount
-    const { code, name, status, note, target, type, isMultiple, createdAt } = discount;
-    const newDiscount = await models.Discount.create({
-        code, name, status, note, target, type, isMultiple, createdAt
-    })
+        //Tạo bảng discount
+        const { code, name, status, note, target, type, isMultiple, createdAt } = discount;
+        const newDiscount = await models.Discount.create({
+            code, name, status, note, target, type, isMultiple, createdAt
+        }, { transaction: t })
 
-    const newDiscountId = newDiscount.id;
+        newDiscountId = newDiscount.id;
 
-    //Update code
-    if (discount.code == "") {
-        await newDiscount.update(
-            { code: generateDiscountCode(newDiscount.id) },
-            { where: { id: newDiscountId } })
-    }
+        //Update code
+        if (discount.code == "") {
+            await newDiscount.update(
+                { code: generateDiscountCode(newDiscount.id) },
+                { where: { id: newDiscountId }, transaction: t },
+            )
+        }
 
-    //Thêm bảng discount item
-    const { items } = discount || [];
-    for (const item of items) {
-        const orderFrom = (item.condition.order || {}).from;
-        const fromQuantity = (item.condition.product || {}).from;
-        const maxQuantity = (item.apply || {}).maxQuantity;
-        const discountValue = (item.apply || {}).discountValue;
-        const discountType = (item.apply || {}).discountType;
-        const pointType = (item.apply || {}).pointType;
-        const isGift = (item.apply || {}).isGift;
-        const pointValue = (item.apply || {}).pointValue;
-        const changeType = (item.apply || {}).changeType;
-        const fixedPrice = (item.apply || {}).fixedPrice;
+        //Thêm bảng discount item
+        const { items } = discount || [];
+        for (const item of items) {
+            const orderFrom = (item.condition.order || {}).from;
+            const fromQuantity = (item.condition.product || {}).from;
+            const maxQuantity = (item.apply || {}).maxQuantity;
+            const discountValue = (item.apply || {}).discountValue;
+            const discountType = (item.apply || {}).discountType;
+            const pointType = (item.apply || {}).pointType;
+            const isGift = (item.apply || {}).isGift;
+            const pointValue = (item.apply || {}).pointValue;
+            const changeType = (item.apply || {}).changeType;
+            const fixedPrice = (item.apply || {}).fixedPrice;
 
-        const newDiscountItem = await models.DiscountItem.create({
+            const newDiscountItem = await models.DiscountItem.create({
+                discountId: newDiscountId,
+                orderFrom, fromQuantity, maxQuantity, discountValue,
+                discountType, pointType, isGift, pointValue,
+                changeType, fixedPrice
+            }, { transaction: t });
+
+            const productCondition = (item.condition || {}).productId || [];
+            const groupCondition = (item.condition || {}).groupId || [];
+            const productApply = (item.apply || {}).productId || [];
+            const groupApply = (item.apply || {}).groupId || [];
+            if (productCondition) {
+                for (const item of productCondition) {
+                    await models.ProductDiscountItem.create({
+                        discountItemId: newDiscountItem.id,
+                        productId: item,
+                        isCondition: true
+                    }, { transaction: t });
+                }
+            }
+
+            if (groupCondition) {
+                for (const item of groupCondition) {
+                    await models.ProductDiscountItem.create({
+                        discountItemId: newDiscountItem.id,
+                        groupId: item,
+                        isCondition: true
+                    }, { transaction: t });
+                }
+            }
+
+            if (productApply) {
+                for (const item of productApply) {
+                    await models.ProductDiscountItem.create({
+                        discountItemId: newDiscountItem.id,
+                        productId: item,
+                        isCondition: false
+                    }, { transaction: t });
+                }
+            }
+
+            if (groupApply) {
+                for (const item of groupApply) {
+                    await models.ProductDiscountItem.create({
+                        discountItemId: newDiscountItem.id,
+                        groupId: item,
+                        isCondition: false
+                    }, { transaction: t });
+                }
+            }
+        }
+
+        //Thêm vào bảng discount time
+        const { time } = discount || {};
+        let { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday } = time;
+        if (byDay) {
+            byDay = byDay.join("//");
+            byHour = byHour.join("//");
+            byMonth = byMonth.join("//");
+            byWeekDay = byWeekDay.join("//")
+        }
+
+        await models.DiscountTime.create({
             discountId: newDiscountId,
-            orderFrom, fromQuantity, maxQuantity, discountValue,
-            discountType, pointType, isGift, pointValue,
-            changeType, fixedPrice
-        });
+            dateFrom, dateTo, byDay, byMonth,
+            byHour, byWeekDay, isWarning, isBirthday
+        }, { transaction: t });
 
-        const productCondition = (item.condition || {}).productId || [];
-        const groupCondition = (item.condition || {}).groupId || [];
-        const productApply = (item.apply || {}).productId || [];
-        const groupApply = (item.apply || {}).groupId || [];
-        if (productCondition) {
-            for (const item of productCondition) {
-                await models.ProductDiscountItem.create({
-                    discountItemId: newDiscountItem.id,
-                    productId: item,
-                    isCondition: true
+        //Thêm vào bảng discountBranch
+        const { branch, customer } = discount.scope || {};
+        if (branch) {
+            let { isAll, ids } = branch;
+            if (isAll == true) {
+                //Tìm tất cả branch thuộc cùng 1 storeId
+                let objectIds = await models.Branch.findAll({
+                    where: {
+                        storeId: loginUser.storeId
+                    },
+                    attributes: ["id"],
+                    raw: true
                 });
+
+                ids = objectIds.map((item, index) => {
+                    return item.id
+                })
+
+            }
+            for (const id of ids) {
+                await models.DiscountBranch.create({
+                    discountId: newDiscountId,
+                    branchId: id
+                }, { transaction: t });
             }
         }
 
-        if (groupCondition) {
-            for (const item of groupCondition) {
-                await models.ProductDiscountItem.create({
-                    discountItemId: newDiscountItem.id,
-                    groupId: item,
-                    isCondition: true
+        //Thêm vào bảng discountCustomer
+        if (customer) {
+            let { isAll, ids } = customer;
+            if (isAll == true) {
+                //Tạo tất cả customer thuộc 1 storeId
+                let objectIds = await models.Customer.findAll({
+                    where: {
+                        storeId: loginUser.storeId
+                    },
+                    attributes: ["id"],
+                    raw: true
                 });
+
+                ids = objectIds.map((item, index) => item.id)
+            }
+            for (const id of ids) {
+                await models.DiscountCustomer.create({
+                    discountId: newDiscountId,
+                    customerId: id
+                }, { transaction: t });
             }
         }
-
-        if (productApply) {
-            for (const item of productApply) {
-                await models.ProductDiscountItem.create({
-                    discountItemId: newDiscountItem.id,
-                    productId: item,
-                    isCondition: false
-                });
-            }
-        }
-
-        if (groupApply) {
-            for (const item of groupApply) {
-                await models.ProductDiscountItem.create({
-                    discountItemId: newDiscountItem.id,
-                    groupId: item,
-                    isCondition: false
-                });
-            }
-        }
-    }
-
-    //Thêm vào bảng discount time
-    const { time } = discount || {};
-    let { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday } = time;
-    if (byDay) {
-        byDay = byDay.join("//");
-        byHour = byHour.join("//");
-        byMonth = byMonth.join("//");
-        byWeekDay = byWeekDay.join("//")
-    }
-
-    await models.DiscountTime.create({
-        discountId: newDiscountId,
-        dateFrom, dateTo, byDay, byMonth,
-        byHour, byWeekDay, isWarning, isBirthday
     });
-
-    //Thêm vào bảng discountBranch
-    const { branch, customer } = discount.scope || {};
-    if (branch) {
-        let { isAll, ids } = branch;
-        if (isAll == true) {
-            //Tìm tất cả branch thuộc cùng 1 storeId
-            let objectIds = await models.Branch.findAll({
-                where: {
-                    storeId: loginUser.storeId
-                },
-                attributes: ["id"],
-                raw: true
-            });
-
-            ids = objectIds.map((item, index) => {
-                return item.id
-            })
-
-        }
-        for (const id of ids) {
-            await models.DiscountBranch.create({
-                discountId: newDiscountId,
-                branchId: id
-            });
-        }
-    }
-
-    //Thêm vào bảng discountCustomer
-    if (customer) {
-        let { isAll, ids } = customer;
-        if (isAll == true) {
-            //Tạo tất cả customer thuộc 1 storeId
-            let objectIds = await models.Customer.findAll({
-                where: {
-                    storeId: loginUser.storeId
-                },
-                attributes: ["id"],
-                raw: true
-            });
-
-            ids = objectIds.map((item, index) => item.id)
-        }
-        for (const id of ids) {
-            await models.DiscountCustomer.create({
-                discountId: newDiscountId,
-                customerId: id
-            });
-        }
-    }
 
     return {
         success: true,
@@ -367,328 +372,355 @@ module.exports.update = async (discount, discountId, loginUser) => {
         };
     }
 
-    //Update bảng discount
-    const discountUpdate = await models.Discount.update(
-        discount, {
-        where: { id: discountId }
-    })
+    const t = await models.sequelize.transaction(async (t) => {
+        //Update bảng discount
+        const discountUpdate = await models.Discount.update(
+            discount, {
+            where: {
+                id: discountId
+            },
+            transaction: t
+        })
 
-    //Update bảng discount item
-    //Xoá
-    const { items } = discount || [];
-    let listOldDiscountItem = await models.DiscountItem.findAll({
-        attributes: ["id"],
-        where: {
-            discountId: discountId
-        },
-        raw: true
-    });
-    listOldDiscountItem = listOldDiscountItem.map(item => item.id);
+        //Update bảng discount item
+        //Xoá
+        const { items } = discount || [];
+        let listOldDiscountItem = await models.DiscountItem.findAll({
+            attributes: ["id"],
+            where: {
+                discountId: discountId
+            },
+            raw: true
+        });
+        listOldDiscountItem = listOldDiscountItem.map(item => item.id);
 
-    const listDiscountItemId = items.map(item => item.id)
-        .filter(item => item != undefined);
+        const listDiscountItemId = items.map(item => item.id)
+            .filter(item => item != undefined);
 
-    await models.ProductDiscountItem.destroy({
-        where: {
-            discountItemId: {
-                [Op.and]: {
-                    [Op.in]: listOldDiscountItem,
-                    [Op.notIn]: listDiscountItemId
+        await models.ProductDiscountItem.destroy({
+            where: {
+                discountItemId: {
+                    [Op.and]: {
+                        [Op.in]: listOldDiscountItem,
+                        [Op.notIn]: listDiscountItemId
+                    }
+                },
+            },
+            transaction: t
+        })
+
+        await models.DiscountItem.destroy({
+            where: {
+                id: {
+                    [Op.and]: {
+                        [Op.in]: listOldDiscountItem,
+                        [Op.notIn]: listDiscountItemId
+                    }
                 }
-            }
-        }
-    })
+            },
+            transaction: t
+        })
 
-    const countDiscountItemDestroy = await models.DiscountItem.destroy({
-        where: {
-            id: {
-                [Op.and]: {
-                    [Op.in]: listOldDiscountItem,
-                    [Op.notIn]: listDiscountItemId
-                }
-            }
-        }
-    })
+        //End xóa
+        for (const item of items) {
+            const id = item.id;
+            const orderFrom = (item.condition.order || {}).from;
+            const fromQuantity = (item.condition.product || {}).from;
+            const maxQuantity = (item.apply || {}).maxQuantity;
+            const discountValue = (item.apply || {}).discountValue;
+            const discountType = (item.apply || {}).discountType;
+            const pointType = (item.apply || {}).pointType;
+            const isGift = (item.apply || {}).isGift;
+            const pointValue = (item.apply || {}).pointValue;
+            const changeType = (item.apply || {}).changeType;
+            const fixedPrice = (item.apply || {}).fixedPrice;
 
-    //End xóa
-    for (const item of items) {
-        const id = item.id;
-        const orderFrom = (item.condition.order || {}).from;
-        const fromQuantity = (item.condition.product || {}).from;
-        const maxQuantity = (item.apply || {}).maxQuantity;
-        const discountValue = (item.apply || {}).discountValue;
-        const discountType = (item.apply || {}).discountType;
-        const pointType = (item.apply || {}).pointType;
-        const isGift = (item.apply || {}).isGift;
-        const pointValue = (item.apply || {}).pointValue;
-        const changeType = (item.apply || {}).changeType;
-        const fixedPrice = (item.apply || {}).fixedPrice;
-
-        let discountItemId = item.id;
-        if (id) {
-            await models.DiscountItem.update({
-                discountId, orderFrom, fromQuantity, maxQuantity, discountValue,
-                discountType, pointType, isGift, pointValue, changeType, fixedPrice
-            }, {
-                where: {
-                    id: id
-                }
-            });
-        }
-        else {
-            discountItemId = (await models.DiscountItem.create({
-                discountId, orderFrom, fromQuantity, maxQuantity, discountValue,
-                discountType, pointType, isGift, pointValue, changeType, fixedPrice
-            })).id;
-        }
-
-        const productCondition = (item.condition || {}).productId || [];
-        const groupCondition = (item.condition || {}).groupId || [];
-        const productApply = (item.apply || {}).productId || [];
-        const groupApply = (item.apply || {}).groupId || [];
-
-        if (productCondition) {
-            for (const item of productCondition) {
-                const itemExists = await models.ProductDiscountItem.findOne({
+            let discountItemId = item.id;
+            if (id) {
+                await models.DiscountItem.update({
+                    discountId, orderFrom, fromQuantity, maxQuantity, discountValue,
+                    discountType, pointType, isGift, pointValue, changeType, fixedPrice
+                }, {
                     where: {
-                        discountItemId: discountItemId,
-                        productId: item,
-                        isCondition: true
+                        id: id
                     },
-                    attributes: ["discountItemId"]
-                })
-                if (!itemExists) {
-                    const newProductDiscount = await models.ProductDiscountItem.create({
-                        discountItemId: discountItemId,
-                        productId: item,
-                        isCondition: true
-                    });
-                }
+                    transaction: t
+                });
             }
-        }
-        await models.ProductDiscountItem.destroy({
-            where: {
-                discountItemId: discountItemId,
-                productId: {
-                    [Op.notIn]: productCondition
-                },
-                groupId: {
-                    [Op.notIn]: groupCondition
-                },
-                isCondition: true
+            else {
+                discountItemId = (await models.DiscountItem.create({
+                    discountId, orderFrom, fromQuantity, maxQuantity, discountValue,
+                    discountType, pointType, isGift, pointValue, changeType, fixedPrice
+                }, {
+                    transaction: t
+                })).id;
             }
-        })
 
-        if (groupCondition) {
-            for (const item of groupCondition) {
-                const itemExists = await models.ProductDiscountItem.findOne({
-                    where: {
-                        discountItemId: discountItemId,
-                        groupId: item,
-                        isCondition: true
-                    }
-                })
-                if (!itemExists) {
-                    await models.ProductDiscountItem.create({
-                        discountItemId: discountItemId,
-                        groupId: item,
-                        isCondition: true
-                    });
-                }
-            }
-        }
-        await models.ProductDiscountItem.destroy({
-            where: {
-                discountItemId: discountItemId,
-                groupId: {
-                    [Op.notIn]: groupCondition
-                },
-                productId: {
-                    [Op.notIn]: productCondition
-                },
-                isCondition: true
-            }
-        })
+            const productCondition = (item.condition || {}).productId || [];
+            const groupCondition = (item.condition || {}).groupId || [];
+            const productApply = (item.apply || {}).productId || [];
+            const groupApply = (item.apply || {}).groupId || [];
 
-        if (productApply) {
-            for (const item of productApply) {
-                const itemExists = await models.ProductDiscountItem.findOne({
-                    where: {
-                        discountItemId: discountItemId,
-                        productId: item,
-                        isCondition: false
-                    }
-                })
-                if (!itemExists) {
-                    for (const item of productApply) {
-                        await models.ProductDiscountItem.create({
+            if (productCondition) {
+                for (const item of productCondition) {
+                    const itemExists = await models.ProductDiscountItem.findOne({
+                        where: {
                             discountItemId: discountItemId,
                             productId: item,
-                            isCondition: false
+                            isCondition: true
+                        },
+                        attributes: ["discountItemId"]
+                    })
+                    if (!itemExists) {
+                        const newProductDiscount = await models.ProductDiscountItem.create({
+                            discountItemId: discountItemId,
+                            productId: item,
+                            isCondition: true
+                        }, {
+                            transaction: t
                         });
                     }
                 }
             }
-        }
-        await models.ProductDiscountItem.destroy({
-            where: {
-                discountItemId: discountItemId,
-                productId: {
-                    [Op.notIn]: productApply
+            await models.ProductDiscountItem.destroy({
+                where: {
+                    discountItemId: discountItemId,
+                    productId: {
+                        [Op.notIn]: productCondition
+                    },
+                    groupId: {
+                        [Op.notIn]: groupCondition
+                    },
+                    isCondition: true
                 },
-                groupId: {
-                    [Op.notIn]: groupApply
-                },
-                isCondition: false
-            }
-        })
+                transaction: t
+            })
 
-        if (groupApply) {
-            for (const item of productApply) {
-                const itemExists = await models.ProductDiscountItem.findOne({
-                    where: {
-                        discountItemId: discountItemId,
-                        groupId: item,
-                        isCondition: false
-                    }
-                })
-                if (!itemExists) {
-                    for (const item of groupApply) {
+            if (groupCondition) {
+                for (const item of groupCondition) {
+                    const itemExists = await models.ProductDiscountItem.findOne({
+                        where: {
+                            discountItemId: discountItemId,
+                            groupId: item,
+                            isCondition: true
+                        }
+                    })
+                    if (!itemExists) {
                         await models.ProductDiscountItem.create({
                             discountItemId: discountItemId,
                             groupId: item,
-                            isCondition: false
-                        });
+                            isCondition: true
+                        }, { transaction: t });
                     }
                 }
             }
-        }
-        await models.ProductDiscountItem.destroy({
-            where: {
-                discountItemId: discountItemId,
-                groupId: {
-                    [Op.notIn]: groupApply
-                },
-                productId: {
-                    [Op.notIn]: productApply
-                },
-                isCondition: false
-            }
-        })
-    }
-
-    //Thêm vào bảng discount time
-    const { time } = discount || {};
-    let { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday } = time;
-    if (byDay) {
-        byDay = byDay.join("//");
-        byHour = byHour.join("//");
-        byMonth = byMonth.join("//");
-        byWeekDay = byWeekDay.join("//")
-    }
-
-    await models.DiscountTime.update({
-        discountId: discountId,
-        dateFrom, dateTo, byDay, byMonth,
-        byHour, byWeekDay, isWarning, isBirthday
-    }, {
-        where: {
-            discountId: discountId
-        }
-    });
-
-    //Thêm vào bảng discountBranch
-    const { branch, customer } = discount.scope || {};
-    if (branch) {
-        let { isAll, ids } = branch;
-        if (isAll == true) {
-            //Tìm tất cả branch thuộc cùng 1 storeId
-            let objectIds = await models.Branch.findAll({
+            await models.ProductDiscountItem.destroy({
                 where: {
-                    storeId: loginUser.storeId
+                    discountItemId: discountItemId,
+                    groupId: {
+                        [Op.notIn]: groupCondition
+                    },
+                    productId: {
+                        [Op.notIn]: productCondition
+                    },
+                    isCondition: true
                 },
-                attributes: ["id"],
-                raw: true
-            });
+                transaction: t
+            })
 
-            ids = objectIds.map((item, index) => {
-                return item.id
+            if (productApply) {
+                for (const item of productApply) {
+                    const itemExists = await models.ProductDiscountItem.findOne({
+                        where: {
+                            discountItemId: discountItemId,
+                            productId: item,
+                            isCondition: false
+                        }
+                    })
+                    if (!itemExists) {
+                        for (const item of productApply) {
+                            await models.ProductDiscountItem.create({
+                                discountItemId: discountItemId,
+                                productId: item,
+                                isCondition: false
+                            }, {
+                                transaction: t
+                            });
+                        }
+                    }
+                }
+            }
+            await models.ProductDiscountItem.destroy({
+                where: {
+                    discountItemId: discountItemId,
+                    productId: {
+                        [Op.notIn]: productApply
+                    },
+                    groupId: {
+                        [Op.notIn]: groupApply
+                    },
+                    isCondition: false
+                },
+                transaction: t
+            })
+
+            if (groupApply) {
+                for (const item of productApply) {
+                    const itemExists = await models.ProductDiscountItem.findOne({
+                        where: {
+                            discountItemId: discountItemId,
+                            groupId: item,
+                            isCondition: false
+                        }
+                    })
+                    if (!itemExists) {
+                        for (const item of groupApply) {
+                            await models.ProductDiscountItem.create({
+                                discountItemId: discountItemId,
+                                groupId: item,
+                                isCondition: false
+                            }, {
+                                transaction: t
+                            });
+                        }
+                    }
+                }
+            }
+            await models.ProductDiscountItem.destroy({
+                where: {
+                    discountItemId: discountItemId,
+                    groupId: {
+                        [Op.notIn]: groupApply
+                    },
+                    productId: {
+                        [Op.notIn]: productApply
+                    },
+                    isCondition: false
+                },
+                transaction: t
             })
         }
 
-        await models.DiscountBranch.destroy({
-            where: {
-                branchId: {
-                    [Op.notIn]: ids
-                },
-                discountId: discountId
-            }
-        })
+        //Thêm vào bảng discount time
+        const { time } = discount || {};
+        let { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday } = time;
+        if (byDay) {
+            byDay = byDay.join("//");
+            byHour = byHour.join("//");
+            byMonth = byMonth.join("//");
+            byWeekDay = byWeekDay.join("//")
+        }
 
-        let listoldDiscountBrand = await models.DiscountBranch.findAll({
+        await models.DiscountTime.update({
+            discountId: discountId,
+            dateFrom, dateTo, byDay, byMonth,
+            byHour, byWeekDay, isWarning, isBirthday
+        }, {
             where: {
                 discountId: discountId
             },
-            attributes: ["branchId"],
-            raw: true
+            transaction: t
         });
 
-        listoldDiscountBrand = listoldDiscountBrand.map(item => item.branchId);
-
-        for (const id of ids) {
-            if (!listoldDiscountBrand.includes(id)) {
-                await models.DiscountBranch.create({
-                    discountId: discountId,
-                    branchId: id
+        //Thêm vào bảng discountBranch
+        const { branch, customer } = discount.scope || {};
+        if (branch) {
+            let { isAll, ids } = branch;
+            if (isAll == true) {
+                //Tìm tất cả branch thuộc cùng 1 storeId
+                let objectIds = await models.Branch.findAll({
+                    where: {
+                        storeId: loginUser.storeId
+                    },
+                    attributes: ["id"],
+                    raw: true
                 });
-            }
-        }
-    }
 
-    //Thêm vào bảng discountCustomer
-    if (customer) {
-        let { isAll, ids } = customer;
-        if (isAll == true) {
-            //Tạo tất cả customer thuộc 1 storeId
-            let objectIds = await models.Customer.findAll({
+                ids = objectIds.map((item, index) => {
+                    return item.id
+                })
+            }
+
+            await models.DiscountBranch.destroy({
                 where: {
-                    storeId: loginUser.storeId
+                    branchId: {
+                        [Op.notIn]: ids
+                    },
+                    discountId: discountId
                 },
-                attributes: ["id"],
+                transaction: t
+            })
+
+            let listoldDiscountBrand = await models.DiscountBranch.findAll({
+                where: {
+                    discountId: discountId
+                },
+                attributes: ["branchId"],
                 raw: true
             });
 
-            ids = objectIds.map((item, index) => item.id)
+            listoldDiscountBrand = listoldDiscountBrand.map(item => item.branchId);
+
+            for (const id of ids) {
+                if (!listoldDiscountBrand.includes(id)) {
+                    await models.DiscountBranch.create({
+                        discountId: discountId,
+                        branchId: id
+                    }, {
+                        transaction: t
+                    });
+                }
+            }
         }
 
-        await models.DiscountCustomer.destroy({
-            where: {
-                customerId: {
-                    [Op.notIn]: ids
-                },
-                discountId: discountId
-            }
-        })
-
-        let listoldDiscountCustomer = await models.DiscountCustomer.findAll({
-            where: {
-                discountId: discountId
-            },
-            attributes: ["customerId"],
-            raw: true
-        });
-
-        listoldDiscountCustomer = listoldDiscountCustomer.map(item => item.customerId)
-
-        for (const id of ids) {
-            if (!listoldDiscountCustomer.includes(id)) {
-                await models.DiscountCustomer.create({
-                    discountId: discountId,
-                    customerId: id
+        //Thêm vào bảng discountCustomer
+        if (customer) {
+            let { isAll, ids } = customer;
+            if (isAll == true) {
+                //Tạo tất cả customer thuộc 1 storeId
+                let objectIds = await models.Customer.findAll({
+                    where: {
+                        storeId: loginUser.storeId
+                    },
+                    attributes: ["id"],
+                    raw: true
                 });
+
+                ids = objectIds.map((item, index) => item.id)
+            }
+
+            await models.DiscountCustomer.destroy({
+                where: {
+                    customerId: {
+                        [Op.notIn]: ids
+                    },
+                    discountId: discountId
+                },
+                transaction: t
+            })
+
+            let listoldDiscountCustomer = await models.DiscountCustomer.findAll({
+                where: {
+                    discountId: discountId
+                },
+                attributes: ["customerId"],
+                raw: true
+            });
+
+            listoldDiscountCustomer = listoldDiscountCustomer.map(item => item.customerId)
+
+            for (const id of ids) {
+                if (!listoldDiscountCustomer.includes(id)) {
+                    await models.DiscountCustomer.create({
+                        discountId: discountId,
+                        customerId: id
+                    }, {
+                        transaction: t
+                    });
+                }
             }
         }
-    }
+    });
 
     return {
         success: true,
@@ -711,56 +743,61 @@ module.exports.delete = async (discountId, loginUser) => {
     }
     //Kiểm tra mã đã được áp chưa
 
-    //Xoá discountTime
-    await models.DiscountTime.destroy({
-        where: {
-            discountId: discountId
-        }
-    });
+    const t = await models.sequelize.transaction(async (t) => {
+        //Xoá discountTime
+        await models.DiscountTime.destroy({
+            where: {
+                discountId: discountId
+            },
+            transaction: t
+        });
 
-    //Xóa discountBranch
-    await models.DiscountBranch.destroy({
-        where: {
-            discountId: discountId
-        }
-    });
+        //Xóa discountBranch
+        await models.DiscountBranch.destroy({
+            where: {
+                discountId: discountId
+            },
+            transaction: t
+        });
 
-    //Xóa discountCustomer
-    await models.DiscountCustomer.destroy({
-        where: {
-            discountId: discountId
-        }
-    });
+        //Xóa discountCustomer
+        await models.DiscountCustomer.destroy({
+            where: {
+                discountId: discountId
+            }, transaction: t
+        });
 
-    //Xóa productDiscountItem
-    let listDiscountItem = await models.DiscountItem.findAll({
-        where: {
-            discountId: discountId
-        },
-        attributes: ["id"]
-    });
-    listDiscountItem = listDiscountItem.map(item => item.id);
-    await models.ProductDiscountItem.destroy({
-        where: {
-            discountItemId: {
-                [Op.in]: listDiscountItem
-            }
-        }
-    });
+        //Xóa productDiscountItem
+        let listDiscountItem = await models.DiscountItem.findAll({
+            where: {
+                discountId: discountId
+            },
+            attributes: ["id"]
+        });
+        listDiscountItem = listDiscountItem.map(item => item.id);
+        await models.ProductDiscountItem.destroy({
+            where: {
+                discountItemId: {
+                    [Op.in]: listDiscountItem
+                }
+            }, transaction: t
+        });
 
-    //Xóa discountItem
-    await models.DiscountItem.destroy({
-        where: {
-            discountId: discountId
-        }
-    });
+        //Xóa discountItem
+        await models.DiscountItem.destroy({
+            where: {
+                discountId: discountId
+            }, transaction: t
+        });
 
-    //Xóa discount
-    await models.Discount.destroy({
-        where: {
-            id: discountId,
-        },
-    });
+        //Xóa discount
+        await models.Discount.destroy({
+            where: {
+                id: discountId,
+            },
+            transaction: t
+        });
+    })
 
     return {
         success: true,
