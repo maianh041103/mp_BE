@@ -81,6 +81,13 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: "discountId",
             sourceKey: 'id',
         })
+
+        DiscountItem.hasMany(models.ProductDiscountItem, {
+            as: 'productDiscount',
+            foreignKey: 'discountItemId',
+            sourceKey: 'id',
+            onDelete: 'CASCADE'
+        })
     };
 
     return DiscountItem;

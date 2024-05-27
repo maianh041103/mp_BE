@@ -96,3 +96,21 @@ module.exports.update = async (req, res) => {
         res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
     }
 }
+
+//[DELETE] /mp/api/discount/:id
+module.exports.delete = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
+        const discountId = req.params.discountId;
+
+        const result = await discountService.delete(discountId, loginUser);
+        if (result.success) {
+            res.json(respondItemSuccess(result));
+        }
+        else
+            res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        console.log(error);
+        res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
+    }
+}

@@ -22,7 +22,14 @@ const discountIncludes = [
     {
         model: models.DiscountItem,
         as: "discountItem",
-        attributes: ["id", "orderFrom", "fromQuantity", "maxQuantity", "discountValue", "discountType", "pointType", "isGift", "pointValue"]
+        attributes: ["id", "orderFrom", "fromQuantity", "maxQuantity", "discountValue", "discountType", "pointType", "isGift", "pointValue"],
+        include: [
+            {
+                model: models.ProductDiscountItem,
+                as: "productDiscount",
+                attributes: ["productId", "groupId", "isCondition"],
+            }
+        ]
     },
     {
         model: models.DiscountTime,
@@ -682,6 +689,78 @@ module.exports.update = async (discount, discountId, loginUser) => {
             }
         }
     }
+
+    return {
+        success: true,
+        data: null
+    }
+}
+
+module.exports.delete = async (discountId, loginUser) => {
+    const findDiscount = await models.Discount.findOne({
+        id: discountId
+    }, {
+        attributes: ["id"],
+    });
+    if (!findDiscount) {
+        return {
+            error: true,
+            code: HttpStatusCode.NOT_FOUND,
+            message: "Mã giảm giá không tồn tại",
+        };
+    }
+    //Kiểm tra mã đã được áp chưa
+
+    //Xoá discountTime
+    await models.DiscountTime.destroy({
+        where: {
+            discountId: discountId
+        }
+    });
+
+    //Xóa discountBranch
+    await models.DiscountBranch.destroy({
+        where: {
+            discountId: discountId
+        }
+    });
+
+    //Xóa discountCustomer
+    await models.DiscountCustomer.destroy({
+        where: {
+            discountId: discountId
+        }
+    });
+
+    //Xóa productDiscountItem
+    let listDiscountItem = await models.DiscountItem.findAll({
+        where: {
+            discountId: discountId
+        },
+        attributes: ["id"]
+    });
+    listDiscountItem = listDiscountItem.map(item => item.id);
+    await models.ProductDiscountItem.destroy({
+        where: {
+            discountItemId: {
+                [Op.in]: listDiscountItem
+            }
+        }
+    });
+
+    //Xóa discountItem
+    await models.DiscountItem.destroy({
+        where: {
+            discountId: discountId
+        }
+    });
+
+    //Xóa discount
+    await models.Discount.destroy({
+        where: {
+            id: discountId,
+        },
+    });
 
     return {
         success: true,

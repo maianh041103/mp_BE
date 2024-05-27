@@ -17,6 +17,11 @@ router.get("/", authenticate, (req, res, next) => {
 router.put("/:discountId", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-}, authorize, discountController.update)
+}, authorize, discountController.update);
+
+router.delete("/:discountId", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, discountController.delete);
 
 module.exports = router;
