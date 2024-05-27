@@ -64,7 +64,7 @@ module.exports.getAll = async (req, res) => {
     }
 }
 
-//[PUT] /mp/api/discount/:id
+//[PUT] /mp/api/discount/:discountId
 module.exports.update = async (req, res) => {
     try {
         const { loginUser = {} } = req;
@@ -97,13 +97,31 @@ module.exports.update = async (req, res) => {
     }
 }
 
-//[DELETE] /mp/api/discount/:id
+//[DELETE] /mp/api/discount/:discountId
 module.exports.delete = async (req, res) => {
     try {
         const { loginUser = {} } = req;
         const discountId = req.params.discountId;
 
         const result = await discountService.delete(discountId, loginUser);
+        if (result.success) {
+            res.json(respondItemSuccess(result));
+        }
+        else
+            res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        console.log(error);
+        res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
+    }
+}
+
+//[GET] /mp/api/discount/:discountId
+module.exports.getDetail = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
+        const discountId = req.params.discountId;
+
+        const result = await discountService.getDetail(discountId, loginUser);
         if (result.success) {
             res.json(respondItemSuccess(result));
         }

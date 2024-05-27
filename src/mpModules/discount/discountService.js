@@ -767,3 +767,27 @@ module.exports.delete = async (discountId, loginUser) => {
         data: null
     }
 }
+
+module.exports.getDetail = async (discountId, loginUser) => {
+    const findDiscount = await models.Discount.findOne({
+        where: {
+            id: discountId
+        },
+        attributes: discountAttributes,
+        include: discountIncludes
+    });
+
+    if (!findDiscount) {
+        return {
+            error: true,
+            code: HttpStatusCode.NOT_FOUND,
+            message: "Mã giảm giá không tồn tại",
+        };
+    }
+
+    return {
+        success: true,
+        data: findDiscount
+    }
+}
+
