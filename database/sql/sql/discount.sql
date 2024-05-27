@@ -99,12 +99,20 @@ create table product_discount_items(
     id int unsigned auto_increment
 		primary key,
     discountItemId int unsigned not null,
-	productId int unsigned null,
+	productUnitId int unsigned null,
     groupId int unsigned null,
     isCondition bool default true,
 	constraint productDiscountItem_ibfk_1
-		foreign key (discountItemId) references discount_items(id)
+		foreign key (discountItemId) references discount_items(id),
+	constraint productDiscountItem_ibfk_2
+		foreign key (groupId) references group_products(id),
+	constraint productDiscountItem_ibfk_3
+		foreign key (productUnitId) references product_units(id)
 )
 charset=utf8mb3;
 create index discountItemId
 	on product_discount_items(discountItemId);
+create index productUnitId
+	on product_discount_items(productUnitId);
+create index groupId
+	on product_discount_items(groupId);

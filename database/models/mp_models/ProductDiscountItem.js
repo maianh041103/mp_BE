@@ -16,7 +16,7 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false,
             },
-            productId: {
+            productUnitId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: true,
             },
@@ -42,9 +42,9 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: "discountItemId",
             sourceKey: 'id',
         }),
-            ProductDiscountItem.belongsTo(models.Product, {
-                as: "product",
-                foreignKey: "productId",
+            ProductDiscountItem.belongsTo(models.ProductUnit, {
+                as: "productUnit",
+                foreignKey: "productUnitId",
                 sourceKey: 'id',
             }),
             ProductDiscountItem.belongsTo(models.GroupProduct, {
