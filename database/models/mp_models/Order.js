@@ -120,7 +120,7 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER(11).UNSIGNED,
       },
       canReturn: {
-        allowNull: true,
+        allowNull: false,
         type: DataTypes.BOOLEAN,
         defaultValue: true,
       },

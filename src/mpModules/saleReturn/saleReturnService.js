@@ -197,6 +197,7 @@ export async function indexCreate (saleReturn, loginUser) {
             })
           )
         }
+
         const newQuantityLast = orderProduct.quantityLast + item.quantity
 
         // await orderProduct.update({ quantityLast: newQuantityLast })
@@ -214,13 +215,18 @@ export async function indexCreate (saleReturn, loginUser) {
             transaction: t
           }
         )
-        if (orderProduct.quantityLast === orderProduct.quantity) {
+    
+      
+        if (orderProduct.quantity==orderProduct.quantityLast+item.quantity) {
+          let id=saleReturn.orderId;
+          console.log(id)
           await models.Order.update(
             {
               canReturn: false
             },
-            { where: { id: saleReturn.orderId }, transaction: t }
+            { where: { id:saleReturn.orderId } }
           )
+         
         }
       }
 
