@@ -119,6 +119,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         type: DataTypes.INTEGER(11).UNSIGNED,
       },
+      canReturn: {
+        allowNull: false,
+        type: DataTypes.BOOLEAN,
+        defaultValue: true,
+      },
     },
     {
       tableName: "orders",
