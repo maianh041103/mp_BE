@@ -29,4 +29,9 @@ router.get("/:discountId", authenticate, (req, res, next) => {
     next();
 }, authorize, discountController.getDetail);
 
+router.post("/order", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, discountController.getDiscountByOrder);
+
 module.exports = router;

@@ -791,3 +791,6 @@ module.exports.getDetail = async (discountId, loginUser) => {
     }
 }
 
+module.exports.getDiscountByOrder = async (order, loginUser) => {
+
+}
