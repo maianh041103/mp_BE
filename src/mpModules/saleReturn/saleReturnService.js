@@ -280,20 +280,17 @@ export async function indexCreate (saleReturn, loginUser) {
         { transaction: t }
       )
       console.log()
-      const paymentSaleReturn = await models.PaymentSaleReturn.create(
-        
+      const paymentSaleReturn = await models.Payment.create(
         {
-          amount: item.quantity*item.price,
+          isReturn: true,
+          amount: item.quantity * item.price,
           code: code,
-          orderId:saleReturn.orderId,
+          orderId: saleReturn.orderId,
           createdBy: loginUser.id,
           paymentMethod: saleReturn.paymentType,
           status: 'DONE',
-          customerId:saleReturn.customerId,
-
-
-
-
+          customerId: saleReturn.customerId,
+          totalAmount:item.quantity * item.price
         },
         { transaction: t }
       )
@@ -333,35 +330,30 @@ export async function indexCreate (saleReturn, loginUser) {
     data: refresh.data
   }
 }
-export async function indexPayment(params, loginUser) {
-  let {
-      page,
-      limit,
-      orderId,
-  } = params
-  const payments = await models.PaymentSaleReturn.findAll({
-      offset: +limit * (+page - 1),
-      limit: +limit,
-      include: orderIncludes,
-      order: [["id", "DESC"]],
-      where: {
-          orderId: orderId,
-      }
-
+export async function indexPayment (params, loginUser) {
+  let { page, limit, orderId } = params
+  const payments = await models.Payment.findAll({
+    offset: +limit * (+page - 1),
+    limit: +limit,
+    include: orderIncludes,
+    order: [['id', 'DESC']],
+    where: {
+      orderId: orderId,
+      isReturn:true
+    }
   })
   return {
-      success: true,
-      data: payments
+    success: true,
+    data: payments
   }
 }
 const orderIncludes = [
   {
     model: models.User,
-    as: "fullnameCreator",
-    attributes: ["id", "fullName", ],
-  
-}
-];
+    as: 'fullnameCreator',
+    attributes: ['id', 'fullName']
+  }
+]
 export async function indexUpdate (id, payload, loginUser) {
   const findsaleReturn = await models.saleReturn.findOne({
     where: {
