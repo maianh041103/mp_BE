@@ -70,7 +70,7 @@ module.exports = (sequelize, DataTypes) => {
         defaultValues: 0,
       },
       quantityLast: {
-        allowNull: false,
+        allowNull: true,
         type: DataTypes.INTEGER(5).UNSIGNED,
       },
     },
