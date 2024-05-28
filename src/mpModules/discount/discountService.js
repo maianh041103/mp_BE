@@ -168,12 +168,10 @@ module.exports.create = async (discount, loginUser) => {
         //Thêm vào bảng discount time
         const { time } = discount || {};
         let { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday } = time;
-        if (byDay) {
-            byDay = `//${byDay.join("//")}//`;
-            byHour = `//${byHour.join("//")}//`;
-            byMonth = `//${byMonth.join("//")}//`;
-            byWeekDay = `//${byWeekDay.join("//")}//`
-        }
+        byDay = byDay != "" ? `//${byDay.join("//")}//` : "";
+        byHour = byHour != "" ? `//${byHour.join("//")}//` : "";
+        byMonth = byMonth != "" ? `//${byMonth.join("//")}//` : "";
+        byWeekDay = byWeekDay != "" ? `//${byWeekDay.join("//")}//` : "";
 
         await models.DiscountTime.create({
             discountId: newDiscountId,
@@ -602,12 +600,10 @@ module.exports.update = async (discount, discountId, loginUser) => {
         const { time } = discount || {};
         let { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday } = time;
 
-        if (byDay) {
-            byDay = `//${byDay.join("//")}//`;
-            byHour = `//${byHour.join("//")}//`;
-            byMonth = `//${byMonth.join("//")}//`;
-            byWeekDay = `//${byWeekDay.join("//")}//`
-        }
+        byDay = byDay != "" ? `//${byDay.join("//")}//` : "";
+        byHour = byHour != "" ? `//${byHour.join("//")}//` : "";
+        byMonth = byMonth != "" ? `//${byMonth.join("//")}//` : "";
+        byWeekDay = byWeekDay != "" ? `//${byWeekDay.join("//")}//` : "";
 
         await models.DiscountTime.update({
             discountId: discountId,
@@ -739,7 +735,27 @@ module.exports.delete = async (discountId, loginUser) => {
             message: "Mã giảm giá không tồn tại",
         };
     }
-    //Kiểm tra mã đã được áp chưa
+    //Kiểm tra mã đã được áp dụng
+    let listDiscountItem = await models.DiscountItem.findAll({
+        discountId: discountId
+    });
+    listDiscountItem = listDiscountItem.map(item => {
+        return item.id;
+    })
+    const discountUsed = await models.DiscountApply.findOne({
+        discountItemId: {
+            [Op.in]: listDiscountItem
+        }
+    });
+
+    if (discountUsed) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: "Mã giảm giá đã được sử dụng, không thể xóa",
+        };
+    }
+    //Hết kiểm tra mã đã được áp dụng
 
     const t = await models.sequelize.transaction(async (t) => {
         //Xoá discountTime
@@ -826,34 +842,10 @@ module.exports.getDetail = async (discountId, loginUser) => {
     }
 }
 
-module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
+const getDiscountApplyIncludes = (order, filter, loginUser) => {
     const {
-        customerId, branchId, products
+        customerId, branchId
     } = order;
-
-    const {
-        page, limit
-    } = filter;
-
-    //Tính tiền hàng
-    let sumTotal = 0;
-    for (const product of products) {
-        const productId = (await models.ProductUnit.findOne({
-            where: {
-                id: product.productUnitId
-            },
-            attributes: ["productId"],
-            raw: true
-        })).productId;
-        if (productId) {
-            sumTotal += ((await models.Product.findOne({
-                where: {
-                    id: productId
-                }
-            })) || {}).price * product.quantity || 0;
-        }
-    }
-    //End tính tiền hàng
 
     const moment = new Date();
     const dayMoment = moment.getDate();
@@ -861,7 +853,7 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
     const hourMoment = moment.getHours();
     const weekDayMoment = moment.getDay() + 1;
 
-    const discountByOrderIncludes = []
+    const discountApplyIncludes = []
 
     const discountTime = {
         model: models.DiscountTime,
@@ -871,10 +863,10 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
         ],
         where: {
             dateFrom: {
-                [Op.lt]: moment
+                [Op.lte]: moment
             },
             dateTo: {
-                [Op.gt]: moment
+                [Op.gte]: moment
             },
             byDay: {
                 [Op.or]: {
@@ -916,7 +908,7 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
             }
         }
     }
-    discountByOrderIncludes.push(discountTime);
+    discountApplyIncludes.push(discountTime);
 
     const discountBranch = {
         model: models.DiscountBranch,
@@ -928,7 +920,7 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
             }
         }
     }
-    discountByOrderIncludes.push(discountBranch);
+    discountApplyIncludes.push(discountBranch);
 
     const discountCustomer = {
         model: models.DiscountCustomer,
@@ -940,8 +932,17 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
             }
         }
     }
-    discountByOrderIncludes.push(discountCustomer);
+    discountApplyIncludes.push(discountCustomer);
 
+    return discountApplyIncludes;
+}
+
+module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
+    const discountByOrderIncludes = getDiscountApplyIncludes(order, filter, loginUser);
+
+    const {
+        products, totalPrice
+    } = order;
 
     const discountItem = {
         model: models.DiscountItem,
@@ -956,11 +957,15 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
         ],
         where: {
             orderFrom: {
-                [Op.lt]: sumTotal
+                [Op.lte]: totalPrice
             }
         }
     }
     discountByOrderIncludes.push(discountItem);
+
+    const {
+        page, limit
+    } = filter;
 
     const where = {
         target: discountContant.discountTarget.ORDER,
@@ -980,6 +985,69 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
     const count = await models.Discount.aggregate('Discount.id', 'count', {
         attributes: discountAttributes,
         include: discountByOrderIncludes,
+        where,
+        distinct: true // nếu bạn muốn đếm các giá trị khác nhau
+    })
+
+    return {
+        success: true,
+        data: {
+            items: rows,
+            totalItem: count
+        }
+    }
+}
+
+module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
+    const {
+        productUnitId, quantity
+    } = order;
+
+    const {
+        page, limit
+    } = filter;
+
+    const discountByProductIncludes = getDiscountApplyIncludes(order, filter, loginUser);
+    const discountItem = {
+        model: models.DiscountItem,
+        as: "discountItem",
+        attributes: ["id", "orderFrom", "fromQuantity", "maxQuantity", "discountValue", "discountType", "pointType", "isGift", "pointValue"],
+        include: [
+            {
+                model: models.ProductDiscountItem,
+                as: "productDiscount",
+                attributes: ["productUnitId", "groupId", "isCondition"],
+                where: {
+                    isCondition: 1,
+                    productUnitId: productUnitId
+                }
+            }
+        ],
+        where: {
+            fromQuantity: {
+                [Op.lte]: quantity
+            }
+        }
+    }
+    discountByProductIncludes.push(discountItem);
+
+    const where = {
+        target: discountContant.discountTarget.PRODUCT,
+        status: discountContant.discountStatus.ACTIVE
+    }
+
+    const rows = await models.Discount.findAll({
+        attributes: discountAttributes,
+        include: discountByProductIncludes,
+        order: [['createdAt', 'DESC']],
+        where,
+        limit: parseInt(limit),
+        offset: (page - 1) * limit
+    });
+
+    const count = await models.Discount.aggregate('Discount.id', 'count', {
+        attributes: discountAttributes,
+        include: discountByProductIncludes,
         where,
         distinct: true // nếu bạn muốn đếm các giá trị khác nhau
     })
