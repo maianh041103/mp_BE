@@ -187,14 +187,23 @@ export async function indexCreate (saleReturn, loginUser) {
 
       if (orderProduct) {
         if (
-          orderProduct.quantity <= orderProduct.quantityLast ||
-          item.quantity + orderProduct.quantityLast > orderProduct.quantity
+          orderProduct.quantity <= orderProduct.quantityLast 
+          
         ) {
           throw Error(
             JSON.stringify({
               error: true,
               code: HttpStatusCode.BAD_REQUEST,
-              message: `Không thực hiện được hành động trả lại hàng`
+              message: `Hàng đã trả hết,bạn không thể thực hiện được hành động trả hàng`
+            })
+          )
+        }
+        if(item.quantity + orderProduct.quantityLast > orderProduct.quantity){
+          throw Error(
+            JSON.stringify({
+              error: true,
+              code: HttpStatusCode.BAD_REQUEST,
+              message: `Số lượng hàng trả nhiều hơn số lượng hàng đang có`
             })
           )
         }
