@@ -597,6 +597,7 @@ async function handleCreateOrder(order, loginUser) {
           updatedBy: newOrder.createdBy,
           createdAt: new Date(),
           comboId: null,
+          quantityLast:null
         },
         { transaction: t })
       productItems.push(orderProduct);
