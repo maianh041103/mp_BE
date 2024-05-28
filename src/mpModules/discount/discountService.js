@@ -27,7 +27,7 @@ const discountIncludes = [
             {
                 model: models.ProductDiscountItem,
                 as: "productDiscount",
-                attributes: ["productId", "groupId", "isCondition"],
+                attributes: ["productUnitId", "groupId", "isCondition"],
             }
         ]
     },
@@ -122,15 +122,15 @@ module.exports.create = async (discount, loginUser) => {
                 changeType, fixedPrice
             }, { transaction: t });
 
-            const productCondition = (item.condition || {}).productId || [];
+            const productCondition = (item.condition || {}).productUnitId || [];
             const groupCondition = (item.condition || {}).groupId || [];
-            const productApply = (item.apply || {}).productId || [];
+            const productApply = (item.apply || {}).productUnitId || [];
             const groupApply = (item.apply || {}).groupId || [];
             if (productCondition) {
                 for (const item of productCondition) {
                     await models.ProductDiscountItem.create({
                         discountItemId: newDiscountItem.id,
-                        productId: item,
+                        productUnitId: item,
                         isCondition: true
                     }, { transaction: t });
                 }
@@ -150,7 +150,7 @@ module.exports.create = async (discount, loginUser) => {
                 for (const item of productApply) {
                     await models.ProductDiscountItem.create({
                         discountItemId: newDiscountItem.id,
-                        productId: item,
+                        productUnitId: item,
                         isCondition: false
                     }, { transaction: t });
                 }
@@ -456,9 +456,9 @@ module.exports.update = async (discount, discountId, loginUser) => {
                 })).id;
             }
 
-            const productCondition = (item.condition || {}).productId || [];
+            const productCondition = (item.condition || {}).productUnitId || [];
             const groupCondition = (item.condition || {}).groupId || [];
-            const productApply = (item.apply || {}).productId || [];
+            const productApply = (item.apply || {}).productUnitId || [];
             const groupApply = (item.apply || {}).groupId || [];
 
             if (productCondition) {
@@ -466,7 +466,7 @@ module.exports.update = async (discount, discountId, loginUser) => {
                     const itemExists = await models.ProductDiscountItem.findOne({
                         where: {
                             discountItemId: discountItemId,
-                            productId: item,
+                            productUnitId: item,
                             isCondition: true
                         },
                         attributes: ["discountItemId"]
@@ -474,7 +474,7 @@ module.exports.update = async (discount, discountId, loginUser) => {
                     if (!itemExists) {
                         const newProductDiscount = await models.ProductDiscountItem.create({
                             discountItemId: discountItemId,
-                            productId: item,
+                            productUnitId: item,
                             isCondition: true
                         }, {
                             transaction: t
@@ -485,7 +485,7 @@ module.exports.update = async (discount, discountId, loginUser) => {
             await models.ProductDiscountItem.destroy({
                 where: {
                     discountItemId: discountItemId,
-                    productId: {
+                    productUnitId: {
                         [Op.notIn]: productCondition
                     },
                     groupId: {
@@ -520,7 +520,7 @@ module.exports.update = async (discount, discountId, loginUser) => {
                     groupId: {
                         [Op.notIn]: groupCondition
                     },
-                    productId: {
+                    productUnitId: {
                         [Op.notIn]: productCondition
                     },
                     isCondition: true
@@ -533,7 +533,7 @@ module.exports.update = async (discount, discountId, loginUser) => {
                     const itemExists = await models.ProductDiscountItem.findOne({
                         where: {
                             discountItemId: discountItemId,
-                            productId: item,
+                            productUnitId: item,
                             isCondition: false
                         }
                     })
@@ -541,7 +541,7 @@ module.exports.update = async (discount, discountId, loginUser) => {
                         for (const item of productApply) {
                             await models.ProductDiscountItem.create({
                                 discountItemId: discountItemId,
-                                productId: item,
+                                productUnitId: item,
                                 isCondition: false
                             }, {
                                 transaction: t
@@ -553,7 +553,7 @@ module.exports.update = async (discount, discountId, loginUser) => {
             await models.ProductDiscountItem.destroy({
                 where: {
                     discountItemId: discountItemId,
-                    productId: {
+                    productUnitId: {
                         [Op.notIn]: productApply
                     },
                     groupId: {
@@ -592,7 +592,7 @@ module.exports.update = async (discount, discountId, loginUser) => {
                     groupId: {
                         [Op.notIn]: groupApply
                     },
-                    productId: {
+                    productUnitId: {
                         [Op.notIn]: productApply
                     },
                     isCondition: false
