@@ -137,10 +137,14 @@ module.exports.getDetail = async (req, res) => {
 module.exports.getDiscountByOrder = async (req, res) => {
     try {
         const { loginUser = {} } = req;
-        const body = req.body;
-        const order = {};
+        const order = req.body || {};
+        const page = req.params.page || 1;
+        const limit = req.params.limit || 20;
+        const filter = {
+            page, limit
+        }
 
-        const result = await discountService.getDiscountByOrder(order, loginUser);
+        const result = await discountService.getDiscountByOrder(order, filter, loginUser);
         if (result.success) {
             res.json(respondItemSuccess(result));
         }
