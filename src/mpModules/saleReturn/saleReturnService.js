@@ -290,7 +290,7 @@ export async function indexCreate (saleReturn, loginUser) {
           paymentMethod: saleReturn.paymentType,
           status: 'DONE',
           customerId: saleReturn.customerId,
-          totalAmount:item.quantity * item.price
+          totalAmount: item.quantity * item.price
         },
         { transaction: t }
       )
@@ -331,7 +331,7 @@ export async function indexCreate (saleReturn, loginUser) {
   }
 }
 export async function indexPayment (params, loginUser) {
-  let { page, limit, orderId } = params
+  let { page, limit, orderId, code } = params
   const payments = await models.Payment.findAll({
     offset: +limit * (+page - 1),
     limit: +limit,
@@ -339,7 +339,8 @@ export async function indexPayment (params, loginUser) {
     order: [['id', 'DESC']],
     where: {
       orderId: orderId,
-      isReturn:true
+      code: code,
+      isReturn: true
     }
   })
   return {

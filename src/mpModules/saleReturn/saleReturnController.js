@@ -96,7 +96,7 @@ export async function indexDeleteController(req, res) {
 export async function readPaymentController(req, res) {
   try {
     const {id: orderId} = req.params
-    const result = await indexPayment({...req.query, orderId});
+    const result = await indexPayment({...req.query, orderId });
     if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
