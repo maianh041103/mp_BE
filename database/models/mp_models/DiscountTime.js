@@ -49,7 +49,16 @@ module.exports = (sequelize, DataTypes) => {
             isBirthday: {
                 type: Sequelize.BOOLEAN,
                 defaultValue: false
-            }
+            },
+            birthdayType: {
+                type: DataTypes.ENUM(
+                    discountContant.discountBirthday.DAY,
+                    discountContant.discountBirthday.WEEK,
+                    discountContant.discountBirthday.MONTH
+                ),
+                defaultValue: discountContant.discountBirthday.DAY,
+                allowNull: true,
+            },
         },
         {
             tableName: "discount_times",

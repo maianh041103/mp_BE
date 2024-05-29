@@ -86,6 +86,7 @@ create table discount_times(
     byWeekDay nvarchar(255) null,
     isWarning bool default false null,
     isBirthday bool default false null,
+	birthdayType enum('day','week','month') default 'day' null,
 	constraint discountTime_ibfk_1
 		foreign key (discountId) references discounts(id)
 )
