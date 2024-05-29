@@ -190,22 +190,13 @@ export async function indexCreate (saleReturn, loginUser) {
           orderProduct.quantity <= orderProduct.quantityLast 
           
         ) {
-          throw Error(
-            JSON.stringify({
-              error: true,
-              code: HttpStatusCode.BAD_REQUEST,
-              message: `Hàng đã trả hết,bạn không thể thực hiện được hành động trả hàng`
-            })
-          )
+        
+          throw new Error(`Hàng đã trả hết,bạn không thể thực hiện được hành động trả hàng`);
+
         }
         if(item.quantity + orderProduct.quantityLast > orderProduct.quantity){
-          throw Error(
-            JSON.stringify({
-              error: true,
-              code: HttpStatusCode.BAD_REQUEST,
-              message: `Số lượng hàng trả nhiều hơn số lượng hàng đang có`
-            })
-          )
+          throw new Error(`Số lượng hàng trả nhiều hơn số lượng hàng đang có`);
+
         }
 
         const newQuantityLast = orderProduct.quantityLast + item.quantity
