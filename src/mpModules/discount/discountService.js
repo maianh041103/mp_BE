@@ -79,8 +79,16 @@ module.exports.create = async (discount, loginUser) => {
     if (discount.code != "" && (await checkExistsCode(-1, discount.code))) {
         return {
             error: true,
-            status: HttpStatusCode.BAD_REQUEST,
+            code: HttpStatusCode.BAD_REQUEST,
             message: `Mã code ${discount.code} đã tồn tại`
+        }
+    }
+
+    if (discount.name == "") {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Name không được để trống`
         }
     }
     const t = await models.sequelize.transaction(async (t) => {
@@ -350,7 +358,7 @@ module.exports.update = async (discount, discountId, loginUser) => {
     if (discount.code && (await checkExistsCode(discountId, discount.code))) {
         return {
             error: true,
-            status: HttpStatusCode.BAD_REQUEST,
+            code: HttpStatusCode.BAD_REQUEST,
             message: `Mã code ${discount.code} đã tồn tại`
         }
     }
@@ -738,7 +746,9 @@ module.exports.delete = async (discountId, loginUser) => {
     }
     //Kiểm tra mã đã được áp dụng
     const discountUsed = await models.DiscountApply.findOne({
-        discountId: discountId
+        where: {
+            discountId: discountId
+        }
     });
 
     if (discountUsed) {
