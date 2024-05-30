@@ -1,4 +1,5 @@
 "use strict";
+const Sequelize = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   const OrderProduct = sequelize.define(
     "OrderProduct",
@@ -43,6 +44,17 @@ module.exports = (sequelize, DataTypes) => {
       price: {
         allowNull: true,
         type: DataTypes.INTEGER(10).UNSIGNED,
+      },
+      //Giá bán sau khi áp khuyến mãi
+      itemPrice: {
+        allowNull: true,
+        type: DataTypes.INTEGER(10).UNSIGNED,
+      },
+      //Có phải là hàng khuyến mãi không
+      isDiscount: {
+        allowNull: true,
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
       },
       // Giá vốn trên đơn vị cơ bản
       primePrice: {

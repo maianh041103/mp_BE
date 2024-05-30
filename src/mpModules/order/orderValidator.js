@@ -14,6 +14,8 @@ const createSchema = Joi.object().keys({
   description: Joi.string().max(512).allow(null).allow(""),
   discount: Joi.number().integer().allow(null),
   discountType: Joi.string().valid([1, 2]).allow(null).allow(""), // percent - money
+  discountOrder: Joi.number().integer().allow(null),
+  listDiscountId: Joi.array().items(Joi.number().integer()),
   cashOfCustomer: Joi.number().integer().allow(null),
   products: Joi.array()
     .items(
@@ -37,6 +39,8 @@ const createSchema = Joi.object().keys({
             ])
             .required(), // Thuốc - Hàng hóa - Combo - Đơn thuốc mẫu
           quantity: Joi.number().integer().min(1).required(),
+          isDiscount: Joi.boolean(),
+          itemPrice: Joi.number().integer(),
         })
         .required(),
     )
