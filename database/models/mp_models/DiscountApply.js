@@ -2,8 +2,8 @@
 const Sequelize = require("sequelize");
 const discountContant = require('../../../src/mpModules/discount/discountContant');
 module.exports = (sequelize, DataTypes) => {
-    const DiscountOrder = sequelize.define(
-        "DiscountOrder",
+    const DiscountApply = sequelize.define(
+        "DiscountApply",
         {
             id: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
@@ -11,7 +11,7 @@ module.exports = (sequelize, DataTypes) => {
                 autoIncrement: true,
                 allowNull: false,
             },
-            discountId: {
+            discountItemId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false,
             },
@@ -19,33 +19,42 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false,
             },
-            productId: {
+            productUnitId: {
+                type: DataTypes.INTEGER(11).UNSIGNED,
+                allowNull: true
+            },
+            groupId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: true
             }
         },
         {
-            tableName: "discount_orders",
+            tableName: "Discount_apply",
         }
     );
 
-    DiscountOrder.associate = function (models) {
-        DiscountOrder.belongsTo(models.Discount, {
-            as: "discount",
-            foreignKey: "discountId",
+    DiscountApply.associate = function (models) {
+        DiscountApply.belongsTo(models.DiscountItem, {
+            as: "discountItem",
+            foreignKey: "discountItemId",
             sourceKey: 'id',
         }),
-            DiscountOrder.belongsTo(models.Order, {
+            DiscountApply.hasOne(models.Order, {
                 as: "order",
                 foreignKey: "orderId",
                 sourceKey: 'id',
             }),
-            DiscountOrder.belongsTo(models.Product, {
-                as: "product",
-                foreignKey: "productId",
+            DiscountApply.belongsTo(models.ProductUnit, {
+                as: "productUnit",
+                foreignKey: "productUnitId",
+                sourceKey: 'id',
+            }),
+            DiscountApply.belongsTo(models.GroupProduct, {
+                as: "group",
+                foreignKey: "groupId",
                 sourceKey: 'id',
             })
     };
 
-    return DiscountOrder;
+    return DiscountApply;
 };

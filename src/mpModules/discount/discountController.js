@@ -155,3 +155,26 @@ module.exports.getDiscountByOrder = async (req, res) => {
         res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
     }
 }
+
+//[POST] /mp/api/discount/product
+module.exports.getDiscountByProduct = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
+        const order = req.body || {};
+        const page = req.params.page || 1;
+        const limit = req.params.limit || 20;
+        const filter = {
+            page, limit
+        }
+
+        const result = await discountService.getDiscountByProduct(order, filter, loginUser);
+        if (result.success) {
+            res.json(respondItemSuccess(result));
+        }
+        else
+            res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        console.log(error);
+        res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
+    }
+}
