@@ -113,7 +113,7 @@ const createSchema = Joi.object().keys({
             ids: Joi.array().items(Joi.number())
         })
     }).required()
-});
+}).options({ allowUnknown: true });
 
 export function createValidator(req, res, next) {
     const { body } = req;
