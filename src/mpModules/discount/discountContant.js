@@ -28,3 +28,9 @@ export const effective = {
     DANGDIENRA: 2,
     HETHIEULUC: 3
 }
+
+export const discountBirthday = {
+    DAY: "day",
+    WEEK: "week",
+    MONTH: "month"
+}

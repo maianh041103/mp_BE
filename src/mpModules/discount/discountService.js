@@ -3,6 +3,7 @@ const discountContant = require('./discountContant');
 const { HttpStatusCode } = require('../../helpers/errorCodes');
 const Discount = require('../../../database/models/mp_models/Discount');
 const { Sequelize, Op, where } = require("sequelize");
+const { getISOWeek } = require('date-fns');
 
 const discountAttributes = [
     "id",
@@ -34,7 +35,7 @@ const discountIncludes = [
     {
         model: models.DiscountTime,
         as: "discountTime",
-        attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday"]
+        attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday", "birthdayType"]
     },
     {
         model: models.DiscountBranch,
@@ -167,7 +168,7 @@ module.exports.create = async (discount, loginUser) => {
 
         //Thêm vào bảng discount time
         const { time } = discount || {};
-        let { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday } = time;
+        let { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday, birthdayType } = time;
         byDay = byDay != "" ? `//${byDay.join("//")}//` : "";
         byHour = byHour != "" ? `//${byHour.join("//")}//` : "";
         byMonth = byMonth != "" ? `//${byMonth.join("//")}//` : "";
@@ -176,7 +177,7 @@ module.exports.create = async (discount, loginUser) => {
         await models.DiscountTime.create({
             discountId: newDiscountId,
             dateFrom, dateTo, byDay, byMonth,
-            byHour, byWeekDay, isWarning, isBirthday
+            byHour, byWeekDay, isWarning, isBirthday, birthdayType
         }, { transaction: t });
 
         //Thêm vào bảng discountBranch
@@ -271,7 +272,7 @@ module.exports.getAll = async (filter, loginUser) => {
                         }
                     }
                 },
-                attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday"]
+                attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday", "birthdayType"]
             }
         }
         else if (effective == 2) {
@@ -288,7 +289,7 @@ module.exports.getAll = async (filter, loginUser) => {
                         }
                     }
                 },
-                attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday"]
+                attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday", "birthdayType"]
             }
         }
         else if (effective == 3) {
@@ -302,7 +303,7 @@ module.exports.getAll = async (filter, loginUser) => {
                         }
                     }
                 },
-                attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday"]
+                attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday", "birthdayType"]
             }
         }
     }
@@ -598,7 +599,7 @@ module.exports.update = async (discount, discountId, loginUser) => {
 
         //Thêm vào bảng discount time
         const { time } = discount || {};
-        let { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday } = time;
+        let { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday, birthdayType } = time;
 
         byDay = byDay != "" ? `//${byDay.join("//")}//` : "";
         byHour = byHour != "" ? `//${byHour.join("//")}//` : "";
@@ -608,7 +609,7 @@ module.exports.update = async (discount, discountId, loginUser) => {
         await models.DiscountTime.update({
             discountId: discountId,
             dateFrom, dateTo, byDay, byMonth,
-            byHour, byWeekDay, isWarning, isBirthday
+            byHour, byWeekDay, isWarning, isBirthday, birthdayType
         }, {
             where: {
                 discountId: discountId
@@ -852,13 +853,16 @@ const getDiscountApplyIncludes = (order, filter, loginUser) => {
     const monthMoment = moment.getMonth() + 1;
     const hourMoment = moment.getHours();
     const weekDayMoment = moment.getDay() + 1;
+    const yearMoment = moment.getFullYear();
+    const currentDate = `${yearMoment}-${monthMoment}-${dayMoment}`;
+    const currentWeek = getISOWeek(moment);
 
     const discountApplyIncludes = []
 
     const discountTime = {
         model: models.DiscountTime,
         as: "discountTime",
-        attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday",
+        attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday", "birthdayType",
             [Sequelize.literal(`(SELECT birthday from customers where customers.id = ${customerId})`), 'birthday']
         ],
         where: {
@@ -895,15 +899,31 @@ const getDiscountApplyIncludes = (order, filter, loginUser) => {
             isBirthday: {
                 [Op.or]: {
                     [Op.eq]: 0,
-                    [Op.and]: {
-                        [Op.eq]: 1,
-                        [Op.and]: [
-                            Sequelize.where(
-                                Sequelize.literal(`(SELECT birthday FROM customers WHERE customers.id = ${customerId})`),
-                                moment
-                            )//Tạo subquery lấy ra birthday từ bảng customers so sánh với moment
-                        ]
-                    }
+                    [Op.and]: [
+                        // Sequelize.literal(`(
+                        //     SELECT MONTH(birthday) 
+                        //     FROM customers 
+                        //     WHERE customers.id = ${customerId}
+                        // ) = ${monthMoment}`),
+                        // Sequelize.literal(`(
+                        //     SELECT birthdayType
+                        //     FROM discount_times 
+                        // ) = 'month'`)
+
+                        Sequelize.literal(`
+                        CASE
+                            WHEN birthdayType = 'month' THEN
+                                MONTH((SELECT birthday FROM customers WHERE customers.id = ${customerId})) = ${monthMoment}
+                            WHEN birthdayType = 'week' THEN
+                                WEEK((SELECT birthday FROM customers WHERE customers.id = ${customerId}),1) = ${currentWeek}
+                            WHEN birthdayType = 'day' THEN
+                                MONTH((SELECT birthday FROM customers WHERE customers.id = ${customerId})) = ${monthMoment}
+                                AND DAY((SELECT birthday FROM customers WHERE customers.id = ${customerId})) = ${dayMoment}
+                            ELSE
+                                false
+                        END
+                        `)
+                    ]
                 }
             }
         }
@@ -978,7 +998,6 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
         order: [['createdAt', 'DESC']],
         where,
         limit: parseInt(limit),
-        order: [['createdAt', 'DESC']],
         offset: (page - 1) * limit
     });
 
