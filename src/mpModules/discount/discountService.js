@@ -74,17 +74,15 @@ const checkExistsCode = async (id, code) => {
 
 module.exports.create = async (discount, loginUser) => {
     var newDiscountId;
-    const t = await models.sequelize.transaction(async (t) => {
-
-        //Check mã code
-        if (discount.code != "" && (await checkExistsCode(-1, discount.code))) {
-            return {
-                error: true,
-                status: HttpStatusCode.BAD_REQUEST,
-                message: `Mã code ${discount.code} đã tồn tại`
-            }
+    //Check mã code
+    if (discount.code != "" && (await checkExistsCode(-1, discount.code))) {
+        return {
+            error: true,
+            status: HttpStatusCode.BAD_REQUEST,
+            message: `Mã code ${discount.code} đã tồn tại`
         }
-
+    }
+    const t = await models.sequelize.transaction(async (t) => {
         //Tạo bảng discount
         const { code, name, status, note, target, type, isMultiple, createdAt } = discount;
         const newDiscount = await models.Discount.create({
@@ -171,10 +169,10 @@ module.exports.create = async (discount, loginUser) => {
         const { time } = discount || {};
         let { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday } = time;
         if (byDay) {
-            byDay = byDay.join("//");
-            byHour = byHour.join("//");
-            byMonth = byMonth.join("//");
-            byWeekDay = byWeekDay.join("//")
+            byDay = `//${byDay.join("//")}//`;
+            byHour = `//${byHour.join("//")}//`;
+            byMonth = `//${byMonth.join("//")}//`;
+            byWeekDay = `//${byWeekDay.join("//")}//`
         }
 
         await models.DiscountTime.create({
@@ -328,6 +326,7 @@ module.exports.getAll = async (filter, loginUser) => {
         attributes: discountAttributes,
         include: discountIncludes,
         limit: parseInt(limit),
+        order: [['createdAt', 'DESC']],
         offset: (page - 1) * limit
     });
 
@@ -335,8 +334,6 @@ module.exports.getAll = async (filter, loginUser) => {
         where,
         attributes: ["id"],
         include: [discountIncludes[1]],
-        limit: parseInt(limit),
-        offset: (page - 1) * limit,
         raw: true
     });
 
@@ -604,11 +601,12 @@ module.exports.update = async (discount, discountId, loginUser) => {
         //Thêm vào bảng discount time
         const { time } = discount || {};
         let { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday } = time;
+
         if (byDay) {
-            byDay = byDay.join("//");
-            byHour = byHour.join("//");
-            byMonth = byMonth.join("//");
-            byWeekDay = byWeekDay.join("//")
+            byDay = `//${byDay.join("//")}//`;
+            byHour = `//${byHour.join("//")}//`;
+            byMonth = `//${byMonth.join("//")}//`;
+            byWeekDay = `//${byWeekDay.join("//")}//`
         }
 
         await models.DiscountTime.update({
@@ -828,6 +826,169 @@ module.exports.getDetail = async (discountId, loginUser) => {
     }
 }
 
-module.exports.getDiscountByOrder = async (order, loginUser) => {
+module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
+    const {
+        customerId, branchId, products
+    } = order;
 
+    const {
+        page, limit
+    } = filter;
+
+    //Tính tiền hàng
+    let sumTotal = 0;
+    for (const product of products) {
+        const productId = (await models.ProductUnit.findOne({
+            where: {
+                id: product.productUnitId
+            },
+            attributes: ["productId"],
+            raw: true
+        })).productId;
+        if (productId) {
+            sumTotal += ((await models.Product.findOne({
+                where: {
+                    id: productId
+                }
+            })) || {}).price * product.quantity || 0;
+        }
+    }
+    //End tính tiền hàng
+
+    const moment = new Date();
+    const dayMoment = moment.getDate();
+    const monthMoment = moment.getMonth() + 1;
+    const hourMoment = moment.getHours();
+    const weekDayMoment = moment.getDay() + 1;
+
+    const discountByOrderIncludes = []
+
+    const discountTime = {
+        model: models.DiscountTime,
+        as: "discountTime",
+        attributes: ["id", "dateFrom", "dateTo", "byDay", "byMonth", "byHour", "byWeekDay", "isWarning", "isBirthday",
+            [Sequelize.literal(`(SELECT birthday from customers where customers.id = ${customerId})`), 'birthday']
+        ],
+        where: {
+            dateFrom: {
+                [Op.lt]: moment
+            },
+            dateTo: {
+                [Op.gt]: moment
+            },
+            byDay: {
+                [Op.or]: {
+                    [Op.eq]: "",
+                    [Op.like]: `%//${dayMoment}//%`
+                }
+            },
+            byMonth: {
+                [Op.or]: {
+                    [Op.eq]: "",
+                    [Op.like]: `%//${monthMoment}//%`
+                }
+            },
+            byHour: {
+                [Op.or]: {
+                    [Op.eq]: "",
+                    [Op.like]: `%//${hourMoment}//%`
+                }
+            },
+            byWeekDay: {
+                [Op.or]: {
+                    [Op.eq]: "",
+                    [Op.like]: `%//${weekDayMoment}//%`
+                }
+            },
+            isBirthday: {
+                [Op.or]: {
+                    [Op.eq]: 0,
+                    [Op.and]: {
+                        [Op.eq]: 1,
+                        [Op.and]: [
+                            Sequelize.where(
+                                Sequelize.literal(`(SELECT birthday FROM customers WHERE customers.id = ${customerId})`),
+                                moment
+                            )//Tạo subquery lấy ra birthday từ bảng customers so sánh với moment
+                        ]
+                    }
+                }
+            }
+        }
+    }
+    discountByOrderIncludes.push(discountTime);
+
+    const discountBranch = {
+        model: models.DiscountBranch,
+        as: "discountBranch",
+        attributes: ["branchId"],
+        where: {
+            branchId: {
+                [Op.eq]: branchId
+            }
+        }
+    }
+    discountByOrderIncludes.push(discountBranch);
+
+    const discountCustomer = {
+        model: models.DiscountCustomer,
+        as: "discountCustomer",
+        attributes: ["customerId"],
+        where: {
+            customerId: {
+                [Op.eq]: customerId
+            }
+        }
+    }
+    discountByOrderIncludes.push(discountCustomer);
+
+
+    const discountItem = {
+        model: models.DiscountItem,
+        as: "discountItem",
+        attributes: ["id", "orderFrom", "fromQuantity", "maxQuantity", "discountValue", "discountType", "pointType", "isGift", "pointValue"],
+        include: [
+            {
+                model: models.ProductDiscountItem,
+                as: "productDiscount",
+                attributes: ["productUnitId", "groupId", "isCondition"],
+            }
+        ],
+        where: {
+            orderFrom: {
+                [Op.lt]: sumTotal
+            }
+        }
+    }
+    discountByOrderIncludes.push(discountItem);
+
+    const where = {
+        target: discountContant.discountTarget.ORDER,
+        status: discountContant.discountStatus.ACTIVE
+    }
+
+    const rows = await models.Discount.findAll({
+        attributes: discountAttributes,
+        include: discountByOrderIncludes,
+        order: [['createdAt', 'DESC']],
+        where,
+        limit: parseInt(limit),
+        order: [['createdAt', 'DESC']],
+        offset: (page - 1) * limit
+    });
+
+    const count = await models.Discount.aggregate('Discount.id', 'count', {
+        attributes: discountAttributes,
+        include: discountByOrderIncludes,
+        where,
+        distinct: true // nếu bạn muốn đếm các giá trị khác nhau
+    })
+
+    return {
+        success: true,
+        data: {
+            items: rows,
+            totalItem: count
+        }
+    }
 }
