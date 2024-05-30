@@ -3,11 +3,12 @@ const router = express.Router();
 const { authenticate } = require("../../middlewares/auth");
 const { authorize } = require("../../middlewares/authorize");
 const discountController = require("./discountController");
+const discountValidator = require("./discountValidator");
 
 router.post("/", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-}, authorize, discountController.create);
+}, discountValidator.createValidator, authorize, discountController.create);
 
 router.get("/", authenticate, (req, res, next) => {
     req.apiRole = [];
@@ -17,7 +18,7 @@ router.get("/", authenticate, (req, res, next) => {
 router.put("/:discountId", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-}, authorize, discountController.update);
+}, discountValidator.createValidator, authorize, discountController.update);
 
 router.delete("/:discountId", authenticate, (req, res, next) => {
     req.apiRole = [];
