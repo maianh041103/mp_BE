@@ -169,10 +169,10 @@ module.exports.create = async (discount, loginUser) => {
         //Thêm vào bảng discount time
         const { time } = discount || {};
         let { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday, birthdayType } = time;
-        byDay = byDay != "" ? `//${byDay.join("//")}//` : "";
-        byHour = byHour != "" ? `//${byHour.join("//")}//` : "";
-        byMonth = byMonth != "" ? `//${byMonth.join("//")}//` : "";
-        byWeekDay = byWeekDay != "" ? `//${byWeekDay.join("//")}//` : "";
+        byDay = (byDay != "" && byDay != null) ? `//${byDay.join("//")}//` : "";
+        byHour = (byHour != "" && byHour != null) ? `//${byHour.join("//")}//` : "";
+        byMonth = (byMonth != "" && byMonth != null) ? `//${byMonth.join("//")}//` : "";
+        byWeekDay = (byWeekDay != "" && byWeekDay != null) ? `//${byWeekDay.join("//")}//` : "";
 
         await models.DiscountTime.create({
             discountId: newDiscountId,
@@ -601,10 +601,10 @@ module.exports.update = async (discount, discountId, loginUser) => {
         const { time } = discount || {};
         let { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday, birthdayType } = time;
 
-        byDay = byDay != "" ? `//${byDay.join("//")}//` : "";
-        byHour = byHour != "" ? `//${byHour.join("//")}//` : "";
-        byMonth = byMonth != "" ? `//${byMonth.join("//")}//` : "";
-        byWeekDay = byWeekDay != "" ? `//${byWeekDay.join("//")}//` : "";
+        byDay = (byDay != "" && byDay != null) ? `//${byDay.join("//")}//` : "";
+        byHour = (byHour != "" && byHour != null) ? `//${byHour.join("//")}//` : "";
+        byMonth = (byMonth != "" && byMonth != null) ? `//${byMonth.join("//")}//` : "";
+        byWeekDay = (byWeekDay != "" && byWeekDay != null) ? `//${byWeekDay.join("//")}//` : "";
 
         await models.DiscountTime.update({
             discountId: discountId,
@@ -737,16 +737,8 @@ module.exports.delete = async (discountId, loginUser) => {
         };
     }
     //Kiểm tra mã đã được áp dụng
-    let listDiscountItem = await models.DiscountItem.findAll({
-        discountId: discountId
-    });
-    listDiscountItem = listDiscountItem.map(item => {
-        return item.id;
-    })
     const discountUsed = await models.DiscountApply.findOne({
-        discountItemId: {
-            [Op.in]: listDiscountItem
-        }
+        discountId: discountId
     });
 
     if (discountUsed) {
@@ -1055,7 +1047,7 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
         status: discountContant.discountStatus.ACTIVE
     }
 
-    const rows = await models.Discount.findAll({
+    let rows = await models.Discount.findAll({
         attributes: discountAttributes,
         include: discountByProductIncludes,
         order: [['createdAt', 'DESC']],
@@ -1063,6 +1055,18 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
         limit: parseInt(limit),
         offset: (page - 1) * limit
     });
+
+    for (let row of rows) {
+        const listItem = row.discountItem;
+        for (let item of listItem) {
+            const listProduct = await models.ProductDiscountItem.findAll({
+                where: {
+                    discountItemId: item.id
+                }
+            });
+            item.dataValues.productDiscount = listProduct;
+        }
+    }
 
     const count = await models.Discount.aggregate('Discount.id', 'count', {
         attributes: discountAttributes,
