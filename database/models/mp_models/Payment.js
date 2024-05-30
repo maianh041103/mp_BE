@@ -38,6 +38,10 @@ module.exports = (sequelize, DataTypes) => {
     status: {
       allowNull: true,
       type: DataTypes.STRING
+    },
+    isReturn: {
+      allowNull: true,
+      type: DataTypes.BOOLEAN
     }
   }, {
     tableName: 'payments',

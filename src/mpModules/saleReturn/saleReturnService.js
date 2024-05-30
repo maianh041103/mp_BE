@@ -186,17 +186,13 @@ export async function indexCreate (saleReturn, loginUser) {
       })
 
       if (orderProduct) {
-        if (
-          orderProduct.quantity <= orderProduct.quantityLast 
-          
-        ) {
-        
-          throw new Error(`Hàng đã trả hết,bạn không thể thực hiện được hành động trả hàng`);
-
+        if (orderProduct.quantity <= orderProduct.quantityLast) {
+          throw new Error(
+            `Hàng đã trả hết,bạn không thể thực hiện được hành động trả hàng`
+          )
         }
-        if(item.quantity + orderProduct.quantityLast > orderProduct.quantity){
-          throw new Error(`Số lượng hàng trả nhiều hơn số lượng hàng đang có`);
-
+        if (item.quantity + orderProduct.quantityLast > orderProduct.quantity) {
+          throw new Error(`Số lượng hàng trả nhiều hơn số lượng hàng đang có`)
         }
 
         const newQuantityLast = orderProduct.quantityLast + item.quantity
@@ -207,7 +203,7 @@ export async function indexCreate (saleReturn, loginUser) {
             quantityLast: newQuantityLast
           },
           {
-            where: { 
+            where: {
               orderId: saleReturn.orderId,
               productId: item.productId,
               productUnitId: item.productUnitId,
@@ -216,18 +212,19 @@ export async function indexCreate (saleReturn, loginUser) {
             transaction: t
           }
         )
-    
-      
-        if (orderProduct.quantity==orderProduct.quantityLast+item.quantity) {
-          let id=saleReturn.orderId;
+
+        if (
+          orderProduct.quantity ==
+          orderProduct.quantityLast + item.quantity
+        ) {
+          let id = saleReturn.orderId
           console.log(id)
           await models.Order.update(
             {
               canReturn: false
             },
-            { where: { id:saleReturn.orderId } }
+            { where: { id: saleReturn.orderId } }
           )
-         
         }
       }
 
@@ -283,7 +280,21 @@ export async function indexCreate (saleReturn, loginUser) {
         },
         { transaction: t }
       )
-
+      console.log()
+      const paymentSaleReturn = await models.Payment.create(
+        {
+          isReturn: true,
+          amount: item.quantity * item.price,
+          code: code,
+          orderId: saleReturn.orderId,
+          createdBy: loginUser.id,
+          paymentMethod: saleReturn.paymentType,
+          status: 'DONE',
+          customerId: saleReturn.customerId,
+          totalAmount: item.quantity * item.price
+        },
+        { transaction: t }
+      )
       if (findProduct.isBatchExpireControl) {
         for (const _batch of item.batches) {
           const responseReadBatch = await readBatch(_batch.id, loginUser)
@@ -320,7 +331,31 @@ export async function indexCreate (saleReturn, loginUser) {
     data: refresh.data
   }
 }
-
+export async function indexPayment (params, loginUser) {
+  let { page, limit, orderId, code } = params
+  const payments = await models.Payment.findAll({
+    offset: +limit * (+page - 1),
+    limit: +limit,
+    include: orderIncludes,
+    order: [['id', 'DESC']],
+    where: {
+      orderId: orderId,
+      code: code,
+      isReturn: true
+    }
+  })
+  return {
+    success: true,
+    data: payments
+  }
+}
+const orderIncludes = [
+  {
+    model: models.User,
+    as: 'fullnameCreator',
+    attributes: ['id', 'fullName']
+  }
+]
 export async function indexUpdate (id, payload, loginUser) {
   const findsaleReturn = await models.saleReturn.findOne({
     where: {
