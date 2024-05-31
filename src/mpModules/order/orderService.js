@@ -492,9 +492,20 @@ async function handleCreateOrder(order, loginUser) {
         storeId: loginUser.storeId,
         branchId: order.branchId,
         createdBy: loginUser.id,
+        discountOrder: order.discountOrder || 0
       },
       { transaction: t }
     );
+
+    const listDiscountId = order.listDiscountId || [];
+    for (const id of listDiscountId) {
+      await models.DiscountApply.create({
+        orderId: newOrder.id,
+        discountId: id
+      }, {
+        transaction: t
+      })
+    }
 
     let totalPrice = 0;
     let totalItemPrice = 0;
@@ -554,7 +565,11 @@ async function handleCreateOrder(order, loginUser) {
           })
         );
       }
-      totalPrice += productUnit.price * item.quantity;
+      let itemPrice = item.itemPrice;
+      if (itemPrice == null) {
+        itemPrice = productUnit.price;
+      }
+      totalPrice += itemPrice * item.quantity;
       totalItemPrice += productUnit.price * item.quantity;
       const inventory = await getInventory(order.branchId, item.productId)
       if (inventory < item.quantity * productUnit.exchangeValue) {
@@ -584,6 +599,8 @@ async function handleCreateOrder(order, loginUser) {
           orderId: newOrder.id,
           productId: item.productId,
           productUnitId: productUnit.id,
+          isDiscount: item.isDiscount,
+          itemPrice: +itemPrice * +item.quantity,
           productUnitData: JSON.stringify(productUnit),
           price: +productUnit.price * +item.quantity,
           quantityBaseUnit: +productUnit.exchangeValue * +item.quantity,
@@ -642,6 +659,8 @@ async function handleCreateOrder(order, loginUser) {
       totalPrice = totalPrice - discountAmount;
     }
 
+    totalPrice -= order.discountOrder || 0;
+
     if (
       order.paymentType === paymentTypes.CASH &&
       order.cashOfCustomer < totalPrice
@@ -699,7 +718,8 @@ async function handleCreateOrder(order, loginUser) {
         type: 'ORDER'
       }, { transaction: t })
     }
-    const code = generateOrderCode(newOrder.id)
+    const code = generateOrderCode(newOrder.id);
+
     // Update total price
     await models.Order.update(
       {

@@ -77,6 +77,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER(10).UNSIGNED,
         defaultValues: 0.0,
       },
+      discountOrder: { //giá giảm do khuyến mãi hóa đơn
+        allowNull: true,
+        type: DataTypes.INTEGER(1).UNSIGNED,
+      },
       point: {
         allowNull: true,
         type: DataTypes.FLOAT(11, 2).UNSIGNED,
@@ -215,7 +219,7 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "createdBy",
       targetKey: "id",
     });
-  
+
     Order.belongsTo(models.Customer, {
       as: "customer",
       foreignKey: "customerId",

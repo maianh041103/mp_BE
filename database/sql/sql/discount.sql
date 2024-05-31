@@ -122,26 +122,16 @@ create index groupId
 create table discount_apply(
     id int unsigned auto_increment
 		primary key,
-    discountItemId int unsigned not null,
+    discountId int unsigned not null,
 	orderId int unsigned null,
-    groupId int unsigned null,
-    productUnitId int unsigned null,
 	constraint discountApply_ibfk_1
-		foreign key (discountItemId) references discount_items(id),
+		foreign key (discountId) references discounts(id),
 	constraint discountApply_ibfk_2
-		foreign key (orderId) references orders(id),
-	constraint discountApply_ibfk_3
-		foreign key (groupId) references group_products(id),
-	constraint discountApply_ibfk_4
-		foreign key (productUnitId) references product_units(id)
+		foreign key (orderId) references orders(id)
 )
 
 charset=utf8mb3;
-create index discountItemId
-	on discount_apply(discountItemId);
+create index discountId
+	on discount_apply(discountId);
 create index orderId
-	on discount_apply(productUnitId);
-create index groupId
-	on discount_apply(groupId);
-create index productUnitId
-	on discount_apply(productUnitId);
+	on discount_apply(orderId);
