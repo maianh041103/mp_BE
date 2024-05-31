@@ -6,6 +6,8 @@ create table discounts
     name varchar(255) not null,
 	status enum('active','inactive') default 'active' not null,
 	note varchar(255) null,
+	isAllCustomer bool default false null,
+	isAllBranch bool default false null,
     target enum('order','product') default 'order' not null,
     type enum('order_price','product_price','gift','loyalty','price_by_buy_number') default 'order_price' not null,
     isMultiple bool default true,
@@ -37,15 +39,15 @@ create table discount_customers(
     id int unsigned auto_increment
 		primary key,
     discountId int unsigned not null,
-	customerId int unsigned not null,
+	groupCustomerId int unsigned not null,
 	constraint discountCustomer_ibfk_1
 		foreign key (discountId) references discounts(id),
-	constraint discountCustomer_ibfk_2
-		foreign key (customerId) references customers(id)
+	constraint discountGroupCustomer_ibfk_2
+		foreign key (groupCustomerId) references group_customers(id)
 )
 charset=utf8mb3;
 create index customerId
-	on discount_customers (customerId);
+	on discount_customers (groupCustomerId);
 create index discountId
 	on discount_customers (discountId);
 

@@ -47,7 +47,7 @@ const discountIncludes = [
     {
         model: models.DiscountCustomer,
         as: "discountCustomer",
-        attributes: ["customerId"]
+        attributes: ["groupCustomerId"]
     }
 ]
 
@@ -207,7 +207,7 @@ module.exports.create = async (discount, loginUser) => {
                 for (const id of ids) {
                     await models.DiscountCustomer.create({
                         discountId: newDiscountId,
-                        customerId: id
+                        groupCustomerId: id
                     }, { transaction: t });
                 }
             }
@@ -673,7 +673,7 @@ module.exports.update = async (discount, discountId, loginUser) => {
             else {
                 await models.DiscountCustomer.destroy({
                     where: {
-                        customerId: {
+                        groupCustomerId: {
                             [Op.notIn]: ids
                         },
                         discountId: discountId
@@ -685,17 +685,17 @@ module.exports.update = async (discount, discountId, loginUser) => {
                 where: {
                     discountId: discountId
                 },
-                attributes: ["customerId"],
+                attributes: ["groupCustomerId"],
                 raw: true
             }) || [];
 
-            listoldDiscountCustomer = listoldDiscountCustomer.map(item => item.customerId);
+            listoldDiscountCustomer = listoldDiscountCustomer.map(item => item.groupCustomerId);
 
             for (const id of ids) {
                 if (!listoldDiscountCustomer.includes(id)) {
                     await models.DiscountCustomer.create({
                         discountId: discountId,
-                        customerId: id
+                        groupCustomerId: id
                     }, {
                         transaction: t
                     });
@@ -911,7 +911,7 @@ const getDiscountApplyIncludes = (order, filter, loginUser) => {
     const discountCustomer = {
         model: models.DiscountCustomer,
         as: "discountCustomer",
-        attributes: ["customerId"],
+        attributes: ["groupCustomerId"],
 
     }
     discountApplyIncludes.push(discountCustomer);
@@ -924,6 +924,12 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
     const {
         customerId, branchId, products, totalPrice
     } = order;
+
+    const groupCustomerId = ((await models.Customer.findOne({
+        where: {
+            id: customerId
+        }
+    })) || {}).groupCustomerId;
 
     const discountItem = {
         model: models.DiscountItem,
@@ -965,7 +971,7 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
             {
                 isAllCustomer: 0,
                 id: {
-                    [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE customerId = ${customerId} AND discount_customers.discountId = Discount.id)`)
+                    [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId = ${groupCustomerId} AND discount_customers.discountId = Discount.id)`)
                 }
             }
         ]
@@ -1004,6 +1010,13 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
     const {
         page, limit
     } = filter;
+
+    const groupCustomerId = ((await models.Customer.findOne({
+        where: {
+            id: customerId
+        }
+    })) || {}).groupCustomerId;
+
 
     const discountByProductIncludes = getDiscountApplyIncludes(order, filter, loginUser);
     const discountItem = {
@@ -1046,7 +1059,7 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
             {
                 isAllCustomer: 0,
                 id: {
-                    [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE customerId = ${customerId} AND discount_customers.discountId = Discount.id)`)
+                    [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId = ${groupCustomerId} AND discount_customers.discountId = Discount.id)`)
                 }
             }
         ]
