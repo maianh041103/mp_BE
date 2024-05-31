@@ -340,20 +340,18 @@ function generatePurchaseReturnCode(no) {
 }
 
 export async function createPurchaseReturn(purchaseReturn, loginUser) {
-  try {
     return await handleCreatePurchaseReturn(purchaseReturn, loginUser);
-  } catch (e) {
-
-  }
 }
 
 export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
   if (!purchaseReturn.products || !purchaseReturn.products.length) {
-    return {
-      error: true,
-      code: HttpStatusCode.BAD_REQUEST,
-      message: `Bạn cần chọn sản phẩm để tiến hành trả hàng`,
-    };
+    throw Error(
+        JSON.stringify({
+          error: true,
+          code: HttpStatusCode.BAD_REQUEST,
+          message: `Bạn cần chọn sản phẩm để tiến hành trả hàng`
+        })
+    );
   }
 
   // Validate thông tin nhà cung cấp, nhân viên, chi nhánh
@@ -527,6 +525,8 @@ export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
   }
   )
 
+  console.log("cehck")
+
   const { data: refreshPurchaseReturn } = await readPurchaseReturn(
       newPurchaseReturn.id,
       loginUser
@@ -539,7 +539,6 @@ export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
       message: `Không thể tạo phiếu trả hàng`,
     };
   }
-
 
   return {
     success: true,
