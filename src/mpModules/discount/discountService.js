@@ -14,6 +14,8 @@ const discountAttributes = [
     "target",
     "type",
     "isMultiple",
+    "isAllCustomer",
+    "isAllBranch",
     "createdAt",
     "updatedAt",
     "deletedAt"
@@ -45,7 +47,7 @@ const discountIncludes = [
     {
         model: models.DiscountCustomer,
         as: "discountCustomer",
-        attributes: ["customerId"]
+        attributes: ["groupCustomerId"]
     }
 ]
 
@@ -84,18 +86,15 @@ module.exports.create = async (discount, loginUser) => {
         }
     }
 
-    if (discount.name == "") {
-        return {
-            error: true,
-            code: HttpStatusCode.BAD_REQUEST,
-            message: `Name không được để trống`
-        }
-    }
     const t = await models.sequelize.transaction(async (t) => {
         //Tạo bảng discount
+        const { branch, customer } = discount.scope || {};
+        let isAllBranch = branch.isAll == true ? 1 : 0;
+        let isAllCustomer = customer.isAll == true ? 1 : 0;
+
         const { code, name, status, note, target, type, isMultiple, createdAt } = discount;
         const newDiscount = await models.Discount.create({
-            code, name, status, note, target, type, isMultiple, createdAt
+            code, name, status, note, target, type, isMultiple, isAllBranch, isAllCustomer, createdAt
         }, { transaction: t })
 
         newDiscountId = newDiscount.id;
@@ -189,53 +188,30 @@ module.exports.create = async (discount, loginUser) => {
         }, { transaction: t });
 
         //Thêm vào bảng discountBranch
-        const { branch, customer } = discount.scope || {};
         if (branch) {
-            let { isAll, ids } = branch;
-            if (isAll == true) {
-                //Tìm tất cả branch thuộc cùng 1 storeId
-                let objectIds = await models.Branch.findAll({
-                    where: {
-                        storeId: loginUser.storeId
-                    },
-                    attributes: ["id"],
-                    raw: true
-                });
-
-                ids = objectIds.map((item, index) => {
-                    return item.id
-                })
-
-            }
-            for (const id of ids) {
-                await models.DiscountBranch.create({
-                    discountId: newDiscountId,
-                    branchId: id
-                }, { transaction: t });
+            let { ids } = branch;
+            if (isAllBranch == 0) {
+                for (const id of ids) {
+                    await models.DiscountBranch.create({
+                        discountId: newDiscountId,
+                        branchId: id
+                    }, { transaction: t });
+                }
             }
         }
 
         //Thêm vào bảng discountCustomer
         if (customer) {
-            let { isAll, ids } = customer;
-            if (isAll == true) {
-                //Tạo tất cả customer thuộc 1 storeId
-                let objectIds = await models.Customer.findAll({
-                    where: {
-                        storeId: loginUser.storeId
-                    },
-                    attributes: ["id"],
-                    raw: true
-                });
+            let { ids } = customer;
+            if (isAllCustomer == 0) {
+                for (const id of ids) {
+                    await models.DiscountCustomer.create({
+                        discountId: newDiscountId,
+                        groupCustomerId: id
+                    }, { transaction: t });
+                }
+            }
 
-                ids = objectIds.map((item, index) => item.id)
-            }
-            for (const id of ids) {
-                await models.DiscountCustomer.create({
-                    discountId: newDiscountId,
-                    customerId: id
-                }, { transaction: t });
-            }
         }
     });
 
@@ -363,6 +339,10 @@ module.exports.update = async (discount, discountId, loginUser) => {
         }
     }
 
+    if (!discount.code) {
+        discount.code = generateDiscountCode(discountId);
+    }
+
     const discountExists = await models.Discount.findOne({
         where: {
             id: discountId
@@ -375,6 +355,12 @@ module.exports.update = async (discount, discountId, loginUser) => {
             message: "Mã giảm giá không tồn tại",
         };
     }
+
+    const { branch, customer } = discount.scope || {};
+    const isAllBranch = (branch || {}).isAll;
+    const isAllCustomer = (customer || {}).isAll;
+    discount.isAllBranch = isAllBranch == true ? 1 : 0;
+    discount.isAllCustomer = isAllCustomer == true ? 1 : 0;
 
     const t = await models.sequelize.transaction(async (t) => {
         //Update bảng discount
@@ -626,43 +612,39 @@ module.exports.update = async (discount, discountId, loginUser) => {
         });
 
         //Thêm vào bảng discountBranch
-        const { branch, customer } = discount.scope || {};
         if (branch) {
-            let { isAll, ids } = branch;
-            if (isAll == true) {
-                //Tìm tất cả branch thuộc cùng 1 storeId
-                let objectIds = await models.Branch.findAll({
+            let ids = branch.ids || [];
+            if (isAllBranch == true) {
+                //Xóa tất cả các branch đã lưu
+                await models.DiscountBranch.destroy({
                     where: {
-                        storeId: loginUser.storeId
+                        discountId: discountId
                     },
-                    attributes: ["id"],
-                    raw: true
-                });
-
-                ids = objectIds.map((item, index) => {
-                    return item.id
+                    transaction: t
                 })
             }
-
-            await models.DiscountBranch.destroy({
-                where: {
-                    branchId: {
-                        [Op.notIn]: ids
+            else {
+                await models.DiscountBranch.destroy({
+                    where: {
+                        branchId: {
+                            [Op.notIn]: ids
+                        },
+                        discountId: discountId
                     },
-                    discountId: discountId
-                },
-                transaction: t
-            })
-
+                    transaction: t
+                })
+            }
             let listoldDiscountBrand = await models.DiscountBranch.findAll({
                 where: {
                     discountId: discountId
                 },
                 attributes: ["branchId"],
                 raw: true
-            });
+            }) || [];
 
-            listoldDiscountBrand = listoldDiscountBrand.map(item => item.branchId);
+            listoldDiscountBrand = listoldDiscountBrand.map(item => {
+                return item.branchId;
+            });
 
             for (const id of ids) {
                 if (!listoldDiscountBrand.includes(id)) {
@@ -678,45 +660,42 @@ module.exports.update = async (discount, discountId, loginUser) => {
 
         //Thêm vào bảng discountCustomer
         if (customer) {
-            let { isAll, ids } = customer;
-            if (isAll == true) {
-                //Tạo tất cả customer thuộc 1 storeId
-                let objectIds = await models.Customer.findAll({
+            let ids = customer.ids || [];
+            if (isAllCustomer == true) {
+                //Xóa tất cả các customer đã lưu
+                await models.DiscountCustomer.destroy({
                     where: {
-                        storeId: loginUser.storeId
+                        discountId: discountId
                     },
-                    attributes: ["id"],
-                    raw: true
-                });
-
-                ids = objectIds.map((item, index) => item.id)
+                    transaction: t
+                })
             }
-
-            await models.DiscountCustomer.destroy({
-                where: {
-                    customerId: {
-                        [Op.notIn]: ids
+            else {
+                await models.DiscountCustomer.destroy({
+                    where: {
+                        groupCustomerId: {
+                            [Op.notIn]: ids
+                        },
+                        discountId: discountId
                     },
-                    discountId: discountId
-                },
-                transaction: t
-            })
-
+                    transaction: t
+                })
+            }
             let listoldDiscountCustomer = await models.DiscountCustomer.findAll({
                 where: {
                     discountId: discountId
                 },
-                attributes: ["customerId"],
+                attributes: ["groupCustomerId"],
                 raw: true
-            });
+            }) || [];
 
-            listoldDiscountCustomer = listoldDiscountCustomer.map(item => item.customerId)
+            listoldDiscountCustomer = listoldDiscountCustomer.map(item => item.groupCustomerId);
 
             for (const id of ids) {
                 if (!listoldDiscountCustomer.includes(id)) {
                     await models.DiscountCustomer.create({
                         discountId: discountId,
-                        customerId: id
+                        groupCustomerId: id
                     }, {
                         transaction: t
                     });
@@ -902,16 +881,6 @@ const getDiscountApplyIncludes = (order, filter, loginUser) => {
                 [Op.or]: {
                     [Op.eq]: 0,
                     [Op.and]: [
-                        // Sequelize.literal(`(
-                        //     SELECT MONTH(birthday) 
-                        //     FROM customers 
-                        //     WHERE customers.id = ${customerId}
-                        // ) = ${monthMoment}`),
-                        // Sequelize.literal(`(
-                        //     SELECT birthdayType
-                        //     FROM discount_times 
-                        // ) = 'month'`)
-
                         Sequelize.literal(`
                         CASE
                             WHEN birthdayType = 'month' THEN
@@ -936,23 +905,14 @@ const getDiscountApplyIncludes = (order, filter, loginUser) => {
         model: models.DiscountBranch,
         as: "discountBranch",
         attributes: ["branchId"],
-        where: {
-            branchId: {
-                [Op.eq]: branchId
-            }
-        }
     }
     discountApplyIncludes.push(discountBranch);
 
     const discountCustomer = {
         model: models.DiscountCustomer,
         as: "discountCustomer",
-        attributes: ["customerId"],
-        where: {
-            customerId: {
-                [Op.eq]: customerId
-            }
-        }
+        attributes: ["groupCustomerId"],
+
     }
     discountApplyIncludes.push(discountCustomer);
 
@@ -961,10 +921,15 @@ const getDiscountApplyIncludes = (order, filter, loginUser) => {
 
 module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
     const discountByOrderIncludes = getDiscountApplyIncludes(order, filter, loginUser);
-
     const {
-        products, totalPrice
+        customerId, branchId, products, totalPrice
     } = order;
+
+    const groupCustomerId = ((await models.Customer.findOne({
+        where: {
+            id: customerId
+        }
+    })) || {}).groupCustomerId;
 
     const discountItem = {
         model: models.DiscountItem,
@@ -991,7 +956,25 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
 
     const where = {
         target: discountContant.discountTarget.ORDER,
-        status: discountContant.discountStatus.ACTIVE
+        status: discountContant.discountStatus.ACTIVE,
+        [Op.or]: [
+            { isAllBranch: 1 },
+            {
+                isAllBranch: 0,
+                id: {
+                    [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_branches WHERE branchId = ${branchId} AND discount_branches.discountId = Discount.id)`)
+                }
+            }
+        ],
+        [Op.or]: [
+            { isAllCustomer: 1 },
+            {
+                isAllCustomer: 0,
+                id: {
+                    [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId = ${groupCustomerId} AND discount_customers.discountId = Discount.id)`)
+                }
+            }
+        ]
     }
 
     const rows = await models.Discount.findAll({
@@ -1021,12 +1004,19 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
 
 module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
     const {
-        productUnitId, quantity
+        productUnitId, quantity, branchId, customerId
     } = order;
 
     const {
         page, limit
     } = filter;
+
+    const groupCustomerId = ((await models.Customer.findOne({
+        where: {
+            id: customerId
+        }
+    })) || {}).groupCustomerId;
+
 
     const discountByProductIncludes = getDiscountApplyIncludes(order, filter, loginUser);
     const discountItem = {
@@ -1054,7 +1044,25 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
 
     const where = {
         target: discountContant.discountTarget.PRODUCT,
-        status: discountContant.discountStatus.ACTIVE
+        status: discountContant.discountStatus.ACTIVE,
+        [Op.or]: [
+            { isAllBranch: 1 },
+            {
+                isAllBranch: 0,
+                id: {
+                    [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_branches WHERE branchId = ${branchId} AND discount_branches.discountId = Discount.id)`)
+                }
+            }
+        ],
+        [Op.or]: [
+            { isAllCustomer: 1 },
+            {
+                isAllCustomer: 0,
+                id: {
+                    [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId = ${groupCustomerId} AND discount_customers.discountId = Discount.id)`)
+                }
+            }
+        ]
     }
 
     let rows = await models.Discount.findAll({

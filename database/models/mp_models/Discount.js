@@ -53,6 +53,14 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.BOOLEAN,
                 defaultValue: true,
             },
+            isAllCustomer: {
+                type: DataTypes.BOOLEAN,
+                defaultValue: false,
+            },
+            isAllBranch: {
+                type: DataTypes.BOOLEAN,
+                defaultValue: false,
+            },
             createdAt: {
                 allowNull: true,
                 type: Sequelize.DATE,

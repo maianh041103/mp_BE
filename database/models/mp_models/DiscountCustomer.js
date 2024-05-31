@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false,
             },
-            customerId: {
+            groupCustomerId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false,
             },
@@ -32,9 +32,9 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: "discountId",
             sourceKey: 'id',
         }),
-            DiscountCustomer.belongsTo(models.Customer, {
-                as: "customer",
-                foreignKey: "customerId",
+            DiscountCustomer.belongsTo(models.GroupCustomer, {
+                as: "groupCustomer",
+                foreignKey: "groupCustomerId",
                 sourceKey: 'id',
             })
     };
