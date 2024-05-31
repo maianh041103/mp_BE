@@ -52,10 +52,10 @@ export async function productFilter(params) {
 
 export async function countProduct(query) {
   try {
-    delete query.order;
-    delete query.include;
-    query.attributes = ["id"];
-    query.raw = true;
+    // const invInclude = query.include.find(x => x.as === 'inventories')
+    delete query.order
+    delete query.include
+    query.attributes = ["id"]
     return await models.Product.count(query);
   } catch (e) {
     console.log(e);
@@ -68,11 +68,9 @@ export async function indexProducts(params) {
   console.log(query)
   const [items, count] = await Promise.all([
     models.Product.findAll(query),
-    models.Product.count(query),
+    countProduct(query)
   ]);
-  console.log("product", await models.Product.count(query))
   for (const item of items) {
-    item.dataValues.inventoryQuantity = parseInt(item.dataValues.inventoryQuantity);
     item.dataValues.inventory = await getInventory(params.branchId, item.id)
     if (!params.isSale) {
       item.dataValues.batches = [];

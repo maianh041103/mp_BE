@@ -118,8 +118,12 @@ export const productAttributes = [
     "expiryPeriod",
     "status",
     "createdAt",
-    "drugCode",
-    [Sequelize.literal(`(SELECT COALESCE(SUM(quantity), 0)
-    FROM inventories 
-    WHERE Product.id = inventories.productId and Product.branchId = inventories.branchId)`), 'inventoryQuantity'],
+    "drugCode"
 ];
+
+export const filterInventories = {
+    VUOTDINHMUC: 1,
+    DUOIDINHMUC: 2,
+    CONHANG: 3,
+    HETHANG: 4
+}

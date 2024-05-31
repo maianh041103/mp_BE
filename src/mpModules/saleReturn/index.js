@@ -1,73 +1,86 @@
-const { authenticate } = require("../../middlewares/auth");
-const { authorize } = require("../../middlewares/authorize");
+const { authenticate } = require('../../middlewares/auth')
+const { authorize } = require('../../middlewares/authorize')
 const {
-    indexController,
-    readController,
-    createController,
-    updateController,
-    updateStatus,
-    indexDelete,
-    indexDeleteController,
-} = require("./saleReturnController");
-const { createValidator, updateStatusValidator } = require("./saleReturnValidator");
+  indexController,
+  readController,
+  createController,
+  updateController,
+  readPaymentController,
+  updateStatus,
+  indexDelete,
+  indexDeleteController
+} = require('./saleReturnController')
+const {
+  createValidator,
+  updateStatusValidator
+} = require('./saleReturnValidator')
 
-const express = require("express");
-const router = express.Router();
+const express = require('express')
+const router = express.Router()
 
 router.post(
-    "/",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = "order_create";
-        next();
-    },
-    authorize,
-    createValidator,
-    createController
-);
+  '/',
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = 'order_create'
+    next()
+  },
+  authorize,
+  createValidator,
+  createController
+)
+router.get(
+  '/:id/payment-saleReturn',
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = 'order_read'
+    next()
+  },
+  authorize,
+  readPaymentController
+)
+router.get(
+  '/',
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = ['order_read', 'order_view_all']
+    next()
+  },
+  authorize,
+  indexController
+)
 
 router.get(
-    "/",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = ["order_read", "order_view_all"];
-        next();
-    },
-    authorize,
-    indexController
-);
-
-router.get(
-    "/:id",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = "order_read";
-        next();
-    },
-    authorize,
-    readController
-);
+  '/:id',
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = 'order_read'
+    next()
+  },
+  authorize,
+  readController
+)
 
 router.patch(
-    "/:id/status",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = "order_update";
-        next();
-    },
-    authorize,
-    updateStatus
-);
+  '/:id/status',
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = 'order_update'
+    next()
+  },
+  authorize,
+  updateStatus
+)
 
 router.delete(
-    "/:id",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = "order_delete";
-        next();
-    },
-    authorize,
-    indexDeleteController
-);
+  '/:id',
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = 'order_delete'
+    next()
+  },
+  authorize,
+  indexDeleteController
+)
 
-module.exports = router;
+module.exports = router
