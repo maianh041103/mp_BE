@@ -15,6 +15,7 @@ const discountAttributes = [
     "isMultiple",
     "isAllCustomer",
     "isAllBranch",
+    "storeId",
     "createdAt",
     "updatedAt",
     "deletedAt"
@@ -92,8 +93,9 @@ module.exports.create = async (discount, loginUser) => {
         let isAllCustomer = customer.isAll == true ? 1 : 0;
 
         const { code, name, status, note, target, type, isMultiple, createdAt } = discount;
+        const storeId = loginUser.storeId;
         const newDiscount = await models.Discount.create({
-            code, name, status, note, target, type, isMultiple, isAllBranch, isAllCustomer, createdAt
+            code, name, status, note, target, type, isMultiple, isAllBranch, isAllCustomer, createdAt, storeId
         }, { transaction: t })
 
         newDiscountId = newDiscount.id;
@@ -229,6 +231,8 @@ module.exports.getAll = async (filter, loginUser) => {
     } = filter;
 
     let where = {};
+
+    where.storeId = loginUser.storeId;
     if (keyword) {
         where = {
             [Op.or]: {
@@ -916,7 +920,7 @@ const getDiscountApplyIncludes = (order, filter, loginUser) => {
 
 const convertResult = (rows) => {
     rows = rows.map(row => {
-        const { id, code, name, status, note, target, type, isMultiple, discountItem, discountTime,
+        const { id, code, name, status, note, target, type, isMultiple, storeId, discountItem, discountTime,
             discountBranch, discountCustomer, isAllBranch, isAllCustomer } = row;
 
         const items = discountItem.map(item => {
@@ -986,6 +990,7 @@ const convertResult = (rows) => {
             target,
             type,
             isMultiple,
+            storeId,
             items: items,
             time: {
                 dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday, birthdayType
@@ -1043,6 +1048,7 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
     const where = {
         target: discountContant.discountTarget.ORDER,
         status: discountContant.discountStatus.ACTIVE,
+        storeId: loginUser.storeId,
         [Op.or]: [
             { isAllBranch: 1 },
             {
@@ -1133,6 +1139,7 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
     const where = {
         target: discountContant.discountTarget.PRODUCT,
         status: discountContant.discountStatus.ACTIVE,
+        storeId: loginUser.storeId,
         [Op.or]: [
             { isAllBranch: 1 },
             {
