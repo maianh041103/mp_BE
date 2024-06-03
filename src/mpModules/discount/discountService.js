@@ -1,7 +1,6 @@
 const models = require('../../../database/models/index');
 const discountContant = require('./discountContant');
 const { HttpStatusCode } = require('../../helpers/errorCodes');
-const Discount = require('../../../database/models/mp_models/Discount');
 const { Sequelize, Op, where } = require("sequelize");
 const { getISOWeek } = require('date-fns');
 
@@ -919,6 +918,97 @@ const getDiscountApplyIncludes = (order, filter, loginUser) => {
     return discountApplyIncludes;
 }
 
+const convertResult = (rows) => {
+    rows = rows.map(row => {
+        const { id, code, name, status, note, target, type, isMultiple, discountItem, discountTime,
+            discountBranch, discountCustomer, isAllBranch, isAllCustomer } = row;
+
+        const items = discountItem.map(item => {
+            let productUnitIdCondition = [];
+            let groupIdCondition = [];
+            let productUnitIdApply = [];
+            let groupIdApply = [];
+            for (const item of item.productDiscount) {
+                if (item.isCondition == true && item.productUnitId != null && item.groupId == null
+                    && !productUnitIdCondition.includes(item.productUnitId)
+                ) {
+                    productUnitIdCondition.push(item.productUnitId);
+                }
+                else if (item.isCondition == true && item.groupId != null && item.productUnitId == null
+                    && !groupIdCondition.includes(item.groupId)
+                ) {
+                    groupIdCondition.push(item.groupId);
+                }
+                else if (item.isCondition == false && item.productUnitId != null && item.groupId == null
+                    && !productUnitIdApply.includes(item.productUnitId)
+                ) {
+                    productUnitIdApply.push(item.productUnitId);
+                }
+                else if (item.isCondition == false && item.groupId != null && item.productUnitId == null
+                    && !groupIdApply.includes(item.groupId)
+                ) {
+                    groupIdApply.push(item.groupId);
+                }
+            }
+            return {
+                condition: {
+                    order: {
+                        from: item.orderFrom
+                    },
+                    product: {
+                        from: item.fromQuantity
+                    },
+                    productUnitId: productUnitIdCondition,
+                    groupId: groupIdCondition
+                },
+                apply: {
+                    maxQuantity: item.maxQuantity,
+                    discountValue: item.discountValue,
+                    discountType: item.discountType,
+                    pointType: item.pointType,
+                    pointValue: item.pointValue,
+                    isGift: item.isGift,
+                    productUnitId: productUnitIdApply,
+                    groupId: groupIdApply,
+                    fixedPrice: item.fixedPrice,
+                    changeType: item.changeType
+                }
+            }
+        })
+
+        const branchIds = discountBranch.map(item => item.branchId);
+
+        const customerIds = discountCustomer.map(item => item.customerId);
+
+        const { dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday, birthdayType } = discountTime[0];
+        return {
+            id,
+            code,
+            name,
+            status,
+            note,
+            target,
+            type,
+            isMultiple,
+            items: items,
+            time: {
+                dateFrom, dateTo, byDay, byMonth, byHour, byWeekDay, isWarning, isBirthday, birthdayType
+            },
+            scope: {
+                branch: {
+                    isAll: isAllBranch,
+                    ids: branchIds
+                },
+                customer: {
+                    isAll: isAllCustomer,
+                    ids: customerIds
+                }
+            }
+        }
+    })
+    return rows;
+}
+
 module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
     const discountByOrderIncludes = getDiscountApplyIncludes(order, filter, loginUser);
     const {
@@ -977,7 +1067,7 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
         ]
     }
 
-    const rows = await models.Discount.findAll({
+    let rows = await models.Discount.findAll({
         attributes: discountAttributes,
         include: discountByOrderIncludes,
         order: [['createdAt', 'DESC']],
@@ -985,6 +1075,8 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
         limit: parseInt(limit),
         offset: (page - 1) * limit
     });
+
+    rows = convertResult(rows);
 
     const count = await models.Discount.aggregate('Discount.id', 'count', {
         attributes: discountAttributes,
@@ -1085,6 +1177,8 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
             item.dataValues.productDiscount = listProduct;
         }
     }
+
+    rows = convertResult(rows);
 
     const count = await models.Discount.aggregate('Discount.id', 'count', {
         attributes: discountAttributes,
