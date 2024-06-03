@@ -929,16 +929,24 @@ const convertResult = (rows) => {
             let productUnitIdApply = [];
             let groupIdApply = [];
             for (const item of item.productDiscount) {
-                if (item.isCondition == true && item.productUnitId != null && item.groupId == null) {
+                if (item.isCondition == true && item.productUnitId != null && item.groupId == null
+                    && !productUnitIdCondition.includes(item.productUnitId)
+                ) {
                     productUnitIdCondition.push(item.productUnitId);
                 }
-                else if (item.isCondition == true && item.groupId != null && item.productUnitId == null) {
+                else if (item.isCondition == true && item.groupId != null && item.productUnitId == null
+                    && !groupIdCondition.includes(item.groupId)
+                ) {
                     groupIdCondition.push(item.groupId);
                 }
-                else if (item.isCondition == false && item.productUnitId != null && item.groupId == null) {
+                else if (item.isCondition == false && item.productUnitId != null && item.groupId == null
+                    && !productUnitIdApply.includes(item.productUnitId)
+                ) {
                     productUnitIdApply.push(item.productUnitId);
                 }
-                else if (item.isCondition == false && item.groupId != null && item.productUnitId == null) {
+                else if (item.isCondition == false && item.groupId != null && item.productUnitId == null
+                    && !groupIdApply.includes(item.groupId)
+                ) {
                     groupIdApply.push(item.groupId);
                 }
             }
