@@ -9,14 +9,14 @@ const Joi = BaseJoi.extend(Extension);
 const { ERROR_CODE_INVALID_PARAMETER } = require("../../helpers/errorCodes");
 
 const createSchema = Joi.object().keys({
-    code: Joi.string().max(50),
+    code: Joi.string().max(50).allow(""),
     name: Joi.string().max(50).required(),
     status: Joi.string().valid([
         discountContant.discountStatus.ACTIVE,
         discountContant.discountStatus.INACTIVE,
         "ACTIVE", "INACTIVE"
     ]),
-    note: Joi.string(),
+    note: Joi.string().allow(""),
     target: Joi.string().required().valid([
         discountContant.discountTarget.ORDER,
         discountContant.discountTarget.PRODUCT,
@@ -31,7 +31,7 @@ const createSchema = Joi.object().keys({
         discountContant.discountType.PRODUCT_PRICE,
         "GIFT", "LOYALTY", "ORDER_PRICE", "PRICE_BY_BUY_NUMBER", "PRODUCT_PRICE"
     ]),
-    isMultiple: Joi.boolean(),
+    isMultiple: Joi.boolean().default(false),
     items: Joi.array().items(
         Joi.object({
             condition: Joi.object({
@@ -63,7 +63,6 @@ const createSchema = Joi.object().keys({
                 groupId: Joi.array().items(
                     Joi.number().integer()
                 ),
-                maxQuantity: Joi.number().integer(),
                 pointType: Joi.valid([
                     discountContant.discountDiscountType.AMOUNT,
                     discountContant.discountDiscountType.PERCENT,

@@ -11,12 +11,16 @@ create table discounts
     target enum('order','product') default 'order' not null,
     type enum('order_price','product_price','gift','loyalty','price_by_buy_number') default 'order_price' not null,
     isMultiple bool default true,
+	storeId int unsigned not null,
+	constraint fk_discounts_stores
+		foreign key (storeId) references stores(id),
 	createdAt timestamp default CURRENT_TIMESTAMP not null,
 	updatedAt timestamp default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP,
 	deletedAt timestamp null
 )
 charset=utf8mb3;
-
+create index storeId
+	on discounts (storeId);
 
 create table discount_branches(
     id int unsigned auto_increment

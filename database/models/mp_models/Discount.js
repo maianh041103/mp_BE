@@ -61,6 +61,10 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.BOOLEAN,
                 defaultValue: false,
             },
+            storeId: {
+                type: DataTypes.INTEGER(11).UNSIGNED,
+                allowNull: false
+            },
             createdAt: {
                 allowNull: true,
                 type: Sequelize.DATE,
@@ -100,6 +104,11 @@ module.exports = (sequelize, DataTypes) => {
         Discount.hasMany(models.DiscountCustomer, {
             as: 'discountCustomer',
             foreignKey: 'discountId',
+            sourceKey: 'id',
+        });
+        Discount.belongsTo(models.Store, {
+            as: "store",
+            foreignKey: "storeId",
             sourceKey: 'id',
         })
     };
