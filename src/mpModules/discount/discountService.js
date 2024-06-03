@@ -25,7 +25,9 @@ const discountIncludes = [
     {
         model: models.DiscountItem,
         as: "discountItem",
-        attributes: ["id", "orderFrom", "fromQuantity", "maxQuantity", "discountValue", "discountType", "pointType", "isGift", "pointValue"],
+        attributes: ["id", "orderFrom", "fromQuantity", "maxQuantity", "discountValue", "discountType", "pointType", "isGift", "pointValue",
+            "fixedPrice", "changeType"
+        ],
         include: [
             {
                 model: models.ProductDiscountItem,
