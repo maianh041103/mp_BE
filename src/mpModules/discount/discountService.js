@@ -527,15 +527,13 @@ module.exports.update = async (discount, discountId, loginUser) => {
                         }
                     })
                     if (!itemExists) {
-                        for (const item of productApply) {
-                            await models.ProductDiscountItem.create({
-                                discountItemId: discountItemId,
-                                productUnitId: item,
-                                isCondition: false
-                            }, {
-                                transaction: t
-                            });
-                        }
+                        await models.ProductDiscountItem.create({
+                            discountItemId: discountItemId,
+                            productUnitId: item,
+                            isCondition: false
+                        }, {
+                            transaction: t
+                        });
                     }
                 }
             }
@@ -554,7 +552,7 @@ module.exports.update = async (discount, discountId, loginUser) => {
             })
 
             if (groupApply) {
-                for (const item of productApply) {
+                for (const item of groupApply) {
                     const itemExists = await models.ProductDiscountItem.findOne({
                         where: {
                             discountItemId: discountItemId,
@@ -563,15 +561,13 @@ module.exports.update = async (discount, discountId, loginUser) => {
                         }
                     })
                     if (!itemExists) {
-                        for (const item of groupApply) {
-                            await models.ProductDiscountItem.create({
-                                discountItemId: discountItemId,
-                                groupId: item,
-                                isCondition: false
-                            }, {
-                                transaction: t
-                            });
-                        }
+                        await models.ProductDiscountItem.create({
+                            discountItemId: discountItemId,
+                            groupId: item,
+                            isCondition: false
+                        }, {
+                            transaction: t
+                        });
                     }
                 }
             }
