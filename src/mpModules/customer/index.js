@@ -150,7 +150,7 @@ router.get(
 );
 
 router.get(
-  "/:id/payment-history-customer",
+  "/:id/payment",
   authenticate,
   (req, res, next) => {
     req.apiRole = "order_read";
