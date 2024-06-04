@@ -159,18 +159,17 @@ export async function indexRevenuesReport(params, loginUser) {
   };
 }
 
-
 async function getReportByTime(from, to, branchId) {
   const groupBy = groupByField('Order.createdAt', from, to);
   const res = await models.Order.findAll({
     attributes: [
       [sequelize.literal(groupBy), 'title'],
       [sequelize.fn('SUM', sequelize.col('totalPrice')), 'totalRevenue'],
-      [sequelize.literal('0'), 'saleReturn'],
+      [sequelize.literal(`(SELECT COALESCE(SUM(CASE WHEN payments.isReturn = 1 THEN payments.amount ELSE 0 END), 0) FROM payments WHERE DATE(payments.createdAt) = DATE(Order.createdAt))`), 'saleReturn'],
       [sequelize.fn('SUM', sequelize.col('totalPrice')), 'realRevenue'],
     ],
     where: getFilter(from, to, branchId),
-    group: sequelize.literal(groupBy)
+    group: [sequelize.literal(groupBy)]
   })
   return {
     success: true,
@@ -180,6 +179,27 @@ async function getReportByTime(from, to, branchId) {
     }
   };
 }
+
+async function getReportBySaleReturn(from, to, branchId) {
+  const groupBy = groupByField('Order.createdAt', from, to);
+  const res = await models.Order.findAll({
+    attributes: [
+      [sequelize.literal(groupBy), 'title'],
+      [sequelize.literal(`(SELECT COUNT(payments.id) FROM payments WHERE payments.isReturn = 1 AND DATE(payments.createdAt) = DATE(Order.createdAt))`), 'numberOfReturn'],
+      [sequelize.literal(`(SELECT COALESCE(SUM(CASE WHEN payments.isReturn = 1 THEN payments.amount ELSE 0 END), 0) FROM payments WHERE DATE(payments.createdAt) = DATE(Order.createdAt))`), 'saleReturn']
+    ],
+    where: getFilter(from, to, branchId),
+    group: [sequelize.literal(groupBy)]
+  })
+  return {
+    success: true,
+    data: {
+      items: res,
+      summary: calculateSummary(res, ['numberOfReturn', 'saleReturn'])
+    }
+  };
+}
+
 async function getReportByRevenue(from, to, branchId) {
   const groupBy = groupByField('Order.createdAt', from, to);
   const res = await models.Order.findAll({
@@ -283,7 +303,7 @@ export async function indexSalesReport(params, loginUser) {
     case SALES_CONCERN.DISCOUNT:
       return await getReportByDiscount(from, to, branchId)
     case SALES_CONCERN.SALE_RETURN:
-      return await getReportByTime(from, to, branchId)
+      return await getReportBySaleReturn(from, to, branchId)
     case SALES_CONCERN.EMPLOYEE:
       return await getReportByEmployee(from, to, branchId)
     default:

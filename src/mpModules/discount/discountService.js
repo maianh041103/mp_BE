@@ -1082,6 +1082,19 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
 
     rows = convertResult(rows);
 
+    for (const row of rows) {
+        const items = row.items;
+        let max = items[0].condition.order.from;
+        let index = 0;
+        for (let i = 0; i < items.length; i++) {
+            if (max < items[i].condition.order.from) {
+                index = i;
+                max = items[i].condition.order.from;
+            }
+        }
+        row.items = items[index];
+    }
+
     const count = await models.Discount.aggregate('Discount.id', 'count', {
         attributes: discountAttributes,
         include: discountByOrderIncludes,
@@ -1184,6 +1197,20 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
     }
 
     rows = convertResult(rows);
+
+
+    for (const row of rows) {
+        const items = row.items;
+        let max = items[0].condition.product.from;
+        let index = 0;
+        for (let i = 0; i < items.length; i++) {
+            if (max < items[i].condition.product.from) {
+                index = i;
+                max = items[i].condition.product.from;
+            }
+        }
+        row.items = items[index];
+    }
 
     const count = await models.Discount.aggregate('Discount.id', 'count', {
         attributes: discountAttributes,
