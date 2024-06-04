@@ -599,3 +599,30 @@ export async function getCustomer(customerId) {
   if (customer.length) return customer[0];
   return {};
 }
+
+export async function indexPaymentCustomer(params, loginUser) {
+  let {
+    page,
+    limit,
+    customerId
+  } = params
+  const where = {};
+  if (customerId) {
+    where.customerId = customerId;
+  }
+  const payments = await models.Payment.findAll({
+    offset: +limit * (+page - 1),
+    limit: +limit,
+    include: {
+      model: models.User,
+      as: "fullnameCreator",
+      attributes: ["id", "fullName",],
+    },
+    order: [["id", "DESC"]],
+    where
+  })
+  return {
+    success: true,
+    data: payments
+  }
+}

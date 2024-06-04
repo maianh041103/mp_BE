@@ -9,6 +9,7 @@ const {
   getCustomerListByGroup,
   readController,
   updateStatus, getTotalDebtController, getDefaultCustomer,
+  readPaymentCustomerController
 } = require("./customerController");
 const {
   updateValidator,
@@ -147,6 +148,17 @@ router.get(
   authorize,
   getCustomerListByGroup
 );
+
+router.get(
+  "/:id/payment-history-customer",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = "order_read";
+    next();
+  },
+  authorize,
+  readPaymentCustomerController
+)
 
 // manager
 router.patch(
