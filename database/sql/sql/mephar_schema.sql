@@ -1503,6 +1503,7 @@ create table order_products
 	price int unsigned null,
 	primePrice int unsigned null,
 	itemPrice int unsigned null,
+	discountPrice int unsigned null,
 	isDiscount bool default false null,
 	customerId int unsigned not null,
 	groupCustomerId int unsigned null,
