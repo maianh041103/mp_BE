@@ -165,7 +165,7 @@ async function getReportByTime(from, to, branchId) {
     attributes: [
       [sequelize.literal(groupBy), 'title'],
       [sequelize.fn('SUM', sequelize.col('totalPrice')), 'totalRevenue'],
-      [sequelize.literal(`(SELECT COALESCE(SUM(CASE WHEN payments.isReturn = 1 THEN payments.amount ELSE 0 END), 0) FROM payments WHERE DATE(payments.createdAt) = DATE(Order.createdAt))`), 'saleReturn'],
+      [sequelize.literal(`(SELECT COALESCE(SUM(CASE WHEN payments.isReturn = 1 THEN payments.amount ELSE 0 END), 0) FROM payments WHERE payments.orderId = Order.id)`), 'saleReturn'],
       [sequelize.fn('SUM', sequelize.col('totalPrice')), 'realRevenue'],
     ],
     where: getFilter(from, to, branchId),
@@ -181,12 +181,14 @@ async function getReportByTime(from, to, branchId) {
 }
 
 async function getReportBySaleReturn(from, to, branchId) {
-  const groupBy = groupByField('Order.createdAt', from, to);
-  const res = await models.Order.findAll({
+  const groupBy = groupByField('SaleReturn.createdAt', from, to);
+  const res = await models.SaleReturn.findAll({
     attributes: [
       [sequelize.literal(groupBy), 'title'],
-      [sequelize.literal(`(SELECT COUNT(payments.id) FROM payments WHERE payments.isReturn = 1 AND DATE(payments.createdAt) = DATE(Order.createdAt))`), 'numberOfReturn'],
-      [sequelize.literal(`(SELECT COALESCE(SUM(CASE WHEN payments.isReturn = 1 THEN payments.amount ELSE 0 END), 0) FROM payments WHERE DATE(payments.createdAt) = DATE(Order.createdAt))`), 'saleReturn']
+      [sequelize.fn('COUNT', sequelize.col('id')), 'numberOfReturn'],
+      [sequelize.fn('SUM', sequelize.col('paid')), 'saleReturn']
+      //[sequelize.literal(`(SELECT COUNT(payments.id) FROM payments WHERE payments.isReturn = 1 AND ${groupByField('payments.createdAt', from, to)} = ${groupByField('Order.createdAt', from, to)})`), 'numberOfReturn'],
+      //[sequelize.literal(`(SELECT COALESCE(SUM(CASE WHEN payments.isReturn = 1 THEN payments.amount ELSE 0 END), 0) FROM payments WHERE  ${groupByField('payments.createdAt', from, to)} = ${groupByField('Order.createdAt', from, to)})`), 'saleReturn']
     ],
     where: getFilter(from, to, branchId),
     group: [sequelize.literal(groupBy)]
