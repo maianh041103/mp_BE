@@ -249,7 +249,7 @@ export async function indexMasterInboundProducts(params) {
   });
   for (const item of rows) {
     const inventory = await getInventory(branchId, item.productId)
-    item.dataValues.product.dataValues.quantity = inventory
+    item.dataValues.product.dataValues.quantity = parseInt(inventory);
     item.dataValues.quantity = parseInt(
       inventory / item.exchangeValue
     );
