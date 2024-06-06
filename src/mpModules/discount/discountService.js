@@ -827,7 +827,7 @@ module.exports.getDetail = async (discountId, loginUser) => {
 
 const getDiscountApplyIncludes = (order, filter, loginUser) => {
     const {
-        customerId, branchId
+        customerId = -1, branchId
     } = order;
 
     const moment = new Date();
@@ -1015,14 +1015,14 @@ const convertResult = (rows) => {
 module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
     const discountByOrderIncludes = getDiscountApplyIncludes(order, filter, loginUser);
     const {
-        customerId, branchId, products, totalPrice
+        customerId = -1, branchId, products, totalPrice
     } = order;
 
     const groupCustomerId = ((await models.Customer.findOne({
         where: {
             id: customerId
         }
-    })) || {}).groupCustomerId;
+    })) || {}).groupCustomerId || -1;
 
     const discountItem = {
         model: models.DiscountItem,
@@ -1113,7 +1113,7 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
 
 module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
     const {
-        productUnitId, quantity, branchId, customerId
+        productUnitId, quantity, branchId, customerId = -1
     } = order;
 
     const {
@@ -1124,7 +1124,7 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
         where: {
             id: customerId
         }
-    })) || {}).groupCustomerId;
+    })) || {}).groupCustomerId || -1;
 
 
     const discountByProductIncludes = getDiscountApplyIncludes(order, filter, loginUser);
