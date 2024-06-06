@@ -50,6 +50,10 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         type: DataTypes.INTEGER(10).UNSIGNED,
       },
+      discountPrice: {
+        allowNull: true,
+        type: DataTypes.INTEGER(10).UNSIGNED
+      },
       //Có phải là hàng khuyến mãi không
       isDiscount: {
         allowNull: true,

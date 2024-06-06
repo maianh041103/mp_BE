@@ -241,9 +241,9 @@ export async function indexOrders(params, loginUser) {
     where.storeId = storeId;
   }
   if (canReturn !== undefined && typeof canReturn === 'boolean') {
-    where.canReturn = canReturn; 
+    where.canReturn = canReturn;
   }
-  
+
   if (branchId) {
     where.branchId = branchId;
   }
@@ -601,6 +601,7 @@ async function handleCreateOrder(order, loginUser) {
           productUnitId: productUnit.id,
           isDiscount: item.isDiscount,
           itemPrice: +itemPrice * +item.quantity,
+          discountPrice: item.discountPrice,
           productUnitData: JSON.stringify(productUnit),
           price: +productUnit.price * +item.quantity,
           quantityBaseUnit: +productUnit.exchangeValue * +item.quantity,
@@ -614,7 +615,7 @@ async function handleCreateOrder(order, loginUser) {
           updatedBy: newOrder.createdBy,
           createdAt: new Date(),
           comboId: null,
-          quantityLast:null
+          quantityLast: null
         },
         { transaction: t })
       productItems.push(orderProduct);

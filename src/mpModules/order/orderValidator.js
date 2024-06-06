@@ -41,6 +41,7 @@ const createSchema = Joi.object().keys({
           quantity: Joi.number().integer().min(1).required(),
           isDiscount: Joi.boolean(),
           itemPrice: Joi.number().integer(),
+          discountPrice: Joi.number().integer()
         })
         .required(),
     )
@@ -96,6 +97,9 @@ const updateSchema = Joi.object().keys({
             ])
             .required(), // Thuốc - Hàng hóa - Combo - Đơn thuốc mẫu
           quantity: Joi.number().integer().min(1).required(),
+          isDiscount: Joi.boolean(),
+          itemPrice: Joi.number().integer(),
+          discountPrice: Joi.number().integer()
         })
         .required([]),
     )
