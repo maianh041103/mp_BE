@@ -65,13 +65,12 @@ export async function countProduct(query) {
 
 export async function indexProducts(params) {
   const query = await queryFilter(params);
-  console.log(query)
   const [items, count] = await Promise.all([
     models.Product.findAll(query),
     countProduct(query)
   ]);
   for (const item of items) {
-    item.dataValues.inventory = await getInventory(params.branchId, item.id)
+    item.dataValues.inventory = parseInt(await getInventory(params.branchId, item.id));
     if (!params.isSale) {
       item.dataValues.batches = [];
       continue;
