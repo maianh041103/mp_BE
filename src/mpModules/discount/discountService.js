@@ -931,7 +931,6 @@ const convertResult = (rows) => {
             let productUnitIdApply = [];
             let groupIdApply = [];
             for (const tmp of item.dataValues.productDiscount) {
-                console.log(item.productDiscount.length);
                 if (tmp.isCondition == true && tmp.productUnitId != null && tmp.groupId == null
                     && !productUnitIdCondition.includes(tmp.productUnitId)
                 ) {
@@ -1134,7 +1133,9 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
     const discountItem = {
         model: models.DiscountItem,
         as: "discountItem",
-        attributes: ["id", "orderFrom", "fromQuantity", "maxQuantity", "discountValue", "discountType", "pointType", "isGift", "pointValue"],
+        attributes: ["id", "orderFrom", "fromQuantity", "maxQuantity", "discountValue", "discountType", "pointType", "isGift", "pointValue",
+            "fixedPrice", "changeType"
+        ],
         include: [
             {
                 model: models.ProductDiscountItem,
