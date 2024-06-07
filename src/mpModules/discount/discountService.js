@@ -930,28 +930,30 @@ const convertResult = (rows) => {
             let groupIdCondition = [];
             let productUnitIdApply = [];
             let groupIdApply = [];
-            for (const item of item.productDiscount) {
-                if (item.isCondition == true && item.productUnitId != null && item.groupId == null
-                    && !productUnitIdCondition.includes(item.productUnitId)
+            for (const tmp of item.dataValues.productDiscount) {
+                console.log(item.productDiscount.length);
+                if (tmp.isCondition == true && tmp.productUnitId != null && tmp.groupId == null
+                    && !productUnitIdCondition.includes(tmp.productUnitId)
                 ) {
-                    productUnitIdCondition.push(item.productUnitId);
+                    productUnitIdCondition.push(tmp.productUnitId);
                 }
-                else if (item.isCondition == true && item.groupId != null && item.productUnitId == null
-                    && !groupIdCondition.includes(item.groupId)
+                if (tmp.isCondition == true && tmp.groupId != null && tmp.productUnitId == null
+                    && !groupIdCondition.includes(tmp.groupId)
                 ) {
-                    groupIdCondition.push(item.groupId);
+                    groupIdCondition.push(tmp.groupId);
                 }
-                else if (item.isCondition == false && item.productUnitId != null && item.groupId == null
-                    && !productUnitIdApply.includes(item.productUnitId)
+                if (tmp.isCondition == false && tmp.productUnitId != null && tmp.groupId == null
+                    && !productUnitIdApply.includes(tmp.productUnitId)
                 ) {
-                    productUnitIdApply.push(item.productUnitId);
+                    productUnitIdApply.push(tmp.productUnitId);
                 }
-                else if (item.isCondition == false && item.groupId != null && item.productUnitId == null
-                    && !groupIdApply.includes(item.groupId)
+                if (tmp.isCondition == false && tmp.groupId != null && tmp.productUnitId == null
+                    && !groupIdApply.includes(tmp.groupId)
                 ) {
-                    groupIdApply.push(item.groupId);
+                    groupIdApply.push(tmp.groupId);
                 }
             }
+
             return {
                 condition: {
                     order: {
@@ -1080,20 +1082,21 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
         offset: (page - 1) * limit
     });
 
-    rows = convertResult(rows);
-
     for (const row of rows) {
-        const items = row.items;
-        let max = items[0].condition.order.from;
+        const items = row.discountItem;
+        let max = items[0].orderFrom;
         let index = 0;
         for (let i = 0; i < items.length; i++) {
-            if (max < items[i].condition.order.from) {
+            if (max < items[i].orderFrom) {
                 index = i;
-                max = items[i].condition.order.from;
+                max = items[i].orderFrom;
             }
         }
-        row.items = items[index];
+
+        row.dataValues.discountItem = [items[index]];
     }
+
+    rows = convertResult(rows);
 
     const count = await models.Discount.aggregate('Discount.id', 'count', {
         attributes: discountAttributes,
@@ -1149,6 +1152,8 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
             }
         }
     }
+
+
     discountByProductIncludes.push(discountItem);
 
     const where = {
@@ -1190,27 +1195,27 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
             const listProduct = await models.ProductDiscountItem.findAll({
                 where: {
                     discountItemId: item.id
-                }
+                },
+                attributes: ["productUnitId", "groupId", "isCondition"],
             });
             item.dataValues.productDiscount = listProduct;
         }
     }
 
-    rows = convertResult(rows);
-
-
     for (const row of rows) {
-        const items = row.items;
-        let max = items[0].condition.product.from;
+        const items = row.discountItem;
+        let max = items[0].fromQuantity;
         let index = 0;
         for (let i = 0; i < items.length; i++) {
-            if (max < items[i].condition.product.from) {
+            if (max < items[i].fromQuantity) {
                 index = i;
-                max = items[i].condition.product.from;
+                max = items[i].fromQuantity;
             }
         }
-        row.items = items[index];
+        row.dataValues.discountItem = [items[index]];
     }
+
+    rows = convertResult(rows);
 
     const count = await models.Discount.aggregate('Discount.id', 'count', {
         attributes: discountAttributes,
