@@ -923,7 +923,7 @@ const getDiscountApplyIncludes = (order, filter, loginUser) => {
 const convertResult = (rows) => {
     rows = rows.map(row => {
         const { id, code, name, status, note, target, type, isMultiple, storeId, discountItem, discountTime,
-            discountBranch, discountCustomer, isAllBranch, isAllCustomer } = row;
+            discountBranch, discountCustomer, isAllBranch, isAllCustomer } = row.dataValues;
 
         const items = discountItem.map(item => {
             let productUnitIdCondition = [];
@@ -1091,7 +1091,6 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
                 max = items[i].orderFrom;
             }
         }
-
         row.dataValues.discountItem = [items[index]];
     }
 
