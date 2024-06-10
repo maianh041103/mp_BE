@@ -48,6 +48,8 @@ const customerAttributes = [
   [Sequelize.literal(`(SELECT COALESCE(SUM(totalPrice), 0) 
   FROM orders 
   WHERE Customer.id = orders.customerId and status = 'SUCCEED')`), 'totalOrderPay'],
+  [Sequelize.literal(`(SELECT COUNT(id) FROM orders
+    WHERE Customer.id = orders.customerId)`), 'totalOrder']
 ];
 
 const customerIncludes = [
@@ -140,7 +142,13 @@ export async function customerFilter(params) {
   if (_.isArray(order) && order.length) {
     query.order = order;
   }
-  return await models.Customer.findAll(query);
+
+  const rows = await models.Customer.findAll(query);
+  for (const row of rows) {
+    row.dataValues.totalOrder = parseInt(row.dataValues.totalOrder);
+  }
+
+  return rows;
 }
 
 export async function indexCustomers(filter) {
@@ -285,6 +293,10 @@ export async function indexCustomers(filter) {
     models.Customer.count(query)
   ]);
 
+  for (const row of rows) {
+    row.dataValues.totalOrder = parseInt(row.dataValues.totalOrder);
+  }
+
   return {
     success: true,
     data: {
@@ -325,6 +337,8 @@ export async function readCustomer(id, loginUser) {
       message: "Khách hàng không tồn tại",
     };
   }
+  findCustomer.dataValues.totalOrder = parseInt(findCustomer.dataValues.totalOrder);
+
   return {
     success: true,
     data: findCustomer,
@@ -351,6 +365,8 @@ export async function readDefaultCustomer(storeId) {
       },
     });
   }
+
+  findCustomer.dataValues.totalOrder = parseInt(findCustomer.dataValues.totalOrder);
   return {
     success: true,
     data: findCustomer,

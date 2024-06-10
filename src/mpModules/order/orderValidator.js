@@ -41,12 +41,15 @@ const createSchema = Joi.object().keys({
           quantity: Joi.number().integer().min(1).required(),
           isDiscount: Joi.boolean(),
           itemPrice: Joi.number().integer(),
-          discountPrice: Joi.number().integer()
+          discountPrice: Joi.number().integer(),
+          pointProduct: Joi.number().integer().allow(null)
         })
         .required(),
     )
     .required([]),
   totalPrice: Joi.number().integer().required(),
+  paymentPoint: Joi.number().integer().allow(null),
+  pointOrder: Joi.number().integer().allow(null)
 });
 
 export function createValidator(req, res, next) {
@@ -99,12 +102,15 @@ const updateSchema = Joi.object().keys({
           quantity: Joi.number().integer().min(1).required(),
           isDiscount: Joi.boolean(),
           itemPrice: Joi.number().integer(),
-          discountPrice: Joi.number().integer()
+          discountPrice: Joi.number().integer(),
+          pointProduct: Joi.number().integer().allow(null)
         })
         .required([]),
     )
     .required([]),
   totalPrice: Joi.number().integer().required(),
+  paymentPoint: Joi.number().integer().allow(null),
+  pointOrder: Joi.number().integer().allow(null),
   shippingAddress: Joi.object()
     .keys({
       detailAddress: Joi.string().max(255).required(),

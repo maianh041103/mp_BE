@@ -128,6 +128,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.BOOLEAN,
         defaultValue: true,
       },
+      paymentPoint: {
+        allowNull: true,
+        type: DataTypes.INTEGER(15).UNSIGNED,
+        defaultValue: 0
+      }
     },
     {
       tableName: "orders",

@@ -53,6 +53,7 @@ const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { productTypes } = require("../product/productConstant");
 const { readBatch } = require("../batch/batchService");
 const { readProductUnit } = require("../product/productUnitService");
+const pointContant = require("../point/pointContant");
 
 const userAttributes = [
   "id",
@@ -470,8 +471,49 @@ async function handleCreateOrder(order, loginUser) {
   if (responseReadBranch.error) {
     return responseReadBranch;
   }
+
+  const point = await models.Point.findOne({
+    where: {
+      storeId: loginUser.storeId
+    }
+  });
+
+  if ((!point || point.isPointPayment == false) && order.paymentPoint > 0) {
+    throw Error(
+      JSON.stringify({
+        error: true,
+        code: HttpStatusCode.BAD_REQUEST,
+        message: `Cửa hàng không áp dụng đổi điểm tích lũy`
+      })
+    );
+  }
   const findCustomer = responseReadCustomer.data;
+  if (point && (!order.customerId || findCustomer.dataValues.totalOrder < point.afterByTime) && order.paymentPoint > 0) {
+    throw Error(
+      JSON.stringify({
+        error: true,
+        code: HttpStatusCode.BAD_REQUEST,
+        message: `Khách hàng không đủ điều kiện thanh toán bằng điểm`
+      })
+    );
+  }
+
+  let moneyDiscountByPoint = 0;
+  if (point) {
+    moneyDiscountByPoint = (order.paymentPoint / point.convertPoint * point.convertMoneyPayment) || 0;
+  }
+  if (order.paymentPoint > findCustomer.point) {
+    throw Error(
+      JSON.stringify({
+        error: true,
+        code: HttpStatusCode.BAD_REQUEST,
+        message: `Điểm không đủ`
+      })
+    );
+  }
+
   let newOrder;
+  let discountAmount = 0;
   await models.sequelize.transaction(async (t) => {
     newOrder = await models.Order.create(
       {
@@ -492,7 +534,8 @@ async function handleCreateOrder(order, loginUser) {
         storeId: loginUser.storeId,
         branchId: order.branchId,
         createdBy: loginUser.id,
-        discountOrder: order.discountOrder || 0
+        discountOrder: order.discountOrder || 0,
+        paymentPoint: order.paymentPoint
       },
       { transaction: t }
     );
@@ -651,7 +694,6 @@ async function handleCreateOrder(order, loginUser) {
       }
     }
 
-    let discountAmount = 0;
     if (order.discountType === discountTypes.MONEY) {
       discountAmount = order.discount
       totalPrice = totalPrice - discountAmount;
@@ -660,7 +702,8 @@ async function handleCreateOrder(order, loginUser) {
       totalPrice = totalPrice - discountAmount;
     }
 
-    totalPrice -= order.discountOrder || 0;
+    totalPrice -= Math.abs(order.discountOrder || 0);
+    totalPrice -= moneyDiscountByPoint;
 
     if (
       order.paymentType === paymentTypes.CASH &&
@@ -747,6 +790,138 @@ async function handleCreateOrder(order, loginUser) {
       await models.OrderProduct.update({ discount: Math.round(weight * discountAmount) }, { where: { id: orderProduct.id }, transaction: t })
     }
   });
+
+  console.log("Total price " + newOrder.totalPrice);
+  //Tích điểm
+  let pointResult = 0;
+  //Khuyến mãi - tích điểm 
+  if (order.pointOrder) {
+    pointResult += order.pointOrder;
+  }
+  for (const item of order.products) {
+    if (item.pointProduct) {
+      pointResult += item.pointProduct;
+    }
+  }
+  //End khuyến mãi - tích điểm
+  if (point) {
+    if (!order.paymentPoint || order.paymentPoint == 0 || point.isPointBuy == true) { //Check áp dụng cho hóa đơn thanh toán bằng điểm không
+      if (order.customerId && point.status == pointContant.statusPoint.ACTIVE) {
+        //Kiểm tra khách hàng có được áp mã không
+        let checkCustomer = 0;
+        if (point.isAllCustomer == true) {
+          checkCustomer = 1;
+        } else {
+          const customer = await models.Customer.findOne({
+            where: {
+              id: order.customerId,
+              storeId: loginUser.storeId
+            }
+          });
+          if (customer) {
+            const groupCustomerId = ((await models.GroupCustomer.findOne({
+              where: {
+                id: customer.groupCustomerId
+              }
+            })) || {}).id;
+            const pointCustomerExist = await models.PointCustomer.findOne({
+              where: {
+                groupCustomerId: groupCustomerId
+              }
+            });
+            if (pointCustomerExist) {
+              checkCustomer = 1;
+            }
+          }
+        }
+        //End kiểm tra khách hàng có được áp mã không
+
+        if (checkCustomer == 1) {
+          //Tính điểm áp mã
+          if (point.type == pointContant.typePoint.ORDER) {
+            if (((point.isDiscountOrder == false && !(order.discountOrder > 0)) || point.isDiscountOrder == true) && point.isDiscountProduct == true) {
+              pointResult = Math.floor(newOrder.totalPrice / point.convertMoneyBuy);
+            }
+            else if (((point.isDiscountOrder == false && !(order.discountOrder > 0)) || point.isDiscountOrder == true) && point.isDiscountProduct == false) {
+              //Tính tổng các sản phẩm có isDiscount = 0 và trừ đi chiết khấu
+              let totalPriceNotDiscount = 0;
+              for (const item of order.products) {
+                if (!item.isDiscount == true) {
+                  const productUnit = await models.ProductUnit.findOne({
+                    where: {
+                      id: item.productUnitId
+                    }
+                  });
+                  totalPriceNotDiscount += productUnit.price;
+                }
+              }
+              totalPriceNotDiscount -= discountAmount;
+              if (totalPriceNotDiscount > 0) {
+                pointResult = Math.floor(totalPriceNotDiscount / point.convertMoneyBuy);
+              }
+            }
+          }
+          else {
+            if (point.isDiscountOrder == true || (point.isDiscountOrder == false && !(order.discountOrder > 0))) {
+              if (point.isConvertDefault == false) {
+                //Lấy điểm tích ở từng sản phẩm
+                for (const item of order.products) {
+                  if (point.isDiscountProduct == true || (point.isDiscountProduct == false && !(item.isDiscount == true))) {
+                    const productUnit = await models.ProductUnit.findOne({
+                      where: {
+                        id: item.productUnitId
+                      }
+                    });
+                    if (productUnit && productUnit.point) {
+                      pointResult += productUnit.point * item.quantity;
+                    }
+                  }
+                }
+              } else {
+                //Lấy mặc định
+                for (const item of order.products) {
+                  if (point.isDiscountProduct == true || (point.isDiscountProduct == false && !(item.isDiscount == true))) {
+                    if (!item.itemPrice) {
+                      const productUnit = await models.ProductUnit.findOne({
+                        where: {
+                          id: item.productUnitId
+                        }
+                      });
+                      item.itemPrice = productUnit.price;
+                    }
+                    pointResult += Math.floor(item.itemPrice / point.convertMoneyBuy);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    pointResult -= order.paymentPoint || 0;
+    console.log("PointResult " + pointResult);
+    //End tích điểm
+
+    //Cập nhật điểm
+    if (pointResult != 0) {
+      await models.Customer.increment({
+        point: pointResult
+      }, {
+        where: {
+          id: order.customerId
+        }
+      });
+
+      await models.Order.update({
+        point: pointResult
+      }, {
+        where: {
+          id: newOrder.id
+        }
+      })
+    }
+  }
 
   const { data: refreshOrder } = await readOrder(newOrder.id);
 
