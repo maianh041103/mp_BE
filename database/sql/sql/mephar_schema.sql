@@ -1299,6 +1299,8 @@ create table orders
 	updatedAt timestamp default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP,
 	deletedAt timestamp null,
 	discountAmount bigint null,
+	paymentPoint int null default 0,
+	discountByPoint int null default 0,
 	constraint orders_ibfk_1
 		foreign key (userId) references users (id),
 	constraint orders_ibfk_2
@@ -1509,6 +1511,7 @@ create table order_products
 	groupCustomerId int unsigned null,
 	userId int unsigned null,
 	discount float default 0 null,
+	point int unsigned default 0 null,
 	status enum('DRAFT', 'PENDING', 'CONFIRMING', 'SHIPPING', 'DELIVERING', 'PAID', 'CANCELLED', 'SUCCEED') null,
 	createdAt timestamp default CURRENT_TIMESTAMP not null,
 	updatedAt timestamp default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP,

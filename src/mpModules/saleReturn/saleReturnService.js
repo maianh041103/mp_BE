@@ -24,7 +24,7 @@ const { HttpStatusCode } = require('../../helpers/errorCodes')
 const { accountTypes, logActions } = require('../../helpers/choices')
 const { createUserTracking } = require('../behavior/behaviorService')
 
-export async function indexList (params, loginUser) {
+export async function indexList(params, loginUser) {
   const filter = getFilter(params, loginUser)
   const { limit, page } = params
   const [items, totalItem] = await Promise.all([
@@ -48,7 +48,7 @@ export async function indexList (params, loginUser) {
   }
 }
 
-export async function indexDetail (id, loginUser) {
+export async function indexDetail(id, loginUser) {
   const findSaleReturn = await models.SaleReturn.findOne({
     include: saleReturnIncludes,
     attributes: saleReturnAttributes,
@@ -74,7 +74,7 @@ export async function indexDetail (id, loginUser) {
   }
 }
 
-function generatesaleReturnCode (no) {
+function generatesaleReturnCode(no) {
   if (no <= 0) return 'TSP000000000'
   if (no < 10) return `TSP00000000${no}`
   if (no < 100) return `TSP0000000${no}`
@@ -88,7 +88,7 @@ function generatesaleReturnCode (no) {
   return no
 }
 
-function calculateTotalItemPrice (products) {
+function calculateTotalItemPrice(products) {
   let sumPrice = 0
   for (var i = 0; i < products.length; i++) {
     const product = products[i]
@@ -98,7 +98,7 @@ function calculateTotalItemPrice (products) {
   return sumPrice
 }
 
-export async function indexCreate (saleReturn, loginUser) {
+export async function indexCreate(saleReturn, loginUser) {
   if (!saleReturn.products || !saleReturn.products.length) {
     return {
       error: true,
@@ -168,7 +168,7 @@ export async function indexCreate (saleReturn, loginUser) {
         transaction: t
       }
     )
-    console.log(saleReturn.products)
+
     for (const item of saleReturn.products) {
       const findProduct = await models.Product.findOne({
         where: {
@@ -196,6 +196,17 @@ export async function indexCreate (saleReturn, loginUser) {
         }
 
         const newQuantityLast = orderProduct.quantityLast + item.quantity
+        const pointDecrement = orderProduct.point / orderProduct.quantity * item.quantity;
+
+        //Trừ điểm tích lũy
+        await models.Customer.decrement({
+          point: pointDecrement
+        }, {
+          where: {
+            id: saleReturn.customerId
+          }
+        })
+        //End trừ điểm tích lũy
 
         // await orderProduct.update({ quantityLast: newQuantityLast })
         await models.OrderProduct.update(
@@ -331,7 +342,7 @@ export async function indexCreate (saleReturn, loginUser) {
     data: refresh.data
   }
 }
-export async function indexPayment (params, loginUser) {
+export async function indexPayment(params, loginUser) {
   let { page, limit, orderId, code } = params
   const payments = await models.Payment.findAll({
     offset: +limit * (+page - 1),
@@ -356,7 +367,7 @@ const orderIncludes = [
     attributes: ['id', 'fullName']
   }
 ]
-export async function indexUpdate (id, payload, loginUser) {
+export async function indexUpdate(id, payload, loginUser) {
   const findsaleReturn = await models.saleReturn.findOne({
     where: {
       id,
@@ -398,7 +409,7 @@ export async function indexUpdate (id, payload, loginUser) {
   }
 }
 
-export async function indexDelete (id, loginUser) {
+export async function indexDelete(id, loginUser) {
   const findsaleReturn = await models.saleReturn.findByPk(id, {
     attributes: ['id']
   })

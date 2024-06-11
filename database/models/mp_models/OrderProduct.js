@@ -89,6 +89,12 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         type: DataTypes.INTEGER(5).UNSIGNED,
       },
+      //Điểm tích của mỗi sản phẩm
+      point: {
+        allowNull: true,
+        type: DataTypes.INTEGER(11).UNSIGNED,
+        default: 0
+      }
     },
     {
       tableName: "order_products",

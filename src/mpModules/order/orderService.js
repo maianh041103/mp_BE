@@ -153,12 +153,15 @@ const orderAttributes = [
   "point",
   "totalPrice",
   "cashOfCustomer",
+  "discountOrder",
   "customerOwes",
   "refund",
   "discount",
   "discountType",
   "isVatInvoice",
   "status",
+  "paymentPoint",
+  "discountByPoint",
   "createdAt",
   "createdBy",
   "canReturn"
@@ -404,7 +407,7 @@ export async function readOrder(id) {
   });
 
   const products = await models.OrderProduct.findAll({
-    attributes: ["productId", "comboId", "quantity", "customerId", "price"],
+    attributes: ["productId", "comboId", "quantity", "customerId", "price", "itemPrice", "point"],
     include: orderProductIncludes,
     where: {
       orderId: id,
@@ -414,6 +417,20 @@ export async function readOrder(id) {
     },
   });
 
+  let totalPrice = 0;
+  for (const item of products) {
+    let itemPrice = item.itemPrice;
+    if (itemPrice == null) {
+      itemPrice = productUnit.price;
+    }
+    totalPrice += item.itemPrice * item.quantity;
+  }
+
+  let discountAmount = order.discountType == 1 ? order.discount * totalPrice / 100 : order.discount;
+
+  const totalDiscountOrder = order.discountOrder + discountAmount;
+
+  order.dataValues.totalDiscountOrder = totalDiscountOrder;
   order.dataValues.products = products;
   order.dataValues.totalProducts = products.length;
   let totalQuantities = 0;
@@ -535,7 +552,8 @@ async function handleCreateOrder(order, loginUser) {
         branchId: order.branchId,
         createdBy: loginUser.id,
         discountOrder: order.discountOrder || 0,
-        paymentPoint: order.paymentPoint
+        paymentPoint: order.paymentPoint,
+        discountByPoint: moneyDiscountByPoint
       },
       { transaction: t }
     );
@@ -658,7 +676,8 @@ async function handleCreateOrder(order, loginUser) {
           updatedBy: newOrder.createdBy,
           createdAt: new Date(),
           comboId: null,
-          quantityLast: null
+          quantityLast: null,
+          point: 0
         },
         { transaction: t })
       productItems.push(orderProduct);
@@ -694,11 +713,13 @@ async function handleCreateOrder(order, loginUser) {
       }
     }
 
+    const totalNewPriceItem = totalPrice;
+
     if (order.discountType === discountTypes.MONEY) {
       discountAmount = order.discount
       totalPrice = totalPrice - discountAmount;
     } else if (order.discountType === discountTypes.PERCENT) {
-      discountAmount = Math.floor((order.discount * totalPrice) / 100)
+      discountAmount = Math.floor((order.discount * totalItemPrice) / 100)
       totalPrice = totalPrice - discountAmount;
     }
 
@@ -787,7 +808,7 @@ async function handleCreateOrder(order, loginUser) {
     await createOrderPayment(newOrder, t)
     for (const orderProduct of productItems) {
       const weight = orderProduct.price / totalItemPrice
-      await models.OrderProduct.update({ discount: Math.round(weight * discountAmount) }, { where: { id: orderProduct.id }, transaction: t })
+      await models.OrderProduct.update({ discount: Math.round(weight * (discountAmount + (order.discountOrder || 0))) }, { where: { id: orderProduct.id }, transaction: t })
     }
 
     console.log("Total price " + newOrder.totalPrice);
@@ -798,11 +819,31 @@ async function handleCreateOrder(order, loginUser) {
       pointResult += order.pointOrder;
     }
     for (const item of order.products) {
+      if (!item.itemPrice) {
+        const productUnit = await models.ProductUnit.findOne({
+          where: {
+            id: item.productUnitId
+          }
+        });
+        item.itemPrice = productUnit.price;
+      }
+
       if (item.pointProduct) {
         pointResult += item.pointProduct;
+        await models.OrderProduct.increment({
+          point: item.pointProduct
+        }, {
+          where: {
+            orderId: newOrder.id,
+            productId: item.productId,
+            productUnitId: item.productUnitId
+          },
+          transaction: t
+        })
       }
     }
     //End khuyến mãi - tích điểm
+
     if (point) {
       if (!order.paymentPoint || order.paymentPoint == 0 || point.isPointBuy == true) { //Check áp dụng cho hóa đơn thanh toán bằng điểm không
         if (order.customerId && point.status == pointContant.statusPoint.ACTIVE) {
@@ -838,8 +879,22 @@ async function handleCreateOrder(order, loginUser) {
           if (checkCustomer == 1) {
             //Tính điểm áp mã
             if (point.type == pointContant.typePoint.ORDER) {
+              //Tính tổng tiền đơn hàng = tổng giá của các sản phẩm (không áp  dụng km hóa đơn ,...)
               if (((point.isDiscountOrder == false && !(order.discountOrder > 0)) || point.isDiscountOrder == true) && point.isDiscountProduct == true) {
-                pointResult = Math.floor(newOrder.totalPrice / point.convertMoneyBuy);
+                pointResult += Math.floor(newOrder.totalPrice / point.convertMoneyBuy);
+                const weight = Math.floor(newOrder.totalPrice / point.convertMoneyBuy) / totalNewPriceItem;
+                for (const item of order.products) {
+                  await models.OrderProduct.increment({
+                    point: Math.round(weight * (item.itemPrice))
+                  }, {
+                    where: {
+                      orderId: newOrder.id,
+                      productId: item.productId,
+                      productUnitId: item.productUnitId
+                    },
+                    transaction: t
+                  })
+                }
               }
               else if (((point.isDiscountOrder == false && !(order.discountOrder > 0)) || point.isDiscountOrder == true) && point.isDiscountProduct == false) {
                 //Tính tổng các sản phẩm có isDiscount = 0 và trừ đi chiết khấu
@@ -856,8 +911,25 @@ async function handleCreateOrder(order, loginUser) {
                 }
                 totalPriceNotDiscount -= discountAmount;
                 if (totalPriceNotDiscount > 0) {
-                  pointResult = Math.floor(totalPriceNotDiscount / point.convertMoneyBuy);
+                  pointResult += Math.floor(totalPriceNotDiscount / point.convertMoneyBuy);
                 }
+                //Cập nhật điểm cho từng sản phẩm
+                const weight = Math.floor(totalPriceNotDiscount / point.convertMoneyBuy) / (totalPriceNotDiscount + discountAmount);
+                for (const item of order.products) {
+                  if (!item.isDiscount == true) {
+                    await models.OrderProduct.increment({
+                      point: Math.round(weight * item.itemPrice)
+                    }, {
+                      where: {
+                        orderId: newOrder.id,
+                        productId: item.productId,
+                        productUnitId: item.productUnitId
+                      },
+                      transaction: t
+                    })
+                  }
+                }
+                //End cập nhật điểm cho từng sản phẩm
               }
             }
             else {
@@ -872,6 +944,16 @@ async function handleCreateOrder(order, loginUser) {
                         }
                       });
                       if (productUnit && productUnit.point) {
+                        await models.OrderProduct.increment({
+                          point: productUnit.point * item.quantity
+                        }, {
+                          where: {
+                            orderId: newOrder.id,
+                            productId: item.productId,
+                            productUnitId: item.productUnitId
+                          },
+                          transaction: t
+                        })
                         pointResult += productUnit.point * item.quantity;
                       }
                     }
@@ -888,7 +970,17 @@ async function handleCreateOrder(order, loginUser) {
                         });
                         item.itemPrice = productUnit.price;
                       }
-                      pointResult += Math.floor(item.itemPrice / point.convertMoneyBuy);
+                      await models.OrderProduct.increment({
+                        point: Math.floor(item.itemPrice * item.quantity / point.convertMoneyBuy)
+                      }, {
+                        where: {
+                          orderId: newOrder.id,
+                          productId: item.productId,
+                          productUnitId: item.productUnitId
+                        },
+                        transaction: t
+                      })
+                      pointResult += Math.floor(item.itemPrice * item.quantity / point.convertMoneyBuy);
                     }
                   }
                 }
@@ -914,7 +1006,7 @@ async function handleCreateOrder(order, loginUser) {
         });
 
         await models.Order.update({
-          point: pointResult
+          point: pointResult + order.paymentPoint || 0
         }, {
           where: {
             id: newOrder.id
