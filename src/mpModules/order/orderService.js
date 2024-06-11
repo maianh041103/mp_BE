@@ -662,7 +662,7 @@ async function handleCreateOrder(order, loginUser) {
           productUnitId: productUnit.id,
           isDiscount: item.isDiscount,
           itemPrice: +itemPrice * +item.quantity,
-          discountPrice: item.discountPrice,
+          discountPrice: (+productUnit.price - +item.itemPrice) * +item.quantity,
           productUnitData: JSON.stringify(productUnit),
           price: +productUnit.price * +item.quantity,
           quantityBaseUnit: +productUnit.exchangeValue * +item.quantity,

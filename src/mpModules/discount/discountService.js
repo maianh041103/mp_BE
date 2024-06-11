@@ -53,6 +53,19 @@ const discountIncludes = [
     }
 ]
 
+const orderIncludes = [
+    {
+        model: models.User,
+        as: "user",
+        attributes: ["id", "username"]
+    },
+    {
+        model: models.Customer,
+        as: "customer",
+        attributes: ["id", "fullName"]
+    }
+]
+
 const generateDiscountCode = (id) => {
     // Chuyển id thành chuỗi
     const idString = id.toString();
@@ -1229,6 +1242,55 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
         data: {
             items: rows,
             totalItem: count
+        }
+    }
+}
+
+module.exports.getDiscountOrderApply = async (discountId, loginUser) => {
+    const listDiscountApply = await models.DiscountApply.findAll({
+        attributes: ["discountId", "orderId"],
+        include: [
+            {
+                model: models.Discount,
+                as: "discount",
+                attributes: ["id", "target"]
+            }
+        ],
+        where: {
+            discountId: discountId
+        }
+    });
+    let result = [];
+    for (const item of listDiscountApply) {
+        const order = await models.Order.findOne({
+            attributes: ["id", "code", "createdAt", "totalPrice", "discountOrder",
+                [Sequelize.literal(`(SELECT SUM(discountPrice) from order_products where Order.id = order_products.orderId
+                    group by Order.id)`), 'totalDiscount']
+            ],
+            include: orderIncludes,
+            where: {
+                id: item.orderId,
+
+            }
+        });
+        if (order) {
+            const resultItem = {
+                code: order.code,
+                createdAt: order.createdAt,
+                user: order.user.username,
+                customer: order.customer.fullName,
+                totalPrice: order.totalPrice,
+                discountAmountOrder: order.discountOrder,
+                discountAmountProduct: parseInt(order.dataValues.totalDiscount) || 0
+            }
+            result.push(resultItem);
+        }
+    }
+    return {
+        success: true,
+        data: {
+            items: result,
+            totalItem: result.length
         }
     }
 }
