@@ -663,7 +663,7 @@ export async function historyPointService(customerId, query) {
     where: {
       customerId,
     },
-    order: [['id', 'ASC']],
+    order: [['id', 'DESC']],
     limit,
     offset: (page - 1) * limit
   });

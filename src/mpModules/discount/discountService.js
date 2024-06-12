@@ -1261,6 +1261,7 @@ module.exports.getDiscountOrderApply = async (discountId, query, loginUser) => {
         where: {
             discountId: discountId
         },
+        order: [['id', 'DESC']],
         limit,
         offset: (page - 1) * limit
     });

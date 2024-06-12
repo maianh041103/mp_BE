@@ -1006,7 +1006,7 @@ async function handleCreateOrder(order, loginUser) {
         });
 
         await models.Order.update({
-          point: pointResult + order.paymentPoint || 0
+          point: pointResult + (order.paymentPoint || 0)
         }, {
           where: {
             id: newOrder.id
