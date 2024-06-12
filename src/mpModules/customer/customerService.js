@@ -642,3 +642,36 @@ export async function indexPaymentCustomer(params, loginUser) {
     data: payments
   }
 }
+
+export async function historyPointService(customerId, query) {
+  const limit = parseInt(query.limit) || 20;
+  const page = parseInt(query.page) || 1;
+  const { rows, count } = await models.Order.findAndCountAll({
+    attributes: [
+      "code",
+      "createdAt",
+      "totalPrice",
+      "point",
+      "paymentPoint",
+      [sequelize.literal('IFNULL(point - paymentPoint, 0)'), "transactionPoint"],
+      [sequelize.literal(`(
+        SELECT IFNULL(SUM(point - paymentPoint), 0)
+        FROM orders AS sub
+        WHERE sub.customerId = ${customerId} AND sub.id <= Order.id
+      )`), 'postTransactionPoint']
+    ],
+    where: {
+      customerId,
+    },
+    order: [['id', 'ASC']],
+    limit,
+    offset: (page - 1) * limit
+  });
+  return {
+    success: true,
+    data: {
+      items: rows,
+      totalItem: count || 0
+    },
+  }
+}

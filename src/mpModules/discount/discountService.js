@@ -1246,8 +1246,10 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
     }
 }
 
-module.exports.getDiscountOrderApply = async (discountId, loginUser) => {
-    const listDiscountApply = await models.DiscountApply.findAll({
+module.exports.getDiscountOrderApply = async (discountId, query, loginUser) => {
+    const limit = parseInt(query.limit) || 20;
+    const page = parseInt(query.page) || 1;
+    const { rows, count } = await models.DiscountApply.findAndCountAll({
         attributes: ["discountId", "orderId"],
         include: [
             {
@@ -1258,10 +1260,12 @@ module.exports.getDiscountOrderApply = async (discountId, loginUser) => {
         ],
         where: {
             discountId: discountId
-        }
+        },
+        limit,
+        offset: (page - 1) * limit
     });
     let result = [];
-    for (const item of listDiscountApply) {
+    for (const item of rows) {
         const order = await models.Order.findOne({
             attributes: ["id", "code", "createdAt", "totalPrice", "discountOrder",
                 [Sequelize.literal(`(SELECT SUM(discountPrice) from order_products where Order.id = order_products.orderId
@@ -1270,7 +1274,6 @@ module.exports.getDiscountOrderApply = async (discountId, loginUser) => {
             include: orderIncludes,
             where: {
                 id: item.orderId,
-
             }
         });
         if (order) {
@@ -1290,7 +1293,7 @@ module.exports.getDiscountOrderApply = async (discountId, loginUser) => {
         success: true,
         data: {
             items: result,
-            totalItem: result.length
+            totalItem: count
         }
     }
 }

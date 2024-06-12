@@ -16,7 +16,8 @@ const {
   indexCustomersByGroup,
   readCustomer,
   updateCustomerStatus,
-  indexPaymentCustomer
+  indexPaymentCustomer,
+  historyPointService
 } = require("./customerService");
 const { hashPassword } = require("../auth/authService");
 const { formatMobileToSave } = require("../../helpers/utils");
@@ -69,8 +70,6 @@ export async function getDefaultCustomer(req, res) {
     );
   }
 }
-
-
 
 export async function readController(req, res) {
   try {
@@ -220,6 +219,20 @@ export async function readPaymentCustomerController(req, res) {
   try {
     const { id: customerId } = req.params;
     const result = await indexPaymentCustomer({ ...req.query, customerId });
+    if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
+export async function historyPoint(req, res) {
+  try {
+    const customerId = req.params.customerId;
+    const query = req.query;
+    const result = await historyPointService(customerId, query);
     if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {

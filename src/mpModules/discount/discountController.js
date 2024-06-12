@@ -184,8 +184,9 @@ module.exports.getDiscountOrderApply = async (req, res) => {
     try {
         const { loginUser = {} } = req;
         const discountId = req.params.discountId;
+        const query = req.query;
 
-        const result = await discountService.getDiscountOrderApply(discountId, loginUser);
+        const result = await discountService.getDiscountOrderApply(discountId, query, loginUser);
         if (result.success) {
             res.json(respondItemSuccess(result));
         }
