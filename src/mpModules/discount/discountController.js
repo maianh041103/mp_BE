@@ -197,3 +197,37 @@ module.exports.getDiscountOrderApply = async (req, res) => {
         res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
     }
 }
+
+//[POST] /mp/api/discount/config
+module.exports.createConfig = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
+        const data = req.body;
+
+        const result = await discountService.createConfig(data, loginUser);
+        if (result.success) {
+            res.json(respondItemSuccess(result));
+        }
+        else
+            res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        console.log(error);
+        res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
+    }
+}
+
+//[GET] /mp/api/discount/config/detail
+module.exports.detailConfig = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
+        const result = await discountService.detailConfig(loginUser);
+        if (result.success) {
+            res.json(respondItemSuccess(result));
+        }
+        else
+            res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        console.log(error);
+        res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
+    }
+}

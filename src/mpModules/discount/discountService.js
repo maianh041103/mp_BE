@@ -1298,3 +1298,54 @@ module.exports.getDiscountOrderApply = async (discountId, query, loginUser) => {
         }
     }
 }
+
+module.exports.createConfig = async (data, loginUser) => {
+    const storeId = loginUser.storeId;
+    const discountConfigExists = await models.DiscountConfig.findOne({
+        where: {
+            storeId: storeId
+        }
+    });
+    let discountConfigId;
+    const { isMergeDiscount = 0, isApplyOrder = 0, isAutoApply = 0 } = data;
+    if (!discountConfigExists) {
+        discountConfigId = (await models.DiscountConfig.create({
+            isMergeDiscount, isApplyOrder, isAutoApply, storeId
+        })).id;
+    } else {
+        discountConfigId = discountConfigExists.id;
+        await models.DiscountConfig.update({
+            isMergeDiscount, isApplyOrder, isAutoApply
+        }, {
+            where: {
+                id: discountConfigId
+            }
+        })
+    }
+    return {
+        success: true,
+        data: {
+            id: discountConfigId
+        }
+    }
+}
+
+module.exports.detailConfig = async (loginUser) => {
+    const discountConfig = await models.DiscountConfig.findOne({
+        where: {
+            storeId: loginUser.storeId
+        }
+    });
+    if (!discountConfig) {
+        return {
+            error: true,
+            code: HttpStatusCode.NOT_FOUND,
+            message: "Cấu hình khuyến mãi không tồn tại",
+        };
+    }
+
+    return {
+        success: true,
+        data: discountConfig
+    }
+}

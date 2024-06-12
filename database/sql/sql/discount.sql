@@ -141,3 +141,16 @@ create index discountId
 	on discount_apply(discountId);
 create index orderId
 	on discount_apply(orderId);
+
+
+create table discount_configs(
+    id int unsigned auto_increment
+		primary key,
+    isMergeDiscount boolean default false not null,
+	isApplyOrder boolean default false not null,
+	isAutoApply boolean default false not null,
+	storeId int unsigned not null
+)
+charset=utf8mb3;
+create index storeId
+	on discount_configs(storeId);
