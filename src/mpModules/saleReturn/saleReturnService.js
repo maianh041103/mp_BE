@@ -169,6 +169,7 @@ export async function indexCreate(saleReturn, loginUser) {
       }
     )
 
+    let pointDecrement = 0;
     for (const item of saleReturn.products) {
       const findProduct = await models.Product.findOne({
         where: {
@@ -196,17 +197,7 @@ export async function indexCreate(saleReturn, loginUser) {
         }
 
         const newQuantityLast = orderProduct.quantityLast + item.quantity
-        const pointDecrement = orderProduct.point / orderProduct.quantity * item.quantity;
-
-        //Trừ điểm tích lũy
-        await models.Customer.decrement({
-          point: pointDecrement
-        }, {
-          where: {
-            id: saleReturn.customerId
-          }
-        })
-        //End trừ điểm tích lũy
+        pointDecrement += orderProduct.point * item.quantity / orderProduct.quantity;
 
         // await orderProduct.update({ quantityLast: newQuantityLast })
         await models.OrderProduct.update(
@@ -335,6 +326,16 @@ export async function indexCreate(saleReturn, loginUser) {
         }
       }
     }
+
+    //Trừ điểm tích lũy
+    await models.Customer.decrement({
+      point: pointDecrement
+    }, {
+      where: {
+        id: saleReturn.customerId
+      }
+    })
+    //End trừ điểm tích lũy
   })
   const refresh = await indexDetail(newSaleReturn.id, loginUser)
   return {
