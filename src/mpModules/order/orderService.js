@@ -827,20 +827,6 @@ async function handleCreateOrder(order, loginUser) {
         });
         item.itemPrice = productUnit.price;
       }
-
-      if (item.pointProduct) {
-        pointResult += item.pointProduct;
-        await models.OrderProduct.increment({
-          point: item.pointProduct
-        }, {
-          where: {
-            orderId: newOrder.id,
-            productId: item.productId,
-            productUnitId: item.productUnitId
-          },
-          transaction: t
-        })
-      }
     }
     //End khuyến mãi - tích điểm
 
@@ -885,7 +871,7 @@ async function handleCreateOrder(order, loginUser) {
                 const weight = Math.floor(newOrder.totalPrice / point.convertMoneyBuy) / totalNewPriceItem;
                 for (const item of order.products) {
                   await models.OrderProduct.increment({
-                    point: Math.round(weight * (item.itemPrice * item.quantity))
+                    point: Sequelize.literal(`COALESCE(point, 0) + ${weight * item.itemPrice * item.quantity}`)
                   }, {
                     where: {
                       orderId: newOrder.id,
@@ -918,7 +904,7 @@ async function handleCreateOrder(order, loginUser) {
                 for (const item of order.products) {
                   if (!item.isDiscount == true) {
                     await models.OrderProduct.increment({
-                      point: Math.round(weight * item.itemPrice * item.quantity)
+                      point: Sequelize.literal(`COALESCE(point, 0) + ${weight * item.itemPrice * item.quantity}`)
                     }, {
                       where: {
                         orderId: newOrder.id,
@@ -945,7 +931,7 @@ async function handleCreateOrder(order, loginUser) {
                       });
                       if (productUnit && productUnit.point) {
                         await models.OrderProduct.increment({
-                          point: productUnit.point * item.quantity
+                          point: Sequelize.literal(`COALESCE(point, 0) + ${productUnit.point * item.quantity}`)
                         }, {
                           where: {
                             orderId: newOrder.id,
@@ -970,16 +956,6 @@ async function handleCreateOrder(order, loginUser) {
                         });
                         item.itemPrice = productUnit.price;
                       }
-                      // await models.OrderProduct.increment({
-                      //   point: Math.floor(item.itemPrice * item.quantity / point.convertMoneyBuy)
-                      // }, {
-                      //   where: {
-                      //     orderId: newOrder.id,
-                      //     productId: item.productId,
-                      //     productUnitId: item.productUnitId
-                      //   },
-                      //   transaction: t
-                      // })
                       await models.OrderProduct.update({
                         point: Sequelize.literal(`IFNULL(point, 0) + ${Math.floor(item.itemPrice * item.quantity / point.convertMoneyBuy)}`)
                       }, {
@@ -1000,14 +976,30 @@ async function handleCreateOrder(order, loginUser) {
         }
       }
 
+      for (const item of order.products) {
+        if (item.pointProduct) {
+          pointResult += item.pointProduct;
+          await models.OrderProduct.update({
+            point: Sequelize.literal(`COALESCE(point, 0) + ${item.pointProduct}`)
+          }, {
+            where: {
+              orderId: newOrder.id,
+              productId: item.productId,
+              productUnitId: item.productUnitId
+            },
+            transaction: t
+          })
+        }
+      }
+
       pointResult -= order.paymentPoint || 0;
       console.log("PointResult " + pointResult);
       //End tích điểm
 
       //Cập nhật điểm
       if (pointResult != 0) {
-        await models.Customer.increment({
-          point: pointResult
+        await models.Customer.update({
+          point: Sequelize.literal(`COALESCE(point, 0) + ${pointResult}`)
         }, {
           where: {
             id: order.customerId
