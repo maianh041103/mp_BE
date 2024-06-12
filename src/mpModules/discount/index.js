@@ -45,4 +45,14 @@ router.get("/:discountId/order", authenticate, (req, res, next) => {
     next();
 }, authorize, discountController.getDiscountOrderApply);
 
+router.post("/config", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, discountController.createConfig);
+
+router.get("/config/detail", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, discountController.detailConfig)
+
 module.exports = router;
