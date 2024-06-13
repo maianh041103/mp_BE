@@ -8,7 +8,8 @@ const {
   readPaymentController,
   updateStatus,
   indexDelete,
-  indexDeleteController
+  indexDeleteController,
+  readHistoryController
 } = require('./saleReturnController')
 const {
   createValidator,
@@ -81,6 +82,17 @@ router.delete(
   },
   authorize,
   indexDeleteController
+)
+
+router.get(
+  '/:id/history-payment',
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = 'order_read'
+    next()
+  },
+  authorize,
+  readHistoryController
 )
 
 module.exports = router
