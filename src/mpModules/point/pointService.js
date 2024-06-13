@@ -155,10 +155,8 @@ module.exports.changeStatus = async (params) => {
             message: "Cấu hình tích điểm không tồn tại",
         };
     }
-    const statusChange = pointExists.status == pointContant.statusPoint.ACTIVE ?
-        pointContant.statusPoint.INACTIVE : pointContant.statusPoint.ACTIVE;
     await models.Point.update({
-        status: statusChange
+        status: pointContant.statusPoint.INACTIVE
     }, {
         where: {
             storeId
@@ -215,12 +213,14 @@ module.exports.checkStatus = async (params) => {
     if (checkStatus) {
         return {
             success: true,
-            data: "active",
+            data: checkStatus,
         }
     } else {
         return {
             success: true,
-            data: "inactive",
+            data: {
+                status: "inactive"
+            }
         }
     }
 }

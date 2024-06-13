@@ -293,9 +293,37 @@ export async function indexCustomers(filter) {
     models.Customer.count(query)
   ]);
 
-  for (const row of rows) {
-    row.dataValues.totalOrder = parseInt(row.dataValues.totalOrder);
-  }
+  const point = await models.Point.findOne({
+    where: {
+      storeId: filter.storeId,
+      status: "active"
+    }
+  });
+  if (point)
+    for (const row of rows) {
+      row.dataValues.totalOrder = parseInt(row.dataValues.totalOrder);
+      let check = 0;
+      if (row.dataValues.totalOrder >= point.afterByTime) {
+        if (point.isAllCustomer == true) {
+          check = 1;
+        } else {
+          if (row.groupCustomerId != null) {
+            const isExists = await models.PointCustomer.findOne({
+              where: {
+                groupCustomerId: row.groupCustomerId
+              }
+            });
+            if (isExists) {
+              check = 1;
+            }
+          }
+        }
+      }
+      if (check)
+        row.dataValues.isPointPayment = true;
+      else
+        row.dataValues.isPointPayment = false;
+    }
 
   return {
     success: true,
