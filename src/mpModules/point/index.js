@@ -24,4 +24,9 @@ router.delete("/", authenticate, (req, res, next) => {
     next();
 }, authorize, pointController.delete);
 
+router.get("/check/status", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, pointController.checkStatus);
+
 module.exports = router;
