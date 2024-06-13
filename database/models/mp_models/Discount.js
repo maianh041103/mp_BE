@@ -109,7 +109,7 @@ module.exports = (sequelize, DataTypes) => {
         Discount.belongsTo(models.Store, {
             as: "store",
             foreignKey: "storeId",
-            sourceKey: 'id',
+            targetKey: 'id',
         })
     };
 
