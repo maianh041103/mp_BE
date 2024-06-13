@@ -22,7 +22,7 @@ module.exports.create = async (req, res) => {
     }
 }
 
-//[GET] /mp/api/point
+//[GET] /mp/api/point/:type
 module.exports.detail = async (req, res) => {
     try {
         const { loginUser = {} } = req;
@@ -56,6 +56,20 @@ module.exports.delete = async (req, res) => {
     try {
         const { loginUser = {} } = req;
         const result = await pointService.deletePoint({ storeId: loginUser.storeId });
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}
+
+//[GET] /mp/api/point/check/status
+module.exports.checkStatus = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
+        const result = await pointService.checkStatus({ storeId: loginUser.storeId });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {

@@ -2,6 +2,7 @@ const Sequelize = require("sequelize");
 const { Op } = Sequelize;
 const models = require("../../../database/models");
 const pointContant = require("./pointContant");
+const { HttpStatusCode } = require("../../helpers/errorCodes");
 
 module.exports.createPoint = async (params) => {
     let { isConvertDefault = false, type, convertMoneyBuy, isPointPayment, convertPoint, convertMoneyPayment,
@@ -201,5 +202,25 @@ module.exports.deletePoint = async (params) => {
     return {
         success: true,
         data: null,
+    }
+}
+
+module.exports.checkStatus = async (params) => {
+    const storeId = params.storeId;
+    const checkStatus = await models.Point.findOne({
+        where: {
+            storeId, status: pointContant.statusPoint.ACTIVE
+        }
+    });
+    if (checkStatus) {
+        return {
+            success: true,
+            data: "active",
+        }
+    } else {
+        return {
+            success: true,
+            data: "inactive",
+        }
     }
 }
