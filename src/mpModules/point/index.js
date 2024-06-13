@@ -9,7 +9,7 @@ router.post("/", authenticate, (req, res, next) => {
     next();
 }, authorize, pointController.create);
 
-router.get("/", authenticate, (req, res, next) => {
+router.get("/:type", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
 }, authorize, pointController.detail);

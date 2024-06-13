@@ -26,7 +26,8 @@ module.exports.create = async (req, res) => {
 module.exports.detail = async (req, res) => {
     try {
         const { loginUser = {} } = req;
-        const result = await pointService.detailPoint({ storeId: loginUser.storeId });
+        const type = req.params.type;
+        const result = await pointService.detailPoint({ storeId: loginUser.storeId, type });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {
