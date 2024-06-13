@@ -10,12 +10,25 @@ module.exports.createPoint = async (params) => {
     const t = await models.sequelize.transaction(async (t) => {
         const pointExists = await models.Point.findOne({
             where: {
-                storeId: storeId
+                storeId: storeId,
+                type: type
             }
         }, {
             raw: true
         });
         if (!pointExists) {
+            //Chuyển trạng thái 
+            await models.Point.update({
+                status: pointContant.statusPoint.INACTIVE
+            }, {
+                where: {
+                    storeId: storeId,
+                    type: {
+                        [Op.ne]: type
+                    }
+                }
+            })
+            //Tạo mới
             newPoint = await models.Point.create({
                 isConvertDefault, type, convertMoneyBuy, isPointPayment, convertPoint, convertMoneyPayment,
                 afterByTime, isDiscountProduct, isDiscountOrder, isPointBuy, isAllCustomer, storeId, status
@@ -25,7 +38,7 @@ module.exports.createPoint = async (params) => {
             if (isAllCustomer == false) {
                 for (const item of groupCustomers) {
                     await models.PointCustomer.create({
-                        pointId: newPoint,
+                        pointId: newPoint.id,
                         groupCustomerId: item
                     }, {
                         transaction: t
@@ -40,10 +53,26 @@ module.exports.createPoint = async (params) => {
                 afterByTime, isDiscountProduct, isDiscountOrder, isPointBuy, isAllCustomer, storeId, status
             }, {
                 where: {
-                    storeId: storeId
+                    storeId: storeId,
+                    type: {
+                        [Op.eq]: type
+                    }
                 },
                 transaction: t
             });
+
+            //Update trạng thái của loại còn lại
+            await models.Point.update({
+                status: pointContant.statusPoint.INACTIVE
+            }, {
+                where: {
+                    storeId: storeId,
+                    type: {
+                        [Op.ne]: type
+                    }
+                },
+                transaction: t
+            })
 
             if (isAllCustomer == false) {
                 for (const item of groupCustomers) {
@@ -82,9 +111,9 @@ module.exports.createPoint = async (params) => {
 }
 
 module.exports.detailPoint = async (params) => {
-    const { storeId } = params;
+    const { storeId, type } = params;
     const pointExists = await models.Point.findOne({
-        where: { storeId }
+        where: { storeId, type }
     }, {
         raw: true
     });

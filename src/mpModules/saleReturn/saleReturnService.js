@@ -440,3 +440,54 @@ export async function indexDelete(id, loginUser) {
     success: true
   }
 }
+
+const paymentAttributes = ["code", "amount", "createdAt", "createdBy", "paymentMethod", "customerId", "status", "totalAmount"]
+const paymentIncludes = [
+  {
+    model: models.User,
+    as: "fullnameCreator",
+    attributes: ["username"],
+  }
+]
+export async function readHistory(query, saleReturnId) {
+  const saleReturn = await models.SaleReturn.findOne({
+    where: {
+      id: saleReturnId
+    }
+  });
+  if (!saleReturn) {
+    return {
+      error: true,
+      code: HttpStatusCode.NOT_FOUND,
+      message: 'Phiếu trả hàng không tồn tại'
+    }
+  }
+  const { limit = 20, page = 1 } = query
+  const [items, totalItem] = await Promise.all([
+    models.Payment.findAll({
+      attributes: paymentAttributes,
+      include: paymentIncludes,
+      offset: +limit * (+page - 1),
+      limit: +limit,
+      where: {
+        code: saleReturn.code,
+        isReturn: 1
+      },
+      order: [['id', 'desc']]
+    }),
+    models.Payment.count({
+      where: {
+        code: saleReturn.code,
+        isReturn: 1
+      }
+    })
+  ])
+
+  return {
+    success: true,
+    data: {
+      items,
+      totalItem
+    }
+  }
+}

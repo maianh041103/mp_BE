@@ -1,4 +1,4 @@
-import {indexCreate, indexList,indexPayment} from "./saleReturnService";
+import { indexCreate, indexList, indexPayment, readHistory } from "./saleReturnService";
 
 const _ = require("lodash");
 const {
@@ -88,18 +88,30 @@ export async function indexDeleteController(req, res) {
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
     res.json(
-        respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
     );
   }
-  
+
 }
+
 export async function readPaymentController(req, res) {
   try {
-    const {id: orderId} = req.params
-    const result = await indexPayment({...req.query, orderId });
+    const { id: orderId } = req.params
+    const result = await indexPayment({ ...req.query, orderId });
     if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
     res.json(respondWithClientError(error))
+  }
+}
+
+export async function readHistoryController(req, res) {
+  try {
+    const { id: saleReturnId } = req.params
+    const result = await readHistory(req.query, saleReturnId);
+    if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
   }
 }
