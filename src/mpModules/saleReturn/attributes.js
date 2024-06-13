@@ -1,7 +1,7 @@
-import {customerAttributes} from "../customer/attributes";
+import { customerAttributes } from "../customer/attributes";
 
 const models = require("../../../database/models");
-const {userAttributes} = require("../user/attributes");
+const { userAttributes } = require("../user/attributes");
 
 const productAttributes = [
     "name",
@@ -85,6 +85,11 @@ export const saleReturnIncludes = [
             }
         ],
     },
+    {
+        model: models.Order,
+        as: "order",
+        attributes: ["code"]
+    }
 ];
 
 export const saleReturnAttributes = [
