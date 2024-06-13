@@ -491,7 +491,8 @@ async function handleCreateOrder(order, loginUser) {
 
   const point = await models.Point.findOne({
     where: {
-      storeId: loginUser.storeId
+      storeId: loginUser.storeId,
+      status: "active"
     }
   });
 
@@ -504,8 +505,42 @@ async function handleCreateOrder(order, loginUser) {
       })
     );
   }
+
+  //Kiểm tra khách hàng có được áp mã không
+  let checkCustomer = 0;
+  if (point.isAllCustomer == true) {
+    checkCustomer = 1;
+  } else {
+    const customer = await models.Customer.findOne({
+      where: {
+        id: order.customerId,
+        storeId: loginUser.storeId
+      }
+    });
+    if (customer) {
+      const groupCustomer = (await models.GroupCustomer.findOne({
+        where: {
+          id: customer.groupCustomerId
+        }
+      }));
+      if (!groupCustomer) {
+        checkCustomer = 0;
+      }
+      else {
+        const pointCustomerExist = await models.PointCustomer.findOne({
+          where: {
+            groupCustomerId: groupCustomer.id
+          }
+        });
+        if (pointCustomerExist) {
+          checkCustomer = 1;
+        }
+      }
+    }
+  }
+  //End kiểm tra khách hàng có được áp mã không
   const findCustomer = responseReadCustomer.data;
-  if (point && (!order.customerId || findCustomer.dataValues.totalOrder < point.afterByTime) && order.paymentPoint > 0) {
+  if (point && order.paymentPoint > 0 && (checkCustomer == 0 || (!order.customerId || findCustomer.dataValues.totalOrder < point.afterByTime))) {
     throw Error(
       JSON.stringify({
         error: true,
@@ -833,35 +868,6 @@ async function handleCreateOrder(order, loginUser) {
     if (point) {
       if (!order.paymentPoint || order.paymentPoint == 0 || point.isPointBuy == true) { //Check áp dụng cho hóa đơn thanh toán bằng điểm không
         if (order.customerId && point.status == pointContant.statusPoint.ACTIVE) {
-          //Kiểm tra khách hàng có được áp mã không
-          let checkCustomer = 0;
-          if (point.isAllCustomer == true) {
-            checkCustomer = 1;
-          } else {
-            const customer = await models.Customer.findOne({
-              where: {
-                id: order.customerId,
-                storeId: loginUser.storeId
-              }
-            });
-            if (customer) {
-              const groupCustomerId = ((await models.GroupCustomer.findOne({
-                where: {
-                  id: customer.groupCustomerId
-                }
-              })) || {}).id;
-              const pointCustomerExist = await models.PointCustomer.findOne({
-                where: {
-                  groupCustomerId: groupCustomerId
-                }
-              });
-              if (pointCustomerExist) {
-                checkCustomer = 1;
-              }
-            }
-          }
-          //End kiểm tra khách hàng có được áp mã không
-
           if (checkCustomer == 1) {
             //Tính điểm áp mã
             if (point.type == pointContant.typePoint.ORDER) {
