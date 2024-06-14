@@ -446,7 +446,7 @@ const paymentIncludes = [
   {
     model: models.User,
     as: "fullnameCreator",
-    attributes: ["username"],
+    attributes: ["fullName"],
   }
 ]
 export async function readHistory(query, saleReturnId) {

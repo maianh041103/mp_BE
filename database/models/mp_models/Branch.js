@@ -14,7 +14,7 @@ module.exports = (sequelize, Sequelize) => {
     phone: {
       allowNull: false,
       type: Sequelize.STRING
-    }, 
+    },
     // Mã chi nhánh
     code: {
       allowNull: true,
