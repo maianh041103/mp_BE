@@ -494,7 +494,7 @@ async function handleCreateOrder(order, loginUser) {
       storeId: loginUser.storeId,
       status: "active"
     }
-  });
+  }) || {};
 
   if ((!point || point.isPointPayment == false) && order.paymentPoint > 0) {
     throw Error(
@@ -508,7 +508,7 @@ async function handleCreateOrder(order, loginUser) {
 
   //Kiểm tra khách hàng có được áp mã không
   let checkCustomer = 0;
-  if (point.isAllCustomer == true) {
+  if (point && point.isAllCustomer == true) {
     checkCustomer = 1;
   } else {
     const customer = await models.Customer.findOne({
