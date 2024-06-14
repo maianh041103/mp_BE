@@ -513,7 +513,7 @@ async function handleCreateOrder(order, loginUser) {
   } else {
     const customer = await models.Customer.findOne({
       where: {
-        id: order.customerId,
+        id: order.customerId || -1,
         storeId: loginUser.storeId
       }
     });
