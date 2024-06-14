@@ -248,8 +248,8 @@ export async function indexMasterInboundProducts(params) {
     order: [["createdAt", "DESC"]]
   });
   for (const item of rows) {
-    const inventory = await getInventory(branchId, item.productId)
-    if (item.dataValues.product && item.dataValues.product.dataValues.quantity)
+    const inventory = (await getInventory(branchId, item.productId)) || 0
+    if (item.dataValues.product)
       item.dataValues.product.dataValues.quantity = parseInt(inventory);
     item.dataValues.quantity = parseInt(
       inventory / item.exchangeValue
