@@ -249,12 +249,13 @@ export async function indexMasterInboundProducts(params) {
   });
   for (const item of rows) {
     const inventory = await getInventory(branchId, item.productId)
-    item.dataValues.product.dataValues.quantity = parseInt(inventory);
-    item.dataValues.quantity = parseInt(
-      inventory / item.exchangeValue
-    );
+    if (item.dataValues.product && item.dataValues.product.dataValues.quantity)
+      item.dataValues.product.dataValues.quantity = parseInt(inventory);
+    if (item.dataValues.quantity)
+      item.dataValues.quantity = parseInt(
+        inventory / item.exchangeValue
+      );
   }
-
   return {
     success: true,
     data: {
