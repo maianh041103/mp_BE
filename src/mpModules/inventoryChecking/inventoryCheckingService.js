@@ -2,14 +2,17 @@ const Sequelize = require("sequelize");
 const { Op } = Sequelize;
 const models = require("../../../database/models");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
+const { warehouseStatus } = require("../warehouse/constant");
 
 const inventoryCheckingAttributes = [
     "code",
     "productUnitId",
     "realQuantity",
+    "batchId",
     "userCreateId",
     "note",
-    "branchId"
+    "branchId",
+    "difference"
 ]
 
 const inventoryCheckingIncludes = [
@@ -21,23 +24,21 @@ const inventoryCheckingIncludes = [
             {
                 model: models.Product,
                 as: "product",
-                attributes: ["name", "price"],
-                include: [
-                    {
-                        model: models.Inventory,
-                        as: "inventories",
-                        attributes: [[Sequelize.fn('SUM', Sequelize.col('quantity')), 'totalQuantity']],
-                    }
-                ],
-                paranoid: false
+                paranoid: false,
+
             }
         ],
-        paranoid: false
+        paranoid: false,
     },
     {
         model: models.User,
         as: "userCreate",
-        attributes: ["id", "fullName"]
+        attributes: ["id", "fullName"],
+    },
+    {
+        model: models.Batch,
+        as: "batch",
+        attributes: ["name", "quantity"],
     }
 ]
 
@@ -52,44 +53,138 @@ const generateCode = (id) => {
 }
 
 module.exports.create = async (params) => {
-    const { branchId, productUnitId, realQuantity, userCreateId, note } = params;
+    const { branchId, productUnitId, realQuantity, userCreateId, note, batchId } = params;
     const productUnitExists = await models.ProductUnit.findOne({
-        id: productUnitId,
-        branchId: branchId
+        where: {
+            id: productUnitId,
+            branchId: branchId
+        }
     });
     if (!productUnitExists) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Mã đơn vị hàng hóa không tồn tại`
+        }
+    }
+
+    //Tính quantity base unit
+    const realQuantityBaseUnit = realQuantity * (productUnitExists.exchangeValue || 1);
+
+    const userExists = await models.User.findOne({
+        where: {
+            id: userCreateId,
+            branchId: branchId
+        }
+    });
+    if (!userExists) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Mã người kiểm hàng không tồn tại`
+        }
+    }
+
+    const product = await models.Product.findOne({
+        where: {
+            id: productUnitExists.productId
+        }
+    });
+    if (!product) {
         return {
             error: true,
             code: HttpStatusCode.BAD_REQUEST,
             message: `Mã hàng hóa không tồn tại`
         }
     }
+    let oldQuantity = 0;
+    let newInventoryChecking;
+    const t = await models.sequelize.transaction(async (t) => {
+        if (batchId) {
+            const batch = await models.Batch.findOne({
+                where: {
+                    id: batchId,
+                    productId: product.id
+                }
+            })
+            if (!batch) {
+                return {
+                    error: true,
+                    code: HttpStatusCode.BAD_REQUEST,
+                    message: `Mã lô không hợp lệ`
+                }
+            }
+            oldQuantity = batch.quantity;
+            if (realQuantityBaseUnit != batch.quantity) {
+                await models.Inventory.increment({
+                    quantity: (realQuantityBaseUnit - batch.quantity)
+                }, {
+                    where: {
+                        productId: product.id
+                    },
+                    transaction: t
+                })
 
-    const userExists = await models.User.findOne({
-        id: userCreateId,
-        branchId: branchId
-    });
-    if (!userExists) {
-        return {
-            error: true,
-            code: HttpStatusCode.BAD_REQUEST,
-            message: `Mã khách hàng không tồn tại`
+                await models.Batch.update({
+                    quantity: realQuantityBaseUnit
+                }, {
+                    where: {
+                        id: batch.id
+                    },
+                    transaction: t
+                })
+            }
         }
-    }
-
-    const newInventoryChecking = await models.InventoryChecking.create({
-        productUnitId, realQuantity, userCreateId, note, branchId,
-        code: " "
-    });
-
-    const code = generateCode(newInventoryChecking.id);
-    await models.InventoryChecking.update({
-        code: generateCode(newInventoryChecking.id)
-    }, {
-        where: {
-            id: newInventoryChecking.id
+        else {
+            const inventory = await models.Inventory.findOne({
+                where: {
+                    productId: product.id
+                }
+            })
+            oldQuantity = inventory.quantity;
+            if (realQuantityBaseUnit != product.quantity) {
+                await models.Inventory.update({
+                    quantity: inventory.quantity
+                }, {
+                    where: {
+                        productId: product.id
+                    },
+                    transaction: t
+                })
+            }
         }
-    })
+
+        newInventoryChecking = await models.InventoryChecking.create({
+            productUnitId, realQuantity, userCreateId, note, branchId, batchId, code: " ",
+            difference: (realQuantityBaseUnit - oldQuantity) / (productUnitExists.exchangeValue || 1)
+        }, {
+            transaction: t
+        });
+
+        const code = generateCode(newInventoryChecking.id);
+        await models.InventoryChecking.update({
+            code: code
+        }, {
+            where: {
+                id: newInventoryChecking.id
+            },
+            transaction: t
+        })
+
+        await models.WarehouseCard.create({
+            code: code,
+            type: warehouseStatus.INVENTORY_CHECKING,
+            partner: "",
+            productId: product.id,
+            branchId: branchId,
+            changeQty: realQuantityBaseUnit - oldQuantity,
+            remainQty: realQuantityBaseUnit,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        }, {
+            transaction: t
+        })
+    });
 
     return {
         success: true,
@@ -108,13 +203,19 @@ module.exports.getAll = async (params) => {
         where: {
             branchId: branchId
         },
-        limit: limit,
-        offset: (page - 1) * limit
+        limit: parseInt(limit),
+        offset: parseInt((page - 1) * limit),
+        order: [["id", "DESC"]],
     });
 
     for (const row of rows) {
-        if (row.dataValues.productUnit && row.dataValues.productUnit.dataValues.product && row.dataValues.productUnit.dataValues.product.dataValues.inventories) {
-            row.dataValues.productUnit.dataValues.product.dataValues.inventories = parseInt(row.dataValues.productUnit.dataValues.product.dataValues.inventories[0].dataValues.totalQuantity)
+        if (row.dataValues.productUnit && row.dataValues.productUnit.dataValues.product) {
+            row.dataValues.productUnit.dataValues.product.dataValues.inventoryQuantity = ((await models.Inventory.findOne({
+                where: {
+                    productId: row.dataValues.productUnit.dataValues.product.id,
+                    branchId
+                }
+            })) || {}).id
         }
     }
     return {
@@ -136,12 +237,22 @@ module.exports.detail = async (params) => {
             branchId: branchId
         }
     });
+
     if (!inventoryChecking || !inventoryChecking.code) {
         return {
             error: true,
             code: HttpStatusCode.BAD_REQUEST,
             message: `Mã kiểm kho không tồn tại`
         }
+    }
+
+    if (inventoryChecking.dataValues.productUnit && inventoryChecking.dataValues.productUnit.dataValues.product) {
+        inventoryChecking.dataValues.productUnit.dataValues.product.dataValues.inventoryQuantity = ((await models.Inventory.findOne({
+            where: {
+                productId: inventoryChecking.dataValues.productUnit.dataValues.product.id,
+                branchId
+            }
+        })) || {}).quantity;
     }
     return {
         success: true,

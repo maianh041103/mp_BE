@@ -31,6 +31,14 @@ module.exports = (sequelize, DataTypes) => {
         branchId: {
             allowNull: false,
             type: Sequelize.INTEGER(11).UNSIGNED
+        },
+        batchId: {
+            allowNull: true,
+            type: Sequelize.INTEGER(11).UNSIGNED
+        },
+        difference: {
+            allowNull: true,
+            type: Sequelize.INTEGER(11)
         }
     }, {
         tableName: 'inventories_checking',
@@ -52,6 +60,12 @@ module.exports = (sequelize, DataTypes) => {
         InventoryChecking.belongsTo(models.Branch, {
             as: "branch",
             foreignKey: "branchId",
+            targetKey: "id"
+        });
+
+        InventoryChecking.belongsTo(models.Batch, {
+            as: "batch",
+            foreignKey: 'batchId',
             targetKey: "id"
         })
     };
