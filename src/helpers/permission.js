@@ -1,47 +1,63 @@
 export const modelPermissions = [
   {
-    name: "store",
-    text: "Cửa hàng",
+    name: "home",
+    text: "Trang chủ"
   },
   {
-    name: "branch",
-    text: "Chi nhánh",
+    name: "sale",
+    text: "Khuyến mãi"
   },
   {
-    name: "user",
-    text: "Người dùng",
+    name: "list_product",
+    text: "Danh sách sản phẩm"
   },
   {
-    name: "batch",
-    text: "Lô",
+    name: "import_product",
+    text: "Thêm sản phẩm"
   },
   {
-    name: "doctor",
-    text: "Bác sĩ",
+    name: "return_product",
+    text: "Trả sản phẩm"
   },
   {
-    name: "prescription",
-    text: "Đơn thuốc",
+    name: "check_inventory",
+    text: "Kiểm tra tồn kho"
   },
   {
-    name: "health_facility",
-    text: "Cơ sở khám bệnh",
+    name: "price_setting",
+    text: "Cài đặt giá"
   },
   {
-    name: "specialist",
-    text: "Chuyên khoa",
+    name: "market_common",
+    text: "Chợ chung"
   },
   {
-    name: "level",
-    text: "Trình độ",
+    name: "market_store",
+    text: "Chợ cửa hàng"
   },
   {
-    name: "work_place",
-    text: "Nơi công tác",
+    name: "market_setting",
+    text: "Cài đặt chợ"
   },
   {
-    name: "group_product",
-    text: "Nhóm sản phẩm",
+    name: "medicine_category",
+    text: "Danh mục thuốc"
+  },
+  {
+    name: "bill",
+    text: "Đơn giá"
+  },
+  {
+    name: "order",
+    text: "Đơn hàng",
+  },
+  {
+    name: "return",
+    text: "Trả hàng",
+  },
+  {
+    name: "delivery",
+    text: "Vận chuyển"
   },
   {
     name: "customer",
@@ -52,89 +68,77 @@ export const modelPermissions = [
     text: "Nhóm khách hàng",
   },
   {
-    name: "group_supplier",
-    text: "Nhóm NCC",
+    name: "provider",
+    text: "Nhà cung cấp"
   },
   {
-    name: "supplier",
-    text: "NCC",
+    name: "group_provider",
+    text: "Nhóm nhà cung cấp"
   },
   {
-    name: "product_folder",
-    text: "Loại sản phẩm",
+    name: "doctor",
+    text: "Bác sĩ",
   },
   {
-    name: "product",
-    text: "Sản phẩm",
+    name: "cashbook",
+    text: "Sổ quỹ",
   },
   {
-    name: "product_utility",
-    text: "Nhóm công dụng",
+    name: "customer_report",
+    text: "Báo cáo khách hàng"
   },
   {
-    name: "product_treatment",
-    text: "Nhóm điều trị",
+    name: "provider_report",
+    text: "Báo cáo nhà cung cấp"
   },
   {
-    name: "product_manufacture",
-    text: "Nhà sản xuất",
+    name: "employee_report",
+    text: "Báo cáo nhân viên"
   },
   {
-    name: "product_unit",
-    text: "Đơn vị tính",
+    name: "sale_report",
+    text: "Báo cáo bán hàng"
   },
   {
-    name: "discount",
-    text: "Phần trăm chiết khấu",
+    name: "product_report",
+    text: "Báo cáo sản phẩm"
   },
   {
-    name: "tag",
-    text: "Thẻ",
+    name: "store",
+    text: "Cửa hàng",
   },
   {
-    name: "question_answer",
-    text: "Câu hỏi thường gặp",
+    name: "branch",
+    text: "Chi nhánh",
   },
   {
-    name: "contact_work",
-    text: "Khách hàng liên hệ",
-  },
-  {
-    name: "filter_price",
-    text: "Lọc theo giá",
-  },
-  {
-    name: "filter_percent_discount",
-    text: "Lọc theo chiết khấu",
-  },
-  {
-    name: "order",
-    text: "Đơn hàng",
-  },
-  {
-    name: "banner",
-    text: "Banner",
+    name: "employee",
+    text: "Nhân viên"
   },
   {
     name: "role",
     text: "Nhóm quyền",
   },
   {
-    name: "notification",
-    text: "Thông báo",
+    name: "discount",
+    text: "Phần trăm chiết khấu",
   },
   {
-    name: "position",
-    text: "Vị trí",
+    name: "point_setting",
+    text: "Cấu hình điểm"
   },
   {
-    name: "dosage",
-    text: "Đường thuốc",
+    name: "connect_system",
+    text: "Kết nối hệ thống"
   },
   {
-    name: "country-produce",
-    text: "Nước sản xuất",
+    name: "delivery_fee",
+    text: "Phí giao hàng"
   },
+  {
+    name: "connect_delivery",
+    text: "Kết nối giao hàng"
+  }
 ];
 
 export const actionPermissions = [
