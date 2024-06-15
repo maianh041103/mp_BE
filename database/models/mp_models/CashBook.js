@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.STRING,
                 allowNull: true,
             },
-            time: {
+            timeCreate: {
                 type: Sequelize.DATE,
                 allowNull: true
             },
@@ -32,7 +32,7 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: false
             },
             value: {
-                type: DataTypes.INTEGER,
+                type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false
             },
             userId: {
@@ -46,7 +46,9 @@ module.exports = (sequelize, DataTypes) => {
                     cashBookContant.OBJECT.SHIPPER,
                     cashBookContant.OBJECT.SUPPLIER,
                     cashBookContant.OBJECT.USER
-                )
+                ),
+                allowNull: false,
+                defaultValue: cashBookContant.OBJECT.OTHER,
             },
             peopleId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
@@ -58,6 +60,7 @@ module.exports = (sequelize, DataTypes) => {
             },
             isDebt: {
                 type: DataTypes.BOOLEAN,
+                allowNull: false,
                 defaultValue: true,
             },
             branchId: {
@@ -85,16 +88,41 @@ module.exports = (sequelize, DataTypes) => {
     );
 
     CashBook.associate = function (models) {
-        // CashBook.hasMany(models.DiscountCustomer, {
-        //     as: 'discountCustomer',
-        //     foreignKey: 'discountId',
-        //     sourceKey: 'id',
-        // });
+        CashBook.belongsTo(models.TypeCashBook, {
+            as: 'typeCashBook',
+            foreignKey: 'typeId',
+            targetKey: 'id',
+        });
+        CashBook.belongsTo(models.User, {
+            as: 'user',
+            foreignKey: 'userId',
+            targetKey: 'id',
+        });
+        CashBook.belongsTo(models.UserCashBook, {
+            as: 'otherCashBook',
+            foreignKey: 'peopleId',
+            targetKey: 'id',
+        });
+        CashBook.belongsTo(models.Customer, {
+            as: 'customerCashBook',
+            foreignKey: 'peopleId',
+            targetKey: 'id',
+        });
+        CashBook.belongsTo(models.Supplier, {
+            as: 'supplierCashBook',
+            foreignKey: 'peopleId',
+            targetKey: 'id',
+        });
+        CashBook.belongsTo(models.User, {
+            as: 'userCashBook',
+            foreignKey: 'peopleId',
+            targetKey: 'id',
+        });
         CashBook.belongsTo(models.Branch, {
             as: "branch",
             foreignKey: "branchId",
             targetKey: 'id',
-        })
+        });
     };
 
     return CashBook;
