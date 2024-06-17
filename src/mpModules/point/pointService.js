@@ -120,9 +120,17 @@ module.exports.detailPoint = async (params) => {
     });
     if (!pointExists) {
         return {
-            error: true,
-            code: HttpStatusCode.NOT_FOUND,
-            message: "Cấu hình tích điểm không tồn tại",
+            success: true,
+            data: {
+                "type": "order",
+                "convertMoneyBuy": 0,
+                "isPointPayment": false,
+                "isDiscountProduct": false,
+                "isDiscountOrder": false,
+                "isPointBuy": false,
+                "isAllCustomer": true,
+                "status": "active"
+            },
         };
     }
     let listGroupCustomer = await models.PointCustomer.findAll({

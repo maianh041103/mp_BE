@@ -17,7 +17,7 @@ module.exports = (sequelize, DataTypes) => {
             type: Sequelize.INTEGER(11).UNSIGNED,
         },
         realQuantity: {
-            allowNull: false,
+            allowNull: true,
             type: Sequelize.INTEGER(11).UNSIGNED,
         },
         userCreateId: {
@@ -31,6 +31,10 @@ module.exports = (sequelize, DataTypes) => {
         branchId: {
             allowNull: false,
             type: Sequelize.INTEGER(11).UNSIGNED
+        },
+        difference: {
+            allowNull: true,
+            type: Sequelize.INTEGER(11)
         }
     }, {
         tableName: 'inventories_checking',
@@ -53,6 +57,12 @@ module.exports = (sequelize, DataTypes) => {
             as: "branch",
             foreignKey: "branchId",
             targetKey: "id"
+        });
+
+        InventoryChecking.hasMany(models.InventoryCheckingBatch, {
+            as: "inventoryCheckingBatch",
+            foreignKey: "inventoryCheckingId",
+            sourceKey: "id"
         })
     };
     return InventoryChecking;

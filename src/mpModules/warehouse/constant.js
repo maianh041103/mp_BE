@@ -5,5 +5,5 @@ export const warehouseStatus = {
     MOVE: 4,
     ADJUSTMENT: 5,
     MOVE_RECEIVE: 6,
-    SALE_RETURN: 7,
+    SALE_RETURN: 7
 };
