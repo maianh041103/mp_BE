@@ -17,7 +17,7 @@ module.exports = (sequelize, DataTypes) => {
             type: Sequelize.INTEGER(11).UNSIGNED,
         },
         realQuantity: {
-            allowNull: false,
+            allowNull: true,
             type: Sequelize.INTEGER(11).UNSIGNED,
         },
         userCreateId: {
@@ -30,10 +30,6 @@ module.exports = (sequelize, DataTypes) => {
         },
         branchId: {
             allowNull: false,
-            type: Sequelize.INTEGER(11).UNSIGNED
-        },
-        batchId: {
-            allowNull: true,
             type: Sequelize.INTEGER(11).UNSIGNED
         },
         difference: {
@@ -63,10 +59,10 @@ module.exports = (sequelize, DataTypes) => {
             targetKey: "id"
         });
 
-        InventoryChecking.belongsTo(models.Batch, {
-            as: "batch",
-            foreignKey: 'batchId',
-            targetKey: "id"
+        InventoryChecking.hasMany(models.InventoryCheckingBatch, {
+            as: "inventoryCheckingBatch",
+            foreignKey: "inventoryCheckingId",
+            sourceKey: "id"
         })
     };
     return InventoryChecking;

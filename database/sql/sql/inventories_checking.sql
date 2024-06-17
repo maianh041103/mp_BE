@@ -3,8 +3,7 @@ create table inventories_checking(
 		primary key,
 	code nvarchar(50) not null,
     productUnitId int unsigned not null,
-	batchId int unsigned not null,
-	realQuantity int not null,
+	realQuantity int null,
     userCreateId int unsigned not null,
     note nvarchar(255) null,
 	branchId int unsigned not null,
@@ -17,9 +16,7 @@ create table inventories_checking(
 	constraint inventories_checking_ibfk_2
 		foreign key (userCreateId) references users(id),
 	constraint inventories_checking_ibfk_3
-		foreign key (branchId) references branches(id),
-	constraint inventories_checking_ibfk_4
-		foreign key (batchId) references batches(id)	
+		foreign key (branchId) references branches(id)
 )
 charset=utf8mb3;
 create index productUnitId
@@ -28,5 +25,20 @@ create index userCreateId
 	on inventories_checking (userCreateId);
 create index branchId
 	on inventories_checking (branchId);
+
+
+create table inventories_checking_batch(
+    id int unsigned auto_increment
+		primary key,
+	inventoryCheckingId int unsigned not null,
+	batchId int unsigned not null,
+	realQuantity int not null,
+	difference int,
+	constraint inventories_checking_batch_ibfk_1
+		foreign key (inventories_checking_id) references inventories_checking(id),
+	constraint inventories_checking_batch_ibfk_2
+		foreign key (batchId) references batches(id)	
+)
+charset=utf8mb3;
 create index batchId
-	on inventories_checking (batchId);
+	on inventories_checking_batch (batchId);
