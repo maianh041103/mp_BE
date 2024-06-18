@@ -129,7 +129,7 @@ module.exports.detailPoint = async (params) => {
                 "isDiscountOrder": false,
                 "isPointBuy": false,
                 "isAllCustomer": true,
-                "status": "active"
+                "status": pointContant.statusPoint.INACTIVE
             },
         };
     }
