@@ -23,10 +23,8 @@ create table inventories_checking_product(
 
 ALTER TABLE `mephar`.`inventories_checking_batch` 
 DROP FOREIGN KEY `inventories_checking_batch_ibfk_1`;
-ALTER TABLE `mephar`.`inventories_checking_batch` 
-;
-ALTER TABLE `mephar`.`inventories_checking_batch` RENAME INDEX `inventories_checking_batch_ibfk_1` TO `inventories_checking_batch_ibfk_1_idx`;
-ALTER TABLE `mephar`.`inventories_checking_batch` ALTER INDEX `inventories_checking_batch_ibfk_1_idx` VISIBLE;
+
+ALTER TABLE inventories_checking_batch RENAME COLUMN inventoryCheckingId TO inventoryCheckingProductId;
 
 ALTER TABLE inventories_checking_batch
 ADD CONSTRAINT inventories_checking_batch_ibfk_1 FOREIGN KEY (inventoryCheckingProductId) REFERENCES inventories_checking_product (id);
