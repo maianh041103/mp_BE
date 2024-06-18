@@ -19,11 +19,6 @@ router.get("/:id", authenticate, (req, res, next) => {
     next();
 }, authorize, inventoryCheckingController.detail);
 
-router.patch("/:id", authenticate, (req, res, next) => {
-    req.apiRole = [];
-    next();
-}, authorize, inventoryCheckingController.edit);
-
 router.delete("/:id", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
