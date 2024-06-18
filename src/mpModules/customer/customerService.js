@@ -671,23 +671,36 @@ export async function indexPaymentCustomer(params, loginUser) {
   }
 }
 
+const historyPointInclude = [
+  {
+    model: models.Order,
+    as: "order",
+    attributes: [
+      "code",
+      "totalPrice",
+      "paymentPoint",
+    ]
+  },
+  {
+    model: models.Customer,
+    as: "customer",
+    attributes: ["fullName"]
+  }
+]
+
 export async function historyPointService(customerId, query) {
   const limit = parseInt(query.limit) || 20;
   const page = parseInt(query.page) || 1;
-  const { rows, count } = await models.Order.findAndCountAll({
+  const { rows, count } = await models.PointHistory.findAndCountAll({
     attributes: [
-      "code",
-      "createdAt",
-      "totalPrice",
       "point",
-      "paymentPoint",
-      [sequelize.literal('IFNULL(point - paymentPoint, 0)'), "transactionPoint"],
       [sequelize.literal(`(
-        SELECT IFNULL(SUM(point - paymentPoint), 0)
-        FROM orders AS sub
-        WHERE sub.customerId = ${customerId} AND sub.id <= Order.id
+        SELECT IFNULL(SUM(point), 0)
+        FROM point_history AS sub
+        WHERE sub.customerId = ${customerId} AND sub.id <= PointHistory.id
       )`), 'postTransactionPoint']
     ],
+    include: historyPointInclude,
     where: {
       customerId,
     },
@@ -695,6 +708,10 @@ export async function historyPointService(customerId, query) {
     limit,
     offset: (page - 1) * limit
   });
+
+  for (const row of rows) {
+    row.dataValues.postTransactionPoint = parseInt(row.dataValues.postTransactionPoint)
+  }
   return {
     success: true,
     data: {

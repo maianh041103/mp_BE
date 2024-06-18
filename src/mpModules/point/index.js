@@ -29,4 +29,9 @@ router.get("/check/status", authenticate, (req, res, next) => {
     next();
 }, authorize, pointController.checkStatus);
 
+router.patch("/:customerId", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, pointController.changePointCustomer);
+
 module.exports = router;

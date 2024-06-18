@@ -232,3 +232,46 @@ module.exports.checkStatus = async (params) => {
         }
     }
 }
+
+module.exports.changePointCustomer = async (params) => {
+    const { customerId, storeId, point } = params;
+    const customerExists = await models.Customer.findOne({
+        where: {
+            id: customerId,
+            storeId
+        }
+    });
+    if (!customerExists) {
+        return {
+            error: true,
+            code: HttpStatusCode.NOT_FOUND,
+            message: "Khách hàng không tồn tại",
+        }
+    }
+
+    let newPointHistory;
+    const t = await models.sequelize.transaction(async (t) => {
+        newPointHistory = await models.PointHistory.create({
+            customerId: customerId,
+            point: point
+        }, {
+            transaction: t
+        });
+
+        await models.Customer.increment({
+            point: point
+        }, {
+            where: {
+                id: customerId
+            },
+            transaction: t
+        });
+    });
+
+    return {
+        success: true,
+        data: {
+            item: newPointHistory
+        }
+    }
+}
