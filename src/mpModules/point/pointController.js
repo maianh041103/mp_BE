@@ -79,3 +79,19 @@ module.exports.checkStatus = async (req, res) => {
     }
 }
 
+//[PATCH] /mp/api/point/:customerId
+module.exports.changePointCustomer = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
+        const customerId = req.params.customerId;
+        const body = req.body || {};
+        const result = await pointService.changePointCustomer({ storeId: loginUser.storeId, customerId, ...body });
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}
+

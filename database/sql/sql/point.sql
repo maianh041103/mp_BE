@@ -40,3 +40,22 @@ create index customerId
 	on point_customers (groupCustomerId);
 create index pointId
 	on point_customers (pointId);
+
+create table point_history(
+	id int unsigned auto_increment primary key,
+	customerId int unsigned not null,
+	orderId int unsigned not null,
+	point int,
+	createdAt timestamp default CURRENT_TIMESTAMP not null,
+	updatedAt timestamp default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP,
+	deletedAt timestamp null,
+	constraint point_history_ibfk_1
+		foreign key (customerId) references customers(id),
+	constraint point_history_ibfk_2
+		foreign key (orderId) references orders(id)
+);
+
+create index customerId
+	on point_history(id);
+create index pointId
+	on point_history (id);
