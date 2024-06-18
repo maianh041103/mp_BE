@@ -1,9 +1,9 @@
 "use strict";
 const Sequelize = require("sequelize");
-const cashBookContant = require('../../../src/mpModules/cashBook/cashBookContant');
+const transactionContant = require('../../../src/mpModules/transaction/transactionContant');
 module.exports = (sequelize, DataTypes) => {
-    const CashBook = sequelize.define(
-        "CashBook",
+    const Transaction = sequelize.define(
+        "Transaction",
         {
             id: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
@@ -13,17 +13,17 @@ module.exports = (sequelize, DataTypes) => {
             },
             ballotType: {
                 type: DataTypes.ENUM(
-                    cashBookContant.BALLOTTYPE.EXPENSES,
-                    cashBookContant.BALLOTTYPE.INCOME
+                    transactionContant.BALLOTTYPE.EXPENSES,
+                    transactionContant.BALLOTTYPE.INCOME
                 ),
-                defaultValue: cashBookContant.BALLOTTYPE.EXPENSES,
+                defaultValue: transactionContant.BALLOTTYPE.EXPENSES,
                 allowNull: false
             },
             code: {
                 type: DataTypes.STRING,
                 allowNull: true,
             },
-            timeCreate: {
+            paymentDate: {
                 type: Sequelize.DATE,
                 allowNull: true
             },
@@ -35,22 +35,22 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false
             },
-            userId: {
+            createdBy: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false
             },
-            object: {
+            target: {
                 type: DataTypes.ENUM(
-                    cashBookContant.OBJECT.CUSTOMER,
-                    cashBookContant.OBJECT.OTHER,
-                    cashBookContant.OBJECT.SHIPPER,
-                    cashBookContant.OBJECT.SUPPLIER,
-                    cashBookContant.OBJECT.USER
+                    transactionContant.TARGET.CUSTOMER,
+                    transactionContant.TARGET.OTHER,
+                    transactionContant.TARGET.SUPPLIER,
+                    transactionContant.TARGET.USER,
+                    transactionContant.TARGET.BRANCH
                 ),
                 allowNull: false,
-                defaultValue: cashBookContant.OBJECT.OTHER,
+                defaultValue: transactionContant.TARGET.OTHER,
             },
-            peopleId: {
+            targetId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false
             },
@@ -81,49 +81,54 @@ module.exports = (sequelize, DataTypes) => {
             }
         },
         {
-            tableName: "cash_books",
+            tableName: "transactions",
             timestamps: true,
             paranoid: true,
         }
     );
 
-    CashBook.associate = function (models) {
-        CashBook.belongsTo(models.TypeCashBook, {
-            as: 'typeCashBook',
+    Transaction.associate = function (models) {
+        Transaction.belongsTo(models.TypeTransaction, {
+            as: 'typeTransaction',
             foreignKey: 'typeId',
             targetKey: 'id',
         });
-        CashBook.belongsTo(models.User, {
+        Transaction.belongsTo(models.User, {
             as: 'user',
-            foreignKey: 'userId',
+            foreignKey: 'createdBy',
             targetKey: 'id',
         });
-        CashBook.belongsTo(models.UserCashBook, {
-            as: 'otherCashBook',
-            foreignKey: 'peopleId',
+        Transaction.belongsTo(models.UserTransaction, {
+            as: 'targetOther',
+            foreignKey: 'targetId',
             targetKey: 'id',
         });
-        CashBook.belongsTo(models.Customer, {
-            as: 'customerCashBook',
-            foreignKey: 'peopleId',
+        Transaction.belongsTo(models.Customer, {
+            as: 'targetCustomer',
+            foreignKey: 'targetId',
             targetKey: 'id',
         });
-        CashBook.belongsTo(models.Supplier, {
-            as: 'supplierCashBook',
-            foreignKey: 'peopleId',
+        Transaction.belongsTo(models.Supplier, {
+            as: 'targetSupplier',
+            foreignKey: 'targetId',
             targetKey: 'id',
         });
-        CashBook.belongsTo(models.User, {
-            as: 'userCashBook',
-            foreignKey: 'peopleId',
+        Transaction.belongsTo(models.User, {
+            as: 'targetUser',
+            foreignKey: 'targetId',
             targetKey: 'id',
         });
-        CashBook.belongsTo(models.Branch, {
+        Transaction.belongsTo(models.Branch, {
+            as: 'targetBranch',
+            foreignKey: 'targetId',
+            targetKey: 'id',
+        });
+        Transaction.belongsTo(models.Branch, {
             as: "branch",
             foreignKey: "branchId",
             targetKey: 'id',
         });
     };
 
-    return CashBook;
+    return Transaction;
 };

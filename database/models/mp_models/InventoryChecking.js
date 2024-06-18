@@ -12,14 +12,6 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             type: DataTypes.STRING,
         },
-        productUnitId: {
-            allowNull: false,
-            type: Sequelize.INTEGER(11).UNSIGNED,
-        },
-        realQuantity: {
-            allowNull: true,
-            type: Sequelize.INTEGER(11).UNSIGNED,
-        },
         userCreateId: {
             allowNull: false,
             type: Sequelize.INTEGER(11).UNSIGNED
@@ -31,22 +23,12 @@ module.exports = (sequelize, DataTypes) => {
         branchId: {
             allowNull: false,
             type: Sequelize.INTEGER(11).UNSIGNED
-        },
-        difference: {
-            allowNull: true,
-            type: Sequelize.INTEGER(11)
         }
     }, {
         tableName: 'inventories_checking',
         timestamps: true
     });
     InventoryChecking.associate = function (models) {
-        InventoryChecking.belongsTo(models.ProductUnit, {
-            as: 'productUnit',
-            foreignKey: 'productUnitId',
-            targetKey: 'id',
-        });
-
         InventoryChecking.belongsTo(models.User, {
             as: "userCreate",
             foreignKey: "userCreateId",
@@ -59,8 +41,8 @@ module.exports = (sequelize, DataTypes) => {
             targetKey: "id"
         });
 
-        InventoryChecking.hasMany(models.InventoryCheckingBatch, {
-            as: "inventoryCheckingBatch",
+        InventoryChecking.hasMany(models.InventoryCheckingProduct, {
+            as: "inventoryCheckingProduct",
             foreignKey: "inventoryCheckingId",
             sourceKey: "id"
         })

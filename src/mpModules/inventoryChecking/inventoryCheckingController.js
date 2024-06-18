@@ -49,21 +49,6 @@ module.exports.detail = async (req, res) => {
     }
 }
 
-//[PATCH] /api/mp/inventory-checking/:id
-module.exports.edit = async (req, res) => {
-    try {
-        const id = req.params.id;
-        const body = req.body || {};
-        const result = await inventoryCheckingService.edit({ id, ...body });
-        if (result.success) res.json(respondItemSuccess(result.data));
-        else res.json(respondWithError(result.code, result.message, {}));
-    } catch (error) {
-        res.json(
-            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
-        );
-    }
-}
-
 //[DELETE] /api/mp/inventory-checking/:id
 module.exports.delete = async (req, res) => {
     try {
