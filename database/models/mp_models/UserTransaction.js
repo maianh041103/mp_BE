@@ -1,9 +1,9 @@
 "use strict";
 const Sequelize = require("sequelize");
-const cashBookContant = require('../../../src/mpModules/cashBook/cashBookContant');
+const transactionContant = require('../../../src/mpModules/transaction/transactionContant');
 module.exports = (sequelize, DataTypes) => {
-    const UserCashBook = sequelize.define(
-        "UserCashBook",
+    const UserTransaction = sequelize.define(
+        "UserTransaction",
         {
             id: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
@@ -57,37 +57,37 @@ module.exports = (sequelize, DataTypes) => {
             }
         },
         {
-            tableName: "user_cash_books",
+            tableName: "user_transaction",
             timestamps: true,
             paranoid: true,
         }
     );
 
-    UserCashBook.associate = function (models) {
-        UserCashBook.belongsTo(models.Province, {
+    UserTransaction.associate = function (models) {
+        UserTransaction.belongsTo(models.Province, {
             as: "province",
             foreignKey: "provinceId",
             targetKey: "id",
         });
 
-        UserCashBook.belongsTo(models.District, {
+        UserTransaction.belongsTo(models.District, {
             as: "district",
             foreignKey: "districtId",
             targetKey: "id",
         });
 
-        UserCashBook.belongsTo(models.Ward, {
+        UserTransaction.belongsTo(models.Ward, {
             as: "ward",
             foreignKey: "wardId",
             targetKey: "id",
         });
 
-        UserCashBook.belongsTo(models.Store, {
+        UserTransaction.belongsTo(models.Store, {
             as: "store",
             foreignKey: "storeId",
             targetKey: 'id',
         })
     };
 
-    return UserCashBook;
+    return UserTransaction;
 };

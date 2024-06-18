@@ -47,9 +47,9 @@ import saleReturnApiRouter from "../../src/mpModules/saleReturn"
 import discountRouter from "../../src/mpModules/discount/index.js";
 import pointRouter from "../../src/mpModules/point/index.js";
 import inventoryCheckingRouter from "../../src/mpModules/inventoryChecking/index.js";
-import cashBookRouter from "../../src/mpModules/cashBook/index.js"
-import typeCashBookRouter from "../../src/mpModules/typeCashBook/index.js";
-import userCashBookRouter from "../../src/mpModules/userCashBook/index.js";
+import transactionRouter from "../../src/mpModules/transaction/index.js"
+import typeTransactionRouter from "../../src/mpModules/typeTransaction/index.js";
+import userTransactionRouter from "../../src/mpModules/userTransaction/index.js";
 import customerNoteRouter from "../../src/mpModules/customerNote/index.js";
 
 const mpRouterManager = function (app) {
@@ -101,9 +101,9 @@ const mpRouterManager = function (app) {
   app.use("/mp/api/discount", discountRouter);
   app.use("/mp/api/point", pointRouter);
   app.use("/mp/api/inventory-checking", inventoryCheckingRouter);
-  app.use("/mp/api/cash-book", cashBookRouter);
-  app.use("/mp/api/type-cash-book", typeCashBookRouter);
-  app.use("/mp/api/user-cash-book", userCashBookRouter);
+  app.use("/mp/api/transaction", transactionRouter);
+  app.use("/mp/api/type-transaction", typeTransactionRouter);
+  app.use("/mp/api/user-transaction", userTransactionRouter);
   app.use("/mp/api/customer-note", customerNoteRouter);
 };
 

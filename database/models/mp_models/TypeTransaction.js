@@ -1,9 +1,9 @@
 "use strict";
 const Sequelize = require("sequelize");
-const cashBookContant = require('../../../src/mpModules/cashBook/cashBookContant');
+const transactionContant = require('../../../src/mpModules/transaction/transactionContant');
 module.exports = (sequelize, DataTypes) => {
-    const TypeCashBook = sequelize.define(
-        "TypeCashBook",
+    const TypeTransaction = sequelize.define(
+        "TypeTransaction",
         {
             id: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
@@ -18,6 +18,14 @@ module.exports = (sequelize, DataTypes) => {
             description: {
                 type: DataTypes.STRING,
                 allowNull: true
+            },
+            ballotType: {
+                type: DataTypes.ENUM(
+                    transactionContant.BALLOTTYPE.EXPENSES,
+                    transactionContant.BALLOTTYPE.INCOME
+                ),
+                defaultValue: transactionContant.BALLOTTYPE.EXPENSES,
+                allowNull: false
             },
             storeId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
@@ -37,19 +45,19 @@ module.exports = (sequelize, DataTypes) => {
             }
         },
         {
-            tableName: "type_cash_books",
+            tableName: "type_transactions",
             timestamps: true,
             paranoid: true,
         }
     );
 
-    TypeCashBook.associate = function (models) {
-        TypeCashBook.belongsTo(models.Store, {
+    TypeTransaction.associate = function (models) {
+        TypeTransaction.belongsTo(models.Store, {
             as: "store",
             foreignKey: "storeId",
             targetKey: 'id',
         })
     };
 
-    return TypeCashBook;
+    return TypeTransaction;
 };
