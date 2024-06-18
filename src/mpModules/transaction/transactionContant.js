@@ -3,10 +3,10 @@ export const BALLOTTYPE = {
     INCOME: 'income' //loại thu
 }
 
-export const OBJECT = {
+export const TARGET = {
     CUSTOMER: 'customer',
     SUPPLIER: 'supplier',
     USER: 'user',
-    SHIPPER: 'shipper',
+    BRANCH: 'branch', //chuyển nội bộ
     OTHER: 'other'
 }
