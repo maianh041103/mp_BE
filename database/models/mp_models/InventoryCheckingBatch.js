@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
             autoIncrement: true,
             allowNull: false,
         },
-        inventoryCheckingId: {
+        inventoryCheckingProductId: {
             allowNull: true,
             type: Sequelize.INTEGER(11).UNSIGNED
         },
@@ -29,9 +29,9 @@ module.exports = (sequelize, DataTypes) => {
         timestamps: false
     });
     InventoryCheckingBatch.associate = function (models) {
-        InventoryCheckingBatch.belongsTo(models.InventoryChecking, {
-            as: "inventoryChecking",
-            foreignKey: "inventoryCheckingId",
+        InventoryCheckingBatch.belongsTo(models.InventoryCheckingProduct, {
+            as: "inventoryCheckingProduct",
+            foreignKey: "inventoryCheckingProductId",
             targetKey: "id"
         });
 

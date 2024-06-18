@@ -122,14 +122,14 @@ module.exports.detailPoint = async (params) => {
         return {
             success: true,
             data: {
-                "type": "order",
+                "type": type,
                 "convertMoneyBuy": 0,
                 "isPointPayment": false,
                 "isDiscountProduct": false,
                 "isDiscountOrder": false,
                 "isPointBuy": false,
                 "isAllCustomer": true,
-                "status": "active"
+                "status": pointContant.statusPoint.INACTIVE
             },
         };
     }

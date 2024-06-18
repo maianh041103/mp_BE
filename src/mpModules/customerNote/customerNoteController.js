@@ -3,14 +3,16 @@ const {
     respondItemSuccess,
 } = require("../../helpers/response");
 const { HttpStatusCode } = require('../../helpers/errorCodes');
-const inventoryCheckingService = require("./inventoryCheckingService");
+const customerNoteService = require("./customerNoteService");
 
-//[POST] /api/mp/inventory-checking
+//[POST] /mp/api/customer-note
 module.exports.create = async (req, res) => {
     try {
         const { loginUser = {} } = req;
-        const body = req.body;
-        const result = await inventoryCheckingService.create({ storeId: loginUser.storeId, ...body });
+        const result = await customerNoteService.createNote({
+            ...req.body,
+            storeId: loginUser.storeId,
+        });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {
@@ -20,11 +22,17 @@ module.exports.create = async (req, res) => {
     }
 }
 
-//[GET] /api/mp/inventory-checking
-module.exports.getAll = async (req, res) => {
+//[GET] /mp/api/customer-note/:customerId
+module.exports.getAllByCustomer = async (req, res) => {
     try {
+        const { loginUser = {} } = req;
+        const customerId = req.params.customerId;
         const query = req.query || {};
-        const result = await inventoryCheckingService.getAll({ ...query });
+        const result = await customerNoteService.getAllByCustomer({
+            customerId,
+            storeId: loginUser.storeId,
+            ...query
+        });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {
@@ -34,12 +42,16 @@ module.exports.getAll = async (req, res) => {
     }
 }
 
-//[GET] /api/mp/inventory-checking/:id
-module.exports.detail = async (req, res) => {
+//[PATCH] /mp/api/customer-note/:id
+module.exports.update = async (req, res) => {
     try {
+        const { loginUser = {} } = req;
         const id = req.params.id;
-        const branchId = req.query.branchId;
-        const result = await inventoryCheckingService.detail({ id, branchId });
+        const result = await customerNoteService.updateNote({
+            ...req.body,
+            storeId: loginUser.storeId,
+            id
+        });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {
@@ -49,12 +61,15 @@ module.exports.detail = async (req, res) => {
     }
 }
 
-//[DELETE] /api/mp/inventory-checking/:id
+//[DELETE] /mp/api/customer-note/:id
 module.exports.delete = async (req, res) => {
     try {
+        const { loginUser = {} } = req;
         const id = req.params.id;
-        const branchId = req.query.branchId;
-        const result = await inventoryCheckingService.delete({ id, branchId });
+        const result = await customerNoteService.deleteNote({
+            storeId: loginUser.storeId,
+            id
+        });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {

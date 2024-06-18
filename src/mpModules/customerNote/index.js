@@ -1,27 +1,27 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
 const { authenticate } = require("../../middlewares/auth");
 const { authorize } = require("../../middlewares/authorize");
-const inventoryCheckingController = require("./inventoryCheckingController");
+const customerNoteController = require("./customerNoteController");
 
 router.post("/", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-}, authorize, inventoryCheckingController.create);
+}, authorize, customerNoteController.create);
 
-router.get("/", authenticate, (req, res, next) => {
+router.get("/:customerId", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-}, authorize, inventoryCheckingController.getAll);
+}, authorize, customerNoteController.getAllByCustomer);
 
-router.get("/:id", authenticate, (req, res, next) => {
+router.patch("/:id", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-}, authorize, inventoryCheckingController.detail);
+}, authorize, customerNoteController.update);
 
 router.delete("/:id", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-}, authorize, inventoryCheckingController.delete);
+}, authorize, customerNoteController.delete);
 
 module.exports = router;

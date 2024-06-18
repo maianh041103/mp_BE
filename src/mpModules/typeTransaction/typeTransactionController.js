@@ -1,16 +1,18 @@
+const typeTransactionService = require("./typeTransactionService");
 const {
     respondWithError,
     respondItemSuccess,
 } = require("../../helpers/response");
 const { HttpStatusCode } = require('../../helpers/errorCodes');
-const inventoryCheckingService = require("./inventoryCheckingService");
 
-//[POST] /api/mp/inventory-checking
-module.exports.create = async (req, res) => {
+//[POST] /mp/api/type-cash-book
+module.exports.createTypeTransaction = async (req, res) => {
     try {
         const { loginUser = {} } = req;
-        const body = req.body;
-        const result = await inventoryCheckingService.create({ storeId: loginUser.storeId, ...body });
+        const result = await typeTransactionService.createTypeCashBook({
+            ...req.body,
+            storeId: loginUser.storeId,
+        });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {
@@ -20,11 +22,13 @@ module.exports.create = async (req, res) => {
     }
 }
 
-//[GET] /api/mp/inventory-checking
-module.exports.getAll = async (req, res) => {
+//[GET] /mp/api/type-cash-book
+module.exports.getAllTypeTransaction = async (req, res) => {
     try {
-        const query = req.query || {};
-        const result = await inventoryCheckingService.getAll({ ...query });
+        const { loginUser = {} } = req;
+        const result = await typeTransactionService.getAllTypeCashBook({
+            storeId: loginUser.storeId
+        });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {
@@ -34,27 +38,33 @@ module.exports.getAll = async (req, res) => {
     }
 }
 
-//[GET] /api/mp/inventory-checking/:id
-module.exports.detail = async (req, res) => {
+//[GET] /mp/api/type-cash-book/:ballotType
+module.exports.typeTransactionByBallotType = async (req, res) => {
     try {
+        const { loginUser = {} } = req;
+        const ballotType = req.params.ballotType
+        const result = await typeTransactionService.typeCashBookByBallotType({
+            storeId: loginUser.storeId,
+            ballotType
+        });
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}
+
+//[GET] /mp/api/type-cash-book/detail/:id
+module.exports.getDetailTypeTransaction = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
         const id = req.params.id;
-        const branchId = req.query.branchId;
-        const result = await inventoryCheckingService.detail({ id, branchId });
-        if (result.success) res.json(respondItemSuccess(result.data));
-        else res.json(respondWithError(result.code, result.message, {}));
-    } catch (error) {
-        res.json(
-            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
-        );
-    }
-}
-
-//[DELETE] /api/mp/inventory-checking/:id
-module.exports.delete = async (req, res) => {
-    try {
-        const id = req.params.id;
-        const branchId = req.query.branchId;
-        const result = await inventoryCheckingService.delete({ id, branchId });
+        const result = await typeTransactionService.getDetailTypeCashBook({
+            storeId: loginUser.storeId,
+            id
+        });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {
