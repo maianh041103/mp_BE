@@ -9,6 +9,7 @@ const {
   getCustomerListByGroup,
   readController,
   updateStatus, getTotalDebtController, getDefaultCustomer,
+  readPaymentCustomerController, historyPoint
 } = require("./customerController");
 const {
   updateValidator,
@@ -37,39 +38,39 @@ router.get(
 );
 
 router.get(
-    "/store/default",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = [
-            "customer_read",
-            "dashboard_read",
-            "customer_view_all",
-            "order_history_read",
-            "sales_report_read",
-            "product_link_customer_user_read",
-        ];
-        next();
-    },
-    authorize,
-    getDefaultCustomer
+  "/store/default",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = [
+      "customer_read",
+      "dashboard_read",
+      "customer_view_all",
+      "order_history_read",
+      "sales_report_read",
+      "product_link_customer_user_read",
+    ];
+    next();
+  },
+  authorize,
+  getDefaultCustomer
 );
 
 router.get(
-    "/:id/total-debt",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = [
-            "customer_read",
-            "dashboard_read",
-            "customer_view_all",
-            "order_history_read",
-            "sales_report_read",
-            "product_link_customer_user_read",
-        ];
-        next();
-    },
-    authorize,
-    getTotalDebtController
+  "/:id/total-debt",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = [
+      "customer_read",
+      "dashboard_read",
+      "customer_view_all",
+      "order_history_read",
+      "sales_report_read",
+      "product_link_customer_user_read",
+    ];
+    next();
+  },
+  authorize,
+  getTotalDebtController
 );
 
 router.post(
@@ -148,6 +149,17 @@ router.get(
   getCustomerListByGroup
 );
 
+router.get(
+  "/:id/payment",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = "order_read";
+    next();
+  },
+  authorize,
+  readPaymentCustomerController
+)
+
 // manager
 router.patch(
   "/:id/status",
@@ -159,5 +171,11 @@ router.patch(
   authorize,
   updateStatus
 );
+
+router.get("/:customerId/history-point", authenticate,
+  (req, res, next) => {
+    req.apiRole = "order_read";
+    next();
+  }, authorize, historyPoint)
 
 module.exports = router;

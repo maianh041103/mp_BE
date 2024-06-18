@@ -1,4 +1,5 @@
 import {indexDelete} from "./purchaseReturnService";
+import {respondWithClientError} from "../../helpers/response";
 
 const _ = require("lodash");
 const {
@@ -46,10 +47,7 @@ export async function createController(req, res) {
     if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
-    console.log(error)
-    res.json(
-      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
-    );
+    res.json(respondWithClientError(error))
   }
 }
 

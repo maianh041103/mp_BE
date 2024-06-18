@@ -44,6 +44,10 @@ const openApiDocumentation = require('../../swagger.json')
 const swaggerUi = require('swagger-ui-express');
 import moveApiRouter from "../../src/mpModules/move"
 import saleReturnApiRouter from "../../src/mpModules/saleReturn"
+import discountRoute from "../../src/mpModules/discount/index.js";
+import pointRoute from "../../src/mpModules/point/index.js";
+import inventoryCheckingRoute from "../../src/mpModules/inventoryChecking/index.js";
+
 const mpRouterManager = function (app) {
   app.use("/mp/api/address", addressApiRouter);
   app.use("/mp/api/auth", authApiRouter);
@@ -90,6 +94,9 @@ const mpRouterManager = function (app) {
   app.use("/mp/api/move", moveApiRouter)
   app.use("/mp/api/sale-return", saleReturnApiRouter)
   app.use("/docs", swaggerUi.serve, swaggerUi.setup(openApiDocumentation))
+  app.use("/mp/api/discount", discountRoute);
+  app.use("/mp/api/point", pointRoute);
+  app.use("/mp/api/inventory-checking", inventoryCheckingRoute);
 };
 
 module.exports = mpRouterManager;

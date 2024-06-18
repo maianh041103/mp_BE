@@ -1,5 +1,5 @@
-import {SALES_CONCERN} from "./contant";
-import {groupByField, getFilter} from "./util";
+import { SALES_CONCERN } from "./contant";
+import { groupByField, getFilter } from "./util";
 
 const moment = require("moment");
 const { addFilterByDate } = require("../../helpers/utils");
@@ -112,8 +112,8 @@ export async function indexRevenuesReport(params, loginUser) {
       6: "T7",
     }
     const result = {};
-    for(const obj of items){
-      if(result[mapDays[moment(obj.startDate).day() % 7]]){
+    for (const obj of items) {
+      if (result[mapDays[moment(obj.startDate).day() % 7]]) {
         result[mapDays[moment(obj.startDate).day() % 7]] += obj.revenue;
         continue;
       }
@@ -159,18 +159,17 @@ export async function indexRevenuesReport(params, loginUser) {
   };
 }
 
-
 async function getReportByTime(from, to, branchId) {
   const groupBy = groupByField('Order.createdAt', from, to);
   const res = await models.Order.findAll({
     attributes: [
       [sequelize.literal(groupBy), 'title'],
       [sequelize.fn('SUM', sequelize.col('totalPrice')), 'totalRevenue'],
-      [sequelize.literal('0'), 'saleReturn'],
+      [sequelize.literal(`(SELECT COALESCE(SUM(CASE WHEN payments.isReturn = 1 THEN payments.amount ELSE 0 END), 0) FROM payments WHERE payments.orderId = Order.id)`), 'saleReturn'],
       [sequelize.fn('SUM', sequelize.col('totalPrice')), 'realRevenue'],
     ],
     where: getFilter(from, to, branchId),
-    group: sequelize.literal(groupBy)
+    group: [sequelize.literal(groupBy)]
   })
   return {
     success: true,
@@ -180,6 +179,29 @@ async function getReportByTime(from, to, branchId) {
     }
   };
 }
+
+async function getReportBySaleReturn(from, to, branchId) {
+  const groupBy = groupByField('SaleReturn.createdAt', from, to);
+  const res = await models.SaleReturn.findAll({
+    attributes: [
+      [sequelize.literal(groupBy), 'title'],
+      [sequelize.fn('COUNT', sequelize.col('id')), 'numberOfReturn'],
+      [sequelize.fn('SUM', sequelize.col('paid')), 'saleReturn']
+      //[sequelize.literal(`(SELECT COUNT(payments.id) FROM payments WHERE payments.isReturn = 1 AND ${groupByField('payments.createdAt', from, to)} = ${groupByField('Order.createdAt', from, to)})`), 'numberOfReturn'],
+      //[sequelize.literal(`(SELECT COALESCE(SUM(CASE WHEN payments.isReturn = 1 THEN payments.amount ELSE 0 END), 0) FROM payments WHERE  ${groupByField('payments.createdAt', from, to)} = ${groupByField('Order.createdAt', from, to)})`), 'saleReturn']
+    ],
+    where: getFilter(from, to, branchId),
+    group: [sequelize.literal(groupBy)]
+  })
+  return {
+    success: true,
+    data: {
+      items: res,
+      summary: calculateSummary(res, ['numberOfReturn', 'saleReturn'])
+    }
+  };
+}
+
 async function getReportByRevenue(from, to, branchId) {
   const groupBy = groupByField('Order.createdAt', from, to);
   const res = await models.Order.findAll({
@@ -283,7 +305,7 @@ export async function indexSalesReport(params, loginUser) {
     case SALES_CONCERN.DISCOUNT:
       return await getReportByDiscount(from, to, branchId)
     case SALES_CONCERN.SALE_RETURN:
-      return await getReportByTime(from, to, branchId)
+      return await getReportBySaleReturn(from, to, branchId)
     case SALES_CONCERN.EMPLOYEE:
       return await getReportByEmployee(from, to, branchId)
     default:

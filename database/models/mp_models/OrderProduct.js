@@ -1,4 +1,5 @@
 "use strict";
+const Sequelize = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
   const OrderProduct = sequelize.define(
     "OrderProduct",
@@ -44,6 +45,21 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         type: DataTypes.INTEGER(10).UNSIGNED,
       },
+      //Giá bán sau khi áp khuyến mãi
+      itemPrice: {
+        allowNull: true,
+        type: DataTypes.INTEGER(10).UNSIGNED,
+      },
+      discountPrice: {
+        allowNull: true,
+        type: DataTypes.INTEGER(10).UNSIGNED
+      },
+      //Có phải là hàng khuyến mãi không
+      isDiscount: {
+        allowNull: true,
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
+      },
       // Giá vốn trên đơn vị cơ bản
       primePrice: {
         allowNull: true,
@@ -69,6 +85,16 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.FLOAT(),
         defaultValues: 0,
       },
+      quantityLast: {
+        allowNull: true,
+        type: DataTypes.INTEGER(5).UNSIGNED,
+      },
+      //Điểm tích của mỗi sản phẩm
+      point: {
+        allowNull: true,
+        type: DataTypes.INTEGER(11).UNSIGNED,
+        default: 0
+      }
     },
     {
       tableName: "order_products",
@@ -110,7 +136,7 @@ module.exports = (sequelize, DataTypes) => {
     });
 
     OrderProduct.hasMany(models.OrderProductBatch, {
-        as: "batches",
+      as: "batches",
       foreignKey: "orderProductId",
       sourceKey: "id",
     })

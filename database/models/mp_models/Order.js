@@ -72,11 +72,15 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         type: DataTypes.INTEGER(1).UNSIGNED,
       },
-    discountAmount: {
+      discountAmount: {
         allowNull: true,
         type: DataTypes.INTEGER(10).UNSIGNED,
         defaultValues: 0.0,
-    },
+      },
+      discountOrder: { //giá giảm do khuyến mãi hóa đơn
+        allowNull: true,
+        type: DataTypes.INTEGER(1).UNSIGNED,
+      },
       point: {
         allowNull: true,
         type: DataTypes.FLOAT(11, 2).UNSIGNED,
@@ -119,6 +123,21 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         type: DataTypes.INTEGER(11).UNSIGNED,
       },
+      canReturn: {
+        allowNull: false,
+        type: DataTypes.BOOLEAN,
+        defaultValue: true,
+      },
+      paymentPoint: {
+        allowNull: true,
+        type: DataTypes.INTEGER(15).UNSIGNED,
+        defaultValue: 0
+      },
+      discountByPoint: {
+        allowNull: true,
+        type: DataTypes.INTEGER(15).UNSIGNED,
+        defaultValue: 0
+      }
     },
     {
       tableName: "orders",
@@ -222,7 +241,11 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "orderId",
       sourceKey: "id",
     });
-
+    Order.hasMany(models.SaleReturn, {
+      as: "saleReturn",
+      foreignKey: "orderId",
+      sourceKey: "id",
+    });
     Order.hasMany(models.OrderLog, {
       as: "orderLogs",
       foreignKey: "orderId",

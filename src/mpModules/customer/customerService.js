@@ -1,5 +1,5 @@
-import {orderStatuses} from "../order/orderConstant";
-
+import moment from "moment";
+import { orderStatuses } from "../order/orderConstant";
 const { hashPassword } = require("../auth/authService");
 const { createUserTracking } = require("../behavior/behaviorService");
 // const {
@@ -9,9 +9,11 @@ const _ = require("lodash");
 const Sequelize = require("sequelize");
 const { Op } = Sequelize;
 const models = require("../../../database/models");
+const sequelize = models.sequelize
 const { checkUniqueValue, randomString } = require("../../helpers/utils");
 const { customerStatus } = require("./customerConstant");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
+const { addFilterByDate } = require("../../helpers/utils");
 const {
   accountTypes,
   logActions,
@@ -39,7 +41,15 @@ const customerAttributes = [
   "storeId",
   "createdAt",
   "createdBy",
-  "note"
+  "note",
+  [Sequelize.literal(`(SELECT COALESCE(SUM(debtAmount), 0) 
+  FROM customer_debts 
+  WHERE Customer.id = customer_debts.customerId and customer_debts.debtAmount >= 0)`), 'totalDebt'],
+  [Sequelize.literal(`(SELECT COALESCE(SUM(totalPrice), 0) 
+  FROM orders 
+  WHERE Customer.id = orders.customerId and status = 'SUCCEED')`), 'totalOrderPay'],
+  [Sequelize.literal(`(SELECT COUNT(id) FROM orders
+    WHERE Customer.id = orders.customerId)`), 'totalOrder']
 ];
 
 const customerIncludes = [
@@ -72,7 +82,7 @@ const customerIncludes = [
     model: models.User,
     as: "created_by",
     attributes: ["id", "username"],
-  },
+  }
 ];
 
 export async function customerFilter(params) {
@@ -132,7 +142,13 @@ export async function customerFilter(params) {
   if (_.isArray(order) && order.length) {
     query.order = order;
   }
-  return await models.Customer.findAll(query);
+
+  const rows = await models.Customer.findAll(query);
+  for (const row of rows) {
+    row.dataValues.totalOrder = parseInt(row.dataValues.totalOrder);
+  }
+
+  return rows;
 }
 
 export async function indexCustomers(filter) {
@@ -146,7 +162,15 @@ export async function indexCustomers(filter) {
     phone = "",
     listCustomer = [],
     storeId,
-    isDefault
+    isDefault,
+    createdBy,
+    createdAtRange = {},
+    birthdayRange = {},
+    totalDebtRange = {},
+    totalOrderPayRange = {},
+    pointRange = {},
+    type,
+    gender,
   } = filter;
 
   const conditions = {};
@@ -184,43 +208,128 @@ export async function indexCustomers(filter) {
     if (isDefault === true) {
       conditions.isDefault = true;
     } else {
-      conditions.isDefault = {[Op.or]: [false, null]}
+      conditions.isDefault = { [Op.or]: [false, null] }
     }
   }
   if (_.isArray(listCustomer) && listCustomer.length) {
     conditions.id = listCustomer;
   }
 
-  const query = {
+  if (createdBy) {
+    conditions.createdBy = createdBy;
+  }
+
+  if (createdAtRange) {
+    let {
+      createdAtStart,
+      createdAtEnd
+    } = createdAtRange;
+    conditions.createdAt = addFilterByDate([createdAtStart, createdAtEnd]);
+  }
+
+  if (birthdayRange) {
+    let {
+      birthdayStart,
+      birthdayEnd
+    } = birthdayRange;
+    conditions.birthday = addFilterByDate([birthdayStart, birthdayEnd]);
+  }
+
+  if (pointRange) {
+    let {
+      pointStart = 0,
+      pointEnd = 10 ** 9
+    } = pointRange;
+
+    conditions.point = {
+      [Op.between]: [pointStart, pointEnd]
+    }
+  }
+
+  if (type) {
+    conditions.type = type;
+  }
+
+  if (gender) {
+    conditions.gender = gender;
+  }
+
+
+  let {
+    totalDebtStart = -(10 ** 99),
+    totalDebtEnd = 10 ** 99
+  } = totalDebtRange;
+  let {
+    totalOrderPayStart = -(10 ** 99),
+    totalOrderPayEnd = 10 ** 99
+  } = totalOrderPayRange;
+
+  let query = {
     attributes: customerAttributes,
     include: customerIncludes,
     distinct: true,
     where: conditions,
+    having: {
+      totalDebt: {
+        [Op.and]: {
+          [Op.lte]: totalDebtEnd,
+          [Op.gte]: totalDebtStart
+        }
+      },
+      totalOrderPay: {
+        [Op.and]: {
+          [Op.gte]: totalOrderPayStart,
+          [Op.lte]: totalOrderPayEnd
+        }
+      }
+    },
     limit: +limit,
     offset: +limit * (+page - 1),
-    order: [["id", "DESC"]],
+    order: [["id", "DESC"]]
   };
 
-  const { rows, count } = await models.Customer.findAndCountAll(query);
-  for (const item of rows) {
-    item.dataValues.totalDebt  = await models.CustomerDebt.sum('debtAmount',{
-      where: {
-        customerId: item.id,
-        debtAmount: {[Op.gt]: 0}
+  const [rows, count] = await Promise.all([
+    models.Customer.findAll(query),
+    models.Customer.count(query)
+  ]);
+
+  const point = await models.Point.findOne({
+    where: {
+      storeId: filter.storeId,
+      status: "active"
+    }
+  });
+  if (point)
+    for (const row of rows) {
+      row.dataValues.totalOrder = parseInt(row.dataValues.totalOrder);
+      let check = 0;
+      if (row.dataValues.totalOrder >= point.afterByTime) {
+        if (point.isAllCustomer == true) {
+          check = 1;
+        } else {
+          if (row.groupCustomerId != null) {
+            const isExists = await models.PointCustomer.findOne({
+              where: {
+                groupCustomerId: row.groupCustomerId
+              }
+            });
+            if (isExists) {
+              check = 1;
+            }
+          }
+        }
       }
-    })
-    item.dataValues.totalOrderPay  = await models.Order.sum('totalPrice',{
-      where: {
-        customerId: item.id,
-        status: orderStatuses.SUCCEED
-      }
-    })
-  }
+      if (check)
+        row.dataValues.isPointPayment = true;
+      else
+        row.dataValues.isPointPayment = false;
+    }
+
   return {
     success: true,
     data: {
       items: rows,
-      totalItem: count,
+      totalItem: count || 0
     },
   };
 }
@@ -256,6 +365,8 @@ export async function readCustomer(id, loginUser) {
       message: "Khách hàng không tồn tại",
     };
   }
+  findCustomer.dataValues.totalOrder = parseInt(findCustomer.dataValues.totalOrder);
+
   return {
     success: true,
     data: findCustomer,
@@ -282,6 +393,8 @@ export async function readDefaultCustomer(storeId) {
       },
     });
   }
+
+  findCustomer.dataValues.totalOrder = parseInt(findCustomer.dataValues.totalOrder);
   return {
     success: true,
     data: findCustomer,
@@ -305,7 +418,7 @@ export async function updateCustomer(id, payload, loginUser) {
       message: "Khách hàng không tồn tại",
     };
   }
-  if(!findCustomer.code && !payload.code){
+  if (!findCustomer.code && !payload.code) {
     payload.code = `${generateCustomerCode(findCustomer.id)}`;
   }
   await models.Customer.update(payload, {
@@ -384,8 +497,8 @@ export async function createDefaultCustomer(storeId) {
   if (!payload.code) {
     payload.code = `${generateCustomerCode(newCustomer.id)}`;
     await models.Customer.update(
-        { code: payload.code },
-        { where: { id: newCustomer.id } }
+      { code: payload.code },
+      { where: { id: newCustomer.id } }
     );
   }
 }
@@ -529,4 +642,81 @@ export async function getCustomer(customerId) {
   const customer = await customerFilter({ customerId });
   if (customer.length) return customer[0];
   return {};
+}
+
+export async function indexPaymentCustomer(params, loginUser) {
+  let {
+    page,
+    limit,
+    customerId
+  } = params
+  const where = {};
+  if (customerId) {
+    where.customerId = customerId;
+  }
+  const payments = await models.Payment.findAll({
+    offset: +limit * (+page - 1),
+    limit: +limit,
+    include: {
+      model: models.User,
+      as: "fullnameCreator",
+      attributes: ["id", "fullName",],
+    },
+    order: [["id", "DESC"]],
+    where
+  })
+  return {
+    success: true,
+    data: payments
+  }
+}
+
+const historyPointInclude = [
+  {
+    model: models.Order,
+    as: "order",
+    attributes: [
+      "code",
+      "totalPrice",
+      "paymentPoint",
+    ]
+  },
+  {
+    model: models.Customer,
+    as: "customer",
+    attributes: ["fullName"]
+  }
+]
+
+export async function historyPointService(customerId, query) {
+  const limit = parseInt(query.limit) || 20;
+  const page = parseInt(query.page) || 1;
+  const { rows, count } = await models.PointHistory.findAndCountAll({
+    attributes: [
+      "point",
+      [sequelize.literal(`(
+        SELECT IFNULL(SUM(point), 0)
+        FROM point_history AS sub
+        WHERE sub.customerId = ${customerId} AND sub.id <= PointHistory.id
+      )`), 'postTransactionPoint']
+    ],
+    include: historyPointInclude,
+    where: {
+      customerId,
+    },
+    order: [['id', 'DESC']],
+    limit,
+    offset: (page - 1) * limit
+  });
+
+  for (const row of rows) {
+    row.dataValues.postTransactionPoint = parseInt(row.dataValues.postTransactionPoint)
+  }
+  return {
+    success: true,
+    data: {
+      items: rows,
+      totalItem: count || 0
+    },
+  }
 }

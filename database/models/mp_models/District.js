@@ -37,7 +37,7 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: false
   });
 
-  District.associate = function(models) {
+  District.associate = function (models) {
     // associations can be defined here
     District.belongsTo(models.Province, {
       as: 'provinces',

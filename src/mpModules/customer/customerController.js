@@ -1,5 +1,5 @@
-import {readDefaultCustomer} from "./customerService";
-import {indexOrderDebt} from "./CustomerDebtService";
+import { readDefaultCustomer } from "./customerService";
+import { indexOrderDebt } from "./CustomerDebtService";
 
 const _ = require("lodash");
 const moment = require("moment");
@@ -16,6 +16,8 @@ const {
   indexCustomersByGroup,
   readCustomer,
   updateCustomerStatus,
+  indexPaymentCustomer,
+  historyPointService
 } = require("./customerService");
 const { hashPassword } = require("../auth/authService");
 const { formatMobileToSave } = require("../../helpers/utils");
@@ -51,7 +53,7 @@ export async function getTotalDebtController(req, res) {
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
     res.json(
-        respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
     );
   }
 }
@@ -64,12 +66,10 @@ export async function getDefaultCustomer(req, res) {
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
     res.json(
-        respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
     );
   }
 }
-
-
 
 export async function readController(req, res) {
   try {
@@ -207,6 +207,33 @@ export async function getCustomerListByGroup(req, res) {
   try {
     const result = await indexCustomersByGroup(req.query);
     if (result.success) res.json(respondItemSuccess(result.data));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
+export async function readPaymentCustomerController(req, res) {
+  try {
+    const { id: customerId } = req.params;
+    const result = await indexPaymentCustomer({ ...req.query, customerId });
+    if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
+export async function historyPoint(req, res) {
+  try {
+    const customerId = req.params.customerId;
+    const query = req.query;
+    const result = await historyPointService(customerId, query);
+    if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
     res.json(

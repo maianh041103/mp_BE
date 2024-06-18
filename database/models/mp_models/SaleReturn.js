@@ -43,6 +43,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER(10).UNSIGNED,
         defaultValue: 0,
       },
+    description: {
+        allowNull: true,
+        type: DataTypes.STRING,
+    },
       // Giảm giá
       discount: {
         allowNull: true,
@@ -98,7 +102,11 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "storeId",
       targetKey: "id",
     });
-
+    SaleReturn.belongsTo(models.Order, {
+      as: "order",
+      foreignKey: "orderId",
+      targetKey: "id",
+    });
       SaleReturn.belongsTo(models.Branch, {
       as: "branch",
       foreignKey: "branchId",

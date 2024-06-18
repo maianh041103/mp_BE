@@ -14,6 +14,8 @@ const createSchema = Joi.object().keys({
   description: Joi.string().max(512).allow(null).allow(""),
   discount: Joi.number().integer().allow(null),
   discountType: Joi.string().valid([1, 2]).allow(null).allow(""), // percent - money
+  discountOrder: Joi.number().integer().allow(null),
+  listDiscountId: Joi.array().items(Joi.number().integer()),
   cashOfCustomer: Joi.number().integer().allow(null),
   products: Joi.array()
     .items(
@@ -37,11 +39,17 @@ const createSchema = Joi.object().keys({
             ])
             .required(), // Thuốc - Hàng hóa - Combo - Đơn thuốc mẫu
           quantity: Joi.number().integer().min(1).required(),
+          isDiscount: Joi.boolean(),
+          itemPrice: Joi.number().integer(),
+          discountPrice: Joi.number().integer(),
+          pointProduct: Joi.number().integer().allow(null)
         })
         .required(),
     )
     .required([]),
   totalPrice: Joi.number().integer().required(),
+  paymentPoint: Joi.number().integer().allow(null),
+  pointOrder: Joi.number().integer().allow(null)
 });
 
 export function createValidator(req, res, next) {
@@ -92,11 +100,17 @@ const updateSchema = Joi.object().keys({
             ])
             .required(), // Thuốc - Hàng hóa - Combo - Đơn thuốc mẫu
           quantity: Joi.number().integer().min(1).required(),
+          isDiscount: Joi.boolean(),
+          itemPrice: Joi.number().integer(),
+          discountPrice: Joi.number().integer(),
+          pointProduct: Joi.number().integer().allow(null)
         })
         .required([]),
     )
     .required([]),
   totalPrice: Joi.number().integer().required(),
+  paymentPoint: Joi.number().integer().allow(null),
+  pointOrder: Joi.number().integer().allow(null),
   shippingAddress: Joi.object()
     .keys({
       detailAddress: Joi.string().max(255).required(),

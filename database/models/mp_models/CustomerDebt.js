@@ -31,7 +31,7 @@ module.exports = (sequelize, DataTypes) => {
     paranoid: true,
   });
 
-  CustomerDebt.associate = function(models) {
+  CustomerDebt.associate = function (models) {
     // associations can be defined here
     CustomerDebt.belongsTo(models.Customer, {
       as: 'customer',
