@@ -8,7 +8,8 @@ const inventoryCheckingAttributes = [
     "code",
     "userCreateId",
     "note",
-    "branchId"
+    "branchId",
+    "createdAt"
 ]
 
 const inventoryCheckingIncludes = [
@@ -38,7 +39,10 @@ const inventoryCheckingIncludes = [
                         model: models.Product,
                         as: "product",
                         paranoid: false,
-
+                        include: {
+                            model: models.Inventory,
+                            as: "inventories",
+                        }
                     }
                 ],
                 paranoid: false,
@@ -199,18 +203,18 @@ module.exports.create = async (params) => {
                         productId: product.id
                     }
                 })
-                let oldQuantity = inventory.quantity;
-                if (realQuantityBaseUnit != inventory.quantity) {
-                    await models.InventoryChecking.update({
-                        realQuantity: realQuantity,
-                        difference: realQuantity - oldQuantity / (productUnitExists.exchangeValue || 1)
-                    }, {
-                        where: {
-                            id: newInventoryChecking.id
-                        },
-                        transaction: t
-                    })
 
+                let oldQuantity = inventory.quantity;
+                await models.InventoryCheckingProduct.update({
+                    realQuantity: realQuantity,
+                    difference: realQuantity - oldQuantity / (productUnitExists.exchangeValue || 1)
+                }, {
+                    where: {
+                        id: newInventoryCheckingProduct.id
+                    },
+                    transaction: t
+                })
+                if (realQuantityBaseUnit != inventory.quantity) {
                     await models.Inventory.update({
                         quantity: realQuantityBaseUnit,
                     }, {
