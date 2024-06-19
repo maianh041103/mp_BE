@@ -35,7 +35,7 @@ create table inventories_checking_batch(
 	realQuantity int not null,
 	difference int,
 	constraint inventories_checking_batch_ibfk_1
-		foreign key (inventories_checking_id) references inventories_checking(id),
+		foreign key (inventoryCheckingId) references inventories_checking(id),
 	constraint inventories_checking_batch_ibfk_2
 		foreign key (batchId) references batches(id)	
 )
