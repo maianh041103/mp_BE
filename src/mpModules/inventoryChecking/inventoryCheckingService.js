@@ -3,6 +3,7 @@ const { Op } = Sequelize;
 const models = require("../../../database/models");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { warehouseStatus } = require("../warehouse/constant");
+const utils = require("../../helpers/utils");
 
 const inventoryCheckingAttributes = [
     "id",
@@ -256,14 +257,22 @@ module.exports.create = async (params) => {
 }
 
 module.exports.getAll = async (params) => {
-    const { branchId, limit = 20, page = 1 } = params;
+    const { branchId, limit = 20, page = 1, userCreateId, createdAt } = params;
+    let where = {
+        branchId: branchId
+    }
+
+    if (userCreateId) {
+        where.userCreateId = userCreateId;
+    }
+    if (createdAt) {
+        where.createdAt = utils.addFilterByDate([createdAt["start"], createdAt["end"]]);
+    }
 
     const { rows, count } = await models.InventoryChecking.findAndCountAll({
         attributes: inventoryCheckingAttributes,
         include: inventoryCheckingIncludes,
-        where: {
-            branchId: branchId
-        },
+        where,
         limit: parseInt(limit),
         offset: parseInt((page - 1) * limit),
         order: [["id", "DESC"]],
