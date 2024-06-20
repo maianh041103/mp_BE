@@ -158,7 +158,8 @@ module.exports.create = async (params) => {
                             quantity: (realQuantityBaseUnit - batch.quantity)
                         }, {
                             where: {
-                                productId: product.id
+                                productId: product.id,
+                                branchId
                             },
                             transaction: t
                         })
@@ -200,7 +201,8 @@ module.exports.create = async (params) => {
                 const realQuantityBaseUnit = realQuantity * (productUnitExists.exchangeValue || 1);
                 const inventory = await models.Inventory.findOne({
                     where: {
-                        productId: product.id
+                        productId: product.id,
+                        branchId
                     }
                 })
 
@@ -219,7 +221,8 @@ module.exports.create = async (params) => {
                         quantity: realQuantityBaseUnit,
                     }, {
                         where: {
-                            productId: product.id
+                            productId: product.id,
+                            branchId
                         },
                         transaction: t
                     })
