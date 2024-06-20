@@ -319,13 +319,24 @@ module.exports.detail = async (params) => {
         }
     }
 
-    if (inventoryChecking.dataValues.productUnit && inventoryChecking.dataValues.productUnit.dataValues.product) {
-        inventoryChecking.dataValues.productUnit.dataValues.product.dataValues.inventoryQuantity = ((await models.Inventory.findOne({
-            where: {
-                productId: inventoryChecking.dataValues.productUnit.dataValues.product.id,
-                branchId
-            }
-        })) || {}).quantity;
+    for (const row of (inventoryChecking.dataValues.inventoryCheckingProduct || [])) {
+        if (row.dataValues.productUnit && row.dataValues.productUnit.dataValues.product) {
+            row.dataValues.productUnit.dataValues.product.dataValues.inventoryQuantity = ((await models.Inventory.findOne({
+                where: {
+                    productId: row.dataValues.productUnit.dataValues.product.id,
+                    branchId
+                }
+            })) || {}).id
+        }
+
+        if ((row.dataValues.inventoryCheckingBatch || []).length > 0) {
+            row.dataValues.difference = row.dataValues.inventoryCheckingBatch.reduce((acc, item, index) => {
+                return acc + item.difference;
+            }, 0);
+            row.dataValues.realQuantity = row.dataValues.inventoryCheckingBatch.reduce((acc, item, index) => {
+                return acc + item.realQuantity;
+            }, 0)
+        }
     }
     return {
         success: true,
