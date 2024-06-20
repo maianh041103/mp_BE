@@ -5,6 +5,7 @@ const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { warehouseStatus } = require("../warehouse/constant");
 
 const inventoryCheckingAttributes = [
+    "id",
     "code",
     "userCreateId",
     "note",
