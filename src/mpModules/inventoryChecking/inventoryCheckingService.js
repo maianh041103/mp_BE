@@ -268,15 +268,27 @@ module.exports.getAll = async (params) => {
         order: [["id", "DESC"]],
     });
 
-    for (const row of rows) {
-        if (row.dataValues.productUnit && row.dataValues.productUnit.dataValues.product) {
-            row.dataValues.productUnit.dataValues.product.dataValues.inventoryQuantity = ((await models.Inventory.findOne({
-                where: {
-                    productId: row.dataValues.productUnit.dataValues.product.id,
-                    branchId
-                }
-            })) || {}).id
+    for (const item of rows) {
+        for (const row of (item.dataValues.inventoryCheckingProduct || [])) {
+            if (row.dataValues.productUnit && row.dataValues.productUnit.dataValues.product) {
+                row.dataValues.productUnit.dataValues.product.dataValues.inventoryQuantity = ((await models.Inventory.findOne({
+                    where: {
+                        productId: row.dataValues.productUnit.dataValues.product.id,
+                        branchId
+                    }
+                })) || {}).id
+            }
+
+            if ((row.dataValues.inventoryCheckingBatch || []).length > 0) {
+                row.dataValues.difference = row.dataValues.inventoryCheckingBatch.reduce((acc, item, index) => {
+                    return acc + item.difference;
+                }, 0);
+                row.dataValues.realQuantity = row.dataValues.inventoryCheckingBatch.reduce((acc, item, index) => {
+                    return acc + item.realQuantity;
+                }, 0)
+            }
         }
+
     }
     return {
         success: true,
