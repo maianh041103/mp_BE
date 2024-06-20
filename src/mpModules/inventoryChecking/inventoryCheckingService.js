@@ -22,7 +22,7 @@ const inventoryCheckingIncludes = [
             {
                 model: models.InventoryCheckingBatch,
                 as: "inventoryCheckingBatch",
-                attributes: ["batchId", "realQuantity", "difference"],
+                attributes: ["id", "batchId", "realQuantity", "difference"],
                 include: [
                     {
                         model: models.Batch,
@@ -34,7 +34,7 @@ const inventoryCheckingIncludes = [
             {
                 model: models.ProductUnit,
                 as: "productUnit",
-                attributes: ["unitName", "exchangeValue", "price", "isBaseUnit"],
+                attributes: ["id", "unitName", "exchangeValue", "price", "isBaseUnit"],
                 include: [
                     {
                         model: models.Product,
