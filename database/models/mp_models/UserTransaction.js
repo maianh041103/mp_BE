@@ -17,7 +17,7 @@ module.exports = (sequelize, DataTypes) => {
             },
             phone: {
                 type: DataTypes.STRING,
-                allowNull: true
+                allowNull: false
             },
             address: {
                 allowNull: true,
@@ -57,7 +57,7 @@ module.exports = (sequelize, DataTypes) => {
             }
         },
         {
-            tableName: "user_transaction",
+            tableName: "user_transactions",
             timestamps: true,
             paranoid: true,
         }

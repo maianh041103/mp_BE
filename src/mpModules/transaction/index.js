@@ -9,4 +9,24 @@ router.post("/", authenticate, (req, res, next) => {
     next();
 }, authorize, transactionController.createTransaction);
 
+router.get("/", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, transactionController.getAllTransaction);
+
+router.get("/:id", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, transactionController.getDetailTransaction);
+
+router.patch("/:id", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, transactionController.updateTransaction);
+
+router.delete("/:id", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, transactionController.deleteTransaction);
+
 module.exports = router;

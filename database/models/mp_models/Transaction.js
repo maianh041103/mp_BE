@@ -35,7 +35,13 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false
             },
+            //Tài khoản tạo (tài khoản đăng nhập)
             createdBy: {
+                type: DataTypes.INTEGER(11).UNSIGNED,
+                allowNull: false
+            },
+            //Nhân viên thu/chi 
+            userId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false
             },
@@ -61,7 +67,12 @@ module.exports = (sequelize, DataTypes) => {
             isDebt: {
                 type: DataTypes.BOOLEAN,
                 allowNull: false,
-                defaultValue: true,
+                defaultValue: false,
+            },
+            isPaymentOrder: {
+                type: DataTypes.BOOLEAN,
+                allowNull: true,
+                defaultValue: false
             },
             branchId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
@@ -94,8 +105,13 @@ module.exports = (sequelize, DataTypes) => {
             targetKey: 'id',
         });
         Transaction.belongsTo(models.User, {
-            as: 'user',
+            as: 'userCreated',
             foreignKey: 'createdBy',
+            targetKey: 'id',
+        });
+        Transaction.belongsTo(models.User, {
+            as: 'user',
+            foreignKey: 'userId',
             targetKey: 'id',
         });
         Transaction.belongsTo(models.UserTransaction, {
@@ -128,6 +144,11 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: "branchId",
             targetKey: 'id',
         });
+        Transaction.hasMany(models.Payment, {
+            as: "payment",
+            foreignKey: "transactionId",
+            sourceKey: 'id',
+        })
     };
 
     return Transaction;
