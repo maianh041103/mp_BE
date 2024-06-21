@@ -54,6 +54,8 @@ const { productTypes } = require("../product/productConstant");
 const { readBatch } = require("../batch/batchService");
 const { readProductUnit } = require("../product/productUnitService");
 const pointContant = require("../point/pointContant");
+const transactionContant = require("../transaction/transactionContant");
+const transactionService = require("../transaction/transactionService");
 
 const userAttributes = [
   "id",
@@ -845,6 +847,28 @@ async function handleCreateOrder(order, loginUser) {
       const weight = orderProduct.price / totalItemPrice
       await models.OrderProduct.update({ discount: Math.round(weight * (discountAmount + (order.discountOrder || 0))) }, { where: { id: orderProduct.id }, transaction: t })
     }
+
+    const idString = (newOrder.id).toString();
+    const typeTransaction = await transactionService.generateTypeTransactionOrder(loginUser.storeId);
+    //Tạo transaction
+    await models.Transaction.create({
+      code: `TTHD${idString.padStart(9, '0')}`,
+      paymentDate: new Date(),
+      ballotType: transactionContant.BALLOTTYPE.INCOME,
+      typeId: typeTransaction,
+      value: order.totalPrice <= order.cashOfCustomer ? order.totalPrice : order.cashOfCustomer,
+      userId: order.userId,
+      createdBy: loginUser.id,
+      target: transactionContant.TARGET.CUSTOMER,
+      targetId: order.customerId,
+      isDebt: true,
+      branchId: order.branchId,
+      isPaymentOrder: true
+    }, {
+      transaction: t
+    });
+
+    //End tạo transaction
 
     console.log("Total price " + newOrder.totalPrice);
     //Tích điểm

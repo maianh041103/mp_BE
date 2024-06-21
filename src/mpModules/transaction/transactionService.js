@@ -411,3 +411,83 @@ module.exports.deleteTransaction = async (params) => {
         data: null
     }
 }
+
+module.exports.generateTypeTransactionOrder = async (storeId) => {
+    let findTypeTransaction = await models.TypeTransaction.findOne({
+        where: {
+            name: {
+                [Op.like]: `%${transactionContant.TYPENAME.ORDER}%`
+            },
+            storeId
+        }
+    });
+    if (!findTypeTransaction) {
+        findTypeTransaction = await models.TypeTransaction.create({
+            name: transactionContant.TYPENAME.ORDER,
+            description: transactionContant.TYPENAME.ORDER,
+            ballotType: transactionContant.BALLOTTYPE.INCOME,
+            storeId
+        });
+    }
+    return findTypeTransaction.id;
+}
+
+module.exports.generateTypeTransactionSaleReturn = async (storeId) => {
+    let findTypeTransaction = await models.TypeTransaction.findOne({
+        where: {
+            name: {
+                [Op.like]: `%${transactionContant.TYPENAME.SALE_RETURN}%`
+            },
+            storeId
+        }
+    });
+    if (!findTypeTransaction) {
+        findTypeTransaction = await models.TypeTransaction.create({
+            name: transactionContant.TYPENAME.SALE_RETURN,
+            description: transactionContant.TYPENAME.SALE_RETURN,
+            ballotType: transactionContant.BALLOTTYPE.EXPENSES,
+            storeId
+        });
+    }
+    return findTypeTransaction.id;
+}
+
+module.exports.generateTypeTransactionInbound = async (storeId) => {
+    let findTypeTransaction = await models.TypeTransaction.findOne({
+        where: {
+            name: {
+                [Op.like]: `%${transactionContant.TYPENAME.INBOUND}%`
+            },
+            storeId
+        }
+    });
+    if (!findTypeTransaction) {
+        findTypeTransaction = await models.TypeTransaction.create({
+            name: transactionContant.TYPENAME.INBOUND,
+            description: transactionContant.TYPENAME.INBOUND,
+            ballotType: transactionContant.BALLOTTYPE.EXPENSES,
+            storeId
+        });
+    }
+    return findTypeTransaction.id;
+}
+
+module.exports.generateTypeTransactionPurchaseReturn = async (storeId) => {
+    let findTypeTransaction = await models.TypeTransaction.findOne({
+        where: {
+            name: {
+                [Op.like]: `%${transactionContant.TYPENAME.PURCHASE_RETURN}%`
+            },
+            storeId
+        }
+    });
+    if (!findTypeTransaction) {
+        findTypeTransaction = await models.TypeTransaction.create({
+            name: transactionContant.TYPENAME.PURCHASE_RETURN,
+            description: transactionContant.TYPENAME.PURCHASE_RETURN,
+            ballotType: transactionContant.BALLOTTYPE.INCOME,
+            storeId
+        });
+    }
+    return findTypeTransaction.id;
+}
