@@ -697,7 +697,7 @@ export async function historyPointService(customerId, query) {
       [sequelize.literal(`(
         SELECT IFNULL(SUM(point), 0)
         FROM point_history AS sub
-        WHERE sub.customerId = ${customerId} AND sub.id <= PointHistory.id
+        WHERE sub.customerId = ${customerId} AND sub.id <= PointHistory.id AND sub.deletedAt IS NULL
       )`), 'postTransactionPoint']
     ],
     include: historyPointInclude,

@@ -65,7 +65,7 @@ const paymentAttributes = [
     [Sequelize.literal(`(
         SELECT IFNULL(SUM(amount), 0)
         FROM payments AS sub
-        WHERE sub.orderId = Payment.orderId AND sub.id < Payment.id
+        WHERE sub.orderId = Payment.orderId AND sub.id < Payment.id AND sub.deletedAt IS NULL
       )`), 'amountCollected']
 ]
 const paymentIncludes = [
@@ -490,4 +490,23 @@ module.exports.generateTypeTransactionPurchaseReturn = async (storeId) => {
         });
     }
     return findTypeTransaction.id;
+}
+
+module.exports.getTotal = async (params) => {
+    const data = await models.Transaction.findAll({
+        attributes: [
+            [Sequelize.fn('SUM', Sequelize.col('value')), 'total']
+        ],
+        where: {
+            ballotType: params.ballotType,
+            branchId: params.branchId
+        }
+    });
+    let result = parseInt(data[0].dataValues.total);
+    return {
+        success: true,
+        data: {
+            total: result
+        }
+    }
 }

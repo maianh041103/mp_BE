@@ -95,3 +95,22 @@ module.exports.deleteTransaction = async (req, res) => {
         );
     }
 }
+
+//[GET] /mp/api/transaction/total/:ballotType?branchId
+module.exports.getTotal = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
+        const ballotType = req.params.ballotType;
+        const branchId = req.query.branchId;
+        const result = await transactionService.getTotal({
+            storeId: loginUser.storeId,
+            ballotType, branchId
+        });
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}
