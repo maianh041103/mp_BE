@@ -5,11 +5,11 @@ const {
 } = require("../../helpers/response");
 const { HttpStatusCode } = require('../../helpers/errorCodes');
 
-//[POST] /mp/api/type-cash-book
+//[POST] /mp/api/type-transaction
 module.exports.createTypeTransaction = async (req, res) => {
     try {
         const { loginUser = {} } = req;
-        const result = await typeTransactionService.createTypeCashBook({
+        const result = await typeTransactionService.createTypeTransaction({
             ...req.body,
             storeId: loginUser.storeId,
         });
@@ -22,11 +22,11 @@ module.exports.createTypeTransaction = async (req, res) => {
     }
 }
 
-//[GET] /mp/api/type-cash-book
+//[GET] /mp/api/type-transaction
 module.exports.getAllTypeTransaction = async (req, res) => {
     try {
         const { loginUser = {} } = req;
-        const result = await typeTransactionService.getAllTypeCashBook({
+        const result = await typeTransactionService.getAllTypeTransaction({
             storeId: loginUser.storeId
         });
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -38,12 +38,12 @@ module.exports.getAllTypeTransaction = async (req, res) => {
     }
 }
 
-//[GET] /mp/api/type-cash-book/:ballotType
+//[GET] /mp/api/type-transaction/:ballotType
 module.exports.typeTransactionByBallotType = async (req, res) => {
     try {
         const { loginUser = {} } = req;
         const ballotType = req.params.ballotType
-        const result = await typeTransactionService.typeCashBookByBallotType({
+        const result = await typeTransactionService.typeTransactionByBallotType({
             storeId: loginUser.storeId,
             ballotType
         });
@@ -56,12 +56,12 @@ module.exports.typeTransactionByBallotType = async (req, res) => {
     }
 }
 
-//[GET] /mp/api/type-cash-book/detail/:id
+//[GET] /mp/api/type-transaction/detail/:id
 module.exports.getDetailTypeTransaction = async (req, res) => {
     try {
         const { loginUser = {} } = req;
         const id = req.params.id;
-        const result = await typeTransactionService.getDetailTypeCashBook({
+        const result = await typeTransactionService.getDetailTypeTransaction({
             storeId: loginUser.storeId,
             id
         });

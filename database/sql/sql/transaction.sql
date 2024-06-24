@@ -48,8 +48,6 @@ create table transactions(
   foreign key (createdBy) references users(id),
   target enum('customer','other','branch','supplier','user') default 'other' not null,
   targetId int unsigned not null,
-  constraint fk_transactions_3
-  foreign key (targetId) references user_transactions(id),
   note nvarchar(255) null,
   isDebt boolean not null default true,
   branchId int unsigned not null,
