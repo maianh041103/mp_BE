@@ -24,10 +24,6 @@ module.exports = (sequelize, DataTypes) => {
     type: {
       allowNull: false,
       type: DataTypes.STRING
-    },
-    transactionId: {
-      type: DataTypes.INTEGER(11).UNSIGNED,
-      allowNull: true
     }
   }, {
     tableName: 'customer_debts',
@@ -47,11 +43,6 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: 'orderId',
       targetKey: 'id',
     });
-    CustomerDebt.belongsTo(models.Transaction, {
-      as: "transaction",
-      foreignKey: "transactionId",
-      targetKey: 'id'
-    })
   };
 
   return CustomerDebt;
