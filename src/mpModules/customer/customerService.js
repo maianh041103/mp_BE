@@ -287,7 +287,7 @@ export async function indexCustomers(filter) {
     offset: +limit * (+page - 1),
     order: [["id", "DESC"]]
   };
-
+  console.log(query)
   const [rows, count] = await Promise.all([
     models.Customer.findAll(query),
     models.Customer.count(query)
