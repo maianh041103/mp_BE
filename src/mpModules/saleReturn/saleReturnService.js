@@ -356,8 +356,19 @@ export async function indexCreate(saleReturn, loginUser) {
     }, {
       where: {
         id: saleReturn.customerId
-      }
+      },
+      transaction: t
     })
+
+    await models.PointHistory.create({
+      customerId: saleReturn.customerId,
+      point: pointDecrement,
+      saleReturnId: newSaleReturn.id,
+      code: code
+    },
+      {
+        transaction: t
+      });
     //End trừ điểm tích lũy
   })
   const refresh = await indexDetail(newSaleReturn.id, loginUser)

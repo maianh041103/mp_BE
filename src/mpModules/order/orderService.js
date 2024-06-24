@@ -1049,7 +1049,8 @@ async function handleCreateOrder(order, loginUser) {
         await models.PointHistory.create({
           customerId: order.customerId,
           orderId: newOrder.id,
-          point: pointResult
+          point: pointResult,
+          code: code
         }, {
           transaction: t
         })
