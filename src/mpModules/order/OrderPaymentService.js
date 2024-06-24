@@ -1,5 +1,5 @@
 import { getCustomer } from "../customer/customerService";
-import {getOrder, readOrder} from "./orderService";
+import { getOrder, readOrder } from "./orderService";
 
 const models = require("../../../database/models");
 function generatePaymentCode(no) {
@@ -39,11 +39,11 @@ export async function indexPayment(params, loginUser) {
 }
 const orderIncludes = [
     {
-      model: models.User,
-      as: "fullnameCreator",
-      attributes: ["id", "fullName", ],
-    
-}
+        model: models.User,
+        as: "fullnameCreator",
+        attributes: ["id", "fullName",],
+
+    }
 ];
 const userAttributes = [
     "id",
@@ -59,25 +59,28 @@ const userAttributes = [
     "lastLoginAt",
     "createdAt",
     "status",
-  ];
+];
 export async function indexCreatePayment(payment) {
     const order = await getOrder(payment.orderId)
     await models.sequelize.transaction(async (t) => {
         await models.Order.update({
             cashOfCustomer: order.cashOfCustomer + payment.amount
-        }, {where: {id: order.id}})
+        }, { where: { id: order.id } })
+
+        console.log(payment.transactionId)
         await createPayment({
             amount: payment.amount,
-            totalAmount: order.totalPrice ,
+            totalAmount: order.totalPrice,
             customerId: order.customerId,
             orderId: order.id,
             paymentMethod: payment.paymentMethod,
             createdBy: payment.createdBy,
-            status: 'DONE'
+            status: 'DONE',
+            transactionId: payment.transactionId
         }, t)
         await models.CustomerDebt.increment({
             debtAmount: -payment.amount
-        }, {where: {orderId: order.id}, transaction: t})
+        }, { where: { orderId: order.id }, transaction: t })
     })
     return {
         success: true
@@ -85,12 +88,12 @@ export async function indexCreatePayment(payment) {
 }
 
 export async function createPayment(payment, transaction) {
-    const newPayment = await models.Payment.create({...payment, code: ''}, {transaction: transaction})
+    const newPayment = await models.Payment.create({ ...payment, code: '' }, { transaction: transaction })
     console.log(newPayment)
     const code = generatePaymentCode(newPayment.id)
     await models.Payment.update({
         code: code
-    }, {where: {id: newPayment.id}, transaction: transaction})
+    }, { where: { id: newPayment.id }, transaction: transaction })
 }
 
 export async function createOrderPayment(order, amount, transaction) {

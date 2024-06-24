@@ -1,7 +1,7 @@
-import {createWarehouseCard} from "../warehouse/warehouseService";
-import {warehouseStatus} from "../warehouse/constant";
-import {addInventory, getInventory} from "../inventory/inventoryService";
-import {userAttributes} from "../user/attributes";
+import { createWarehouseCard } from "../warehouse/warehouseService";
+import { warehouseStatus } from "../warehouse/constant";
+import { addInventory, getInventory } from "../inventory/inventoryService";
+import { userAttributes } from "../user/attributes";
 
 const _ = require("lodash");
 const Sequelize = require("sequelize");
@@ -22,6 +22,8 @@ const {
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { accountTypes, logActions } = require("../../helpers/choices");
 const { createUserTracking } = require("../behavior/behaviorService");
+const transactionContant = require("../transaction/transactionContant");
+const transactionService = require("../transaction/transactionService");
 
 const purchaseReturnIncludes = [
   {
@@ -243,7 +245,7 @@ export async function indexPurchaseReturns(params, loginUser) {
       const dateRange = JSON.parse(params.dateRange);
       const { startDate, endDate } = dateRange;
       where.createdAt = addFilterByDate([startDate, endDate]);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   query.where = where;
@@ -340,17 +342,17 @@ function generatePurchaseReturnCode(no) {
 }
 
 export async function createPurchaseReturn(purchaseReturn, loginUser) {
-    return await handleCreatePurchaseReturn(purchaseReturn, loginUser);
+  return await handleCreatePurchaseReturn(purchaseReturn, loginUser);
 }
 
 export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
   if (!purchaseReturn.products || !purchaseReturn.products.length) {
     throw Error(
-        JSON.stringify({
-          error: true,
-          code: HttpStatusCode.BAD_REQUEST,
-          message: `Bạn cần chọn sản phẩm để tiến hành trả hàng`
-        })
+      JSON.stringify({
+        error: true,
+        code: HttpStatusCode.BAD_REQUEST,
+        message: `Bạn cần chọn sản phẩm để tiến hành trả hàng`
+      })
     );
   }
 
@@ -409,14 +411,14 @@ export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
         };
       }
       const totalProductPrice =
-          item.importPrice * item.totalQuantity - (item.discount || 0);
+        item.importPrice * item.totalQuantity - (item.discount || 0);
       if (totalProductPrice !== item.totalPrice) {
         throw Error(
-            JSON.stringify({
-              error: true,
-              code: HttpStatusCode.BAD_REQUEST,
-              message: `Sản phẩm (${item.productId}) có mã ${findProduct.code} sai thông tin về số lượng, đơn giá, giảm giá và thành tiền`,
-            })
+          JSON.stringify({
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Sản phẩm (${item.productId}) có mã ${findProduct.code} sai thông tin về số lượng, đơn giá, giảm giá và thành tiền`,
+          })
         );
       }
 
@@ -437,22 +439,22 @@ export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
         createdAt: new Date(),
         updatedAt: new Date()
       }, t)
-      await addInventory(purchaseReturn.branchId, item.productId,-item.totalQuantity * productUnit.exchangeValue, t)
-   const purchaseReturnItem = await models.PurchaseReturnToProduct.create(
-       {
-         storeId: loginUser.storeId,
-         branchId: purchaseReturn.branchId,
-         purchaseReturnId: newPurchaseReturn.id,
-         productId: item.productId,
-         productUnitId: item.productUnitId,
-         quantity: item.totalQuantity,
-         createdBy: newPurchaseReturn.createdBy,
-         importPrice: item.importPrice,
-         discount: item.discount,
-         totalPrice: item.totalPrice
-       },
-       { transaction: t }
-   );
+      await addInventory(purchaseReturn.branchId, item.productId, -item.totalQuantity * productUnit.exchangeValue, t)
+      const purchaseReturnItem = await models.PurchaseReturnToProduct.create(
+        {
+          storeId: loginUser.storeId,
+          branchId: purchaseReturn.branchId,
+          purchaseReturnId: newPurchaseReturn.id,
+          productId: item.productId,
+          productUnitId: item.productUnitId,
+          quantity: item.totalQuantity,
+          createdBy: newPurchaseReturn.createdBy,
+          importPrice: item.importPrice,
+          discount: item.discount,
+          totalPrice: item.totalPrice
+        },
+        { transaction: t }
+      );
 
       if (findProduct.isBatchExpireControl) {
         for (const _batch of item.batches) {
@@ -464,72 +466,91 @@ export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
             purchaseReturnItemId: purchaseReturnItem.id,
             batchId: _batch.id,
             quantity: _batch.quantity
-          }, {transaction: t})
+          }, { transaction: t })
           const batch = responseReadBatch.data
-          if ( batch.quantity < _batch.quantity * productUnit.exchangeValue) {
+          if (batch.quantity < _batch.quantity * productUnit.exchangeValue) {
             throw Error(
-                JSON.stringify({
-                  error: true,
-                  code: HttpStatusCode.BAD_REQUEST,
-                  message: `Sản phẩm (${findProduct.code}) không đủ số lượng tồn`,
-                })
+              JSON.stringify({
+                error: true,
+                code: HttpStatusCode.BAD_REQUEST,
+                message: `Sản phẩm (${findProduct.code}) không đủ số lượng tồn`,
+              })
             );
           }
           await models.Batch.increment({
             quantity: -_batch.quantity * productUnit.exchangeValue
-          }, {where: {
+          }, {
+            where: {
               id: _batch.id
-            }, transaction : t})
+            }, transaction: t
+          })
         }
       }
       sumPrice += totalProductPrice;
     }
     if (purchaseReturn.paid && purchaseReturn.paid > sumPrice) {
       throw Error(
-          JSON.stringify({
-            error: true,
-            code: HttpStatusCode.BAD_REQUEST,
-            message: `Số tiền trả cần nhỏ hơn hoặc bằng tổng số tiền thanh toán`,
-          })
+        JSON.stringify({
+          error: true,
+          code: HttpStatusCode.BAD_REQUEST,
+          message: `Số tiền trả cần nhỏ hơn hoặc bằng tổng số tiền thanh toán`,
+        })
       );
     }
 
     if (
-        purchaseReturn.paid &&
-        purchaseReturn.totalPrice - purchaseReturn.paid !== purchaseReturn.debt
+      purchaseReturn.paid &&
+      purchaseReturn.totalPrice - purchaseReturn.paid !== purchaseReturn.debt
     ) {
       throw Error(
-          JSON.stringify({
-            error: true,
-            code: HttpStatusCode.BAD_REQUEST,
-            message: `Số tiền cần trả và số tiền nợ phải bằng tổng số tiền thanh toán`,
-          })
+        JSON.stringify({
+          error: true,
+          code: HttpStatusCode.BAD_REQUEST,
+          message: `Số tiền cần trả và số tiền nợ phải bằng tổng số tiền thanh toán`,
+        })
       );
     }
 
     // Update total price
     await models.PurchaseReturn.update(
-        {
-          totalPrice: sumPrice,
-          discount: purchaseReturn.discount || 0,
-          code: generatePurchaseReturnCode(newPurchaseReturn.id),
-          ...(purchaseReturn.status && { status: purchaseReturn.status }),
+      {
+        totalPrice: sumPrice,
+        discount: purchaseReturn.discount || 0,
+        code: generatePurchaseReturnCode(newPurchaseReturn.id),
+        ...(purchaseReturn.status && { status: purchaseReturn.status }),
+      },
+      {
+        where: {
+          id: newPurchaseReturn.id,
         },
-        {
-          where: {
-            id: newPurchaseReturn.id,
-          },
-          transaction: t,
-        }
+        transaction: t,
+      }
     );
-  }
-  )
 
-  console.log("cehck")
+    //Create transaction
+    const typeTransaction = await transactionService.generateTypeTransactionPurchaseReturn(loginUser.storeId);
+    await models.Transaction.create({
+      code: generatePurchaseReturnCode(newPurchaseReturn.id),
+      paymentDate: new Date(),
+      ballotType: transactionContant.BALLOTTYPE.INCOME,
+      typeId: typeTransaction,
+      value: newPurchaseReturn.paid,
+      userId: newPurchaseReturn.userId,
+      createdBy: loginUser.id,
+      target: transactionContant.TARGET.SUPPLIER,
+      targetId: newPurchaseReturn.supplierId,
+      isDebt: true,
+      branchId: newPurchaseReturn.branchId,
+      isPaymentOrder: true
+    }, {
+      transaction: t
+    });
+    //End create transaction
+  })
 
   const { data: refreshPurchaseReturn } = await readPurchaseReturn(
-      newPurchaseReturn.id,
-      loginUser
+    newPurchaseReturn.id,
+    loginUser
   );
 
   if (refreshPurchaseReturn.status === purchaseReturnStatus.TRASH) {
@@ -539,6 +560,8 @@ export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
       message: `Không thể tạo phiếu trả hàng`,
     };
   }
+
+
 
   return {
     success: true,

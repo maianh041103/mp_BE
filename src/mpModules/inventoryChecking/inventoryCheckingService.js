@@ -3,12 +3,15 @@ const { Op } = Sequelize;
 const models = require("../../../database/models");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { warehouseStatus } = require("../warehouse/constant");
+const utils = require("../../helpers/utils");
 
 const inventoryCheckingAttributes = [
+    "id",
     "code",
     "userCreateId",
     "note",
-    "branchId"
+    "branchId",
+    "createdAt"
 ]
 
 const inventoryCheckingIncludes = [
@@ -20,7 +23,7 @@ const inventoryCheckingIncludes = [
             {
                 model: models.InventoryCheckingBatch,
                 as: "inventoryCheckingBatch",
-                attributes: ["batchId", "realQuantity", "difference"],
+                attributes: ["id", "batchId", "realQuantity", "difference"],
                 include: [
                     {
                         model: models.Batch,
@@ -32,13 +35,16 @@ const inventoryCheckingIncludes = [
             {
                 model: models.ProductUnit,
                 as: "productUnit",
-                attributes: ["unitName", "exchangeValue", "price", "isBaseUnit"],
+                attributes: ["id", "unitName", "exchangeValue", "price", "isBaseUnit"],
                 include: [
                     {
                         model: models.Product,
                         as: "product",
                         paranoid: false,
-
+                        include: {
+                            model: models.Inventory,
+                            as: "inventories",
+                        }
                     }
                 ],
                 paranoid: false,
@@ -154,7 +160,8 @@ module.exports.create = async (params) => {
                             quantity: (realQuantityBaseUnit - batch.quantity)
                         }, {
                             where: {
-                                productId: product.id
+                                productId: product.id,
+                                branchId
                             },
                             transaction: t
                         })
@@ -196,26 +203,28 @@ module.exports.create = async (params) => {
                 const realQuantityBaseUnit = realQuantity * (productUnitExists.exchangeValue || 1);
                 const inventory = await models.Inventory.findOne({
                     where: {
-                        productId: product.id
+                        productId: product.id,
+                        branchId
                     }
                 })
-                let oldQuantity = inventory.quantity;
-                if (realQuantityBaseUnit != inventory.quantity) {
-                    await models.InventoryChecking.update({
-                        realQuantity: realQuantity,
-                        difference: realQuantity - oldQuantity / (productUnitExists.exchangeValue || 1)
-                    }, {
-                        where: {
-                            id: newInventoryChecking.id
-                        },
-                        transaction: t
-                    })
 
+                let oldQuantity = inventory.quantity;
+                await models.InventoryCheckingProduct.update({
+                    realQuantity: realQuantity,
+                    difference: realQuantity - oldQuantity / (productUnitExists.exchangeValue || 1)
+                }, {
+                    where: {
+                        id: newInventoryCheckingProduct.id
+                    },
+                    transaction: t
+                })
+                if (realQuantityBaseUnit != inventory.quantity) {
                     await models.Inventory.update({
                         quantity: realQuantityBaseUnit,
                     }, {
                         where: {
-                            productId: product.id
+                            productId: product.id,
+                            branchId
                         },
                         transaction: t
                     })
@@ -248,28 +257,48 @@ module.exports.create = async (params) => {
 }
 
 module.exports.getAll = async (params) => {
-    const { branchId, limit = 20, page = 1 } = params;
+    const { branchId, limit = 20, page = 1, userCreateId, createdAt } = params;
+    let where = {
+        branchId: branchId
+    }
+
+    if (userCreateId) {
+        where.userCreateId = userCreateId;
+    }
+    if (createdAt) {
+        where.createdAt = utils.addFilterByDate([createdAt["start"], createdAt["end"]]);
+    }
 
     const { rows, count } = await models.InventoryChecking.findAndCountAll({
         attributes: inventoryCheckingAttributes,
         include: inventoryCheckingIncludes,
-        where: {
-            branchId: branchId
-        },
+        where,
         limit: parseInt(limit),
         offset: parseInt((page - 1) * limit),
         order: [["id", "DESC"]],
     });
 
-    for (const row of rows) {
-        if (row.dataValues.productUnit && row.dataValues.productUnit.dataValues.product) {
-            row.dataValues.productUnit.dataValues.product.dataValues.inventoryQuantity = ((await models.Inventory.findOne({
-                where: {
-                    productId: row.dataValues.productUnit.dataValues.product.id,
-                    branchId
-                }
-            })) || {}).id
+    for (const item of rows) {
+        for (const row of (item.dataValues.inventoryCheckingProduct || [])) {
+            if (row.dataValues.productUnit && row.dataValues.productUnit.dataValues.product) {
+                row.dataValues.productUnit.dataValues.product.dataValues.inventoryQuantity = ((await models.Inventory.findOne({
+                    where: {
+                        productId: row.dataValues.productUnit.dataValues.product.id,
+                        branchId
+                    }
+                })) || {}).id
+            }
+
+            if ((row.dataValues.inventoryCheckingBatch || []).length > 0) {
+                row.dataValues.difference = row.dataValues.inventoryCheckingBatch.reduce((acc, item, index) => {
+                    return acc + item.difference;
+                }, 0);
+                row.dataValues.realQuantity = row.dataValues.inventoryCheckingBatch.reduce((acc, item, index) => {
+                    return acc + item.realQuantity;
+                }, 0)
+            }
         }
+
     }
     return {
         success: true,
@@ -299,13 +328,24 @@ module.exports.detail = async (params) => {
         }
     }
 
-    if (inventoryChecking.dataValues.productUnit && inventoryChecking.dataValues.productUnit.dataValues.product) {
-        inventoryChecking.dataValues.productUnit.dataValues.product.dataValues.inventoryQuantity = ((await models.Inventory.findOne({
-            where: {
-                productId: inventoryChecking.dataValues.productUnit.dataValues.product.id,
-                branchId
-            }
-        })) || {}).quantity;
+    for (const row of (inventoryChecking.dataValues.inventoryCheckingProduct || [])) {
+        if (row.dataValues.productUnit && row.dataValues.productUnit.dataValues.product) {
+            row.dataValues.productUnit.dataValues.product.dataValues.inventoryQuantity = ((await models.Inventory.findOne({
+                where: {
+                    productId: row.dataValues.productUnit.dataValues.product.id,
+                    branchId
+                }
+            })) || {}).id
+        }
+
+        if ((row.dataValues.inventoryCheckingBatch || []).length > 0) {
+            row.dataValues.difference = row.dataValues.inventoryCheckingBatch.reduce((acc, item, index) => {
+                return acc + item.difference;
+            }, 0);
+            row.dataValues.realQuantity = row.dataValues.inventoryCheckingBatch.reduce((acc, item, index) => {
+                return acc + item.realQuantity;
+            }, 0)
+        }
     }
     return {
         success: true,

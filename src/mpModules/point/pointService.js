@@ -3,6 +3,7 @@ const { Op } = Sequelize;
 const models = require("../../../database/models");
 const pointContant = require("./pointContant");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
+const generateHelpers = require("../../helpers/codeGenerator");
 
 module.exports.createPoint = async (params) => {
     let { isConvertDefault = false, type, convertMoneyBuy, isPointPayment, convertPoint, convertMoneyPayment,
@@ -250,15 +251,26 @@ module.exports.changePointCustomer = async (params) => {
     }
 
     let newPointHistory;
+    const subPoint = point - customerExists.point;
     const t = await models.sequelize.transaction(async (t) => {
         newPointHistory = await models.PointHistory.create({
             customerId: customerId,
-            point: point
+            point: subPoint,
         }, {
             transaction: t
         });
 
-        await models.Customer.increment({
+        const code = generateHelpers.generateCode("CB", newPointHistory.id);
+        await models.PointHistory.update({
+            code: code
+        }, {
+            where: {
+                id: newPointHistory.id
+            },
+            transaction: t
+        });
+
+        await models.Customer.update({
             point: point
         }, {
             where: {
