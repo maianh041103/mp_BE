@@ -703,6 +703,7 @@ export async function historyPointService(customerId, query) {
     attributes: [
       "point",
       "code",
+      "note",
       [sequelize.literal(`(
         SELECT IFNULL(SUM(point), 0)
         FROM point_history AS sub
