@@ -1,4 +1,4 @@
-import {deleteInbound} from "./inboundService";
+import { deleteInbound } from "./inboundService";
 
 const _ = require("lodash");
 const {
@@ -11,6 +11,10 @@ const {
   createInbound,
   updateInboundStatus,
 } = require("./inboundService");
+const {
+  createPaymentAndTransaction
+} = require("./inboundPaymentService");
+
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 
 export async function indexController(req, res) {
@@ -94,7 +98,29 @@ export async function indexDelete(req, res) {
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
     res.json(
-        respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
+export async function createPaymentController(req, res) {
+  try {
+    const { loginUser = {} } = req;
+    const { id } = req.params
+    const result = await createPaymentAndTransaction(
+      {
+        ...req.body,
+        inboundId: id,
+        storeId: loginUser.storeId,
+        createdBy: loginUser.id,
+      },
+      loginUser
+    );
+    if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
     );
   }
 }

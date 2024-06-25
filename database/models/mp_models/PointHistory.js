@@ -12,11 +12,19 @@ module.exports = (sequelize, DataTypes) => {
                 autoIncrement: true,
                 allowNull: false,
             },
+            code: {
+                allowNull: true,
+                type: Sequelize.STRING,
+            },
             customerId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false
             },
             orderId: {
+                type: DataTypes.INTEGER(11).UNSIGNED,
+                allowNull: true
+            },
+            saleReturnId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: true
             },
@@ -41,6 +49,12 @@ module.exports = (sequelize, DataTypes) => {
         PointHistory.belongsTo(models.Order, {
             as: "order",
             foreignKey: "orderId",
+            targetKey: 'id',
+        });
+
+        PointHistory.belongsTo(models.SaleReturn, {
+            as: "saleReturn",
+            foreignKey: "saleReturnId",
             targetKey: 'id',
         })
     };

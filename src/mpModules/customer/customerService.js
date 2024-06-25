@@ -287,7 +287,7 @@ export async function indexCustomers(filter) {
     offset: +limit * (+page - 1),
     order: [["id", "DESC"]]
   };
-
+  console.log(query)
   const [rows, count] = await Promise.all([
     models.Customer.findAll(query),
     models.Customer.count(query)
@@ -685,6 +685,14 @@ const historyPointInclude = [
     model: models.Customer,
     as: "customer",
     attributes: ["fullName"]
+  },
+  {
+    model: models.SaleReturn,
+    as: "saleReturn",
+    attributes: [
+      "code",
+      "totalPrice"
+    ]
   }
 ]
 
@@ -694,10 +702,11 @@ export async function historyPointService(customerId, query) {
   const { rows, count } = await models.PointHistory.findAndCountAll({
     attributes: [
       "point",
+      "code",
       [sequelize.literal(`(
         SELECT IFNULL(SUM(point), 0)
         FROM point_history AS sub
-        WHERE sub.customerId = ${customerId} AND sub.id <= PointHistory.id
+        WHERE sub.customerId = ${customerId} AND sub.id <= PointHistory.id AND sub.deletedAt IS NULL
       )`), 'postTransactionPoint']
     ],
     include: historyPointInclude,
@@ -710,7 +719,24 @@ export async function historyPointService(customerId, query) {
   });
 
   for (const row of rows) {
-    row.dataValues.postTransactionPoint = parseInt(row.dataValues.postTransactionPoint)
+    row.dataValues.postTransactionPoint = parseInt(row.dataValues.postTransactionPoint);
+    if (row.order) {
+      if (!row.code) {
+        row.dataValues.code = row.order.code;
+      }
+      row.dataValues.totalPrice = row.order.totalPrice;
+      row.dataValues.type = "Bán hàng";
+    }
+    else if (row.saleReturn) {
+      if (!row.code) {
+        row.dataValues.code = row.saleReturn.code;
+      }
+      row.dataValues.totalPrice = row.saleReturn.totalPrice;
+      row.dataValues.type = "Trả hàng";
+    }
+    else {
+      row.dataValues.type = "Cân bằng điểm";
+    }
   }
   return {
     success: true,

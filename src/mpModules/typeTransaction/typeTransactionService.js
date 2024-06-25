@@ -24,24 +24,15 @@ module.exports.getAllTypeTransaction = async (params) => {
         }
     });
 
-    let result = [];
-    let checked = {};
-    for (const item of listTypeTransaction) {
-        if (!checked[item.name]) {
-            checked[item.name] = true;
-            result.push(item.name);
-        }
-    }
-
     return {
         success: true,
         data: {
-            items: result
+            items: listTypeTransaction
         }
     }
 }
 
-module.exports.typeCashBookByBallotType = async (params) => {
+module.exports.typeTransactionByBallotType = async (params) => {
     const listTypeTransaction = await models.TypeTransaction.findAll({
         where: {
             storeId: params.storeId,
@@ -56,7 +47,7 @@ module.exports.typeCashBookByBallotType = async (params) => {
     }
 }
 
-module.exports.getDetailTypeCashBook = async (params) => {
+module.exports.getDetailTypeTransaction = async (params) => {
     const typeTransaction = await models.TypeTransaction.findOne({
         where: {
             storeId: params.storeId,
