@@ -1,217 +1,216 @@
-import { createWarehouseCard } from "../warehouse/warehouseService";
-import { warehouseStatus } from "../warehouse/constant";
-import { addInventory, getInventory } from "../inventory/inventoryService";
-import { createOrderPayment } from "./OrderPaymentService";
-import { raiseBadRequestError } from "../../helpers/exception";
+import { createWarehouseCard } from '../warehouse/warehouseService'
+import { warehouseStatus } from '../warehouse/constant'
+import { addInventory, getInventory } from '../inventory/inventoryService'
+import { createOrderPayment } from './OrderPaymentService'
+import { raiseBadRequestError } from '../../helpers/exception'
 
-const moment = require("moment");
+const moment = require('moment')
 const {
   addFilterByDate,
   randomString,
-  formatDecimalTwoAfterPoint,
-} = require("../../helpers/utils");
+  formatDecimalTwoAfterPoint
+} = require('../../helpers/utils')
 const {
   getCustomer,
   customerFilter,
-  readCustomer,
-} = require("../customer/customerService");
-const { orderProductFilter } = require("./orderProductService");
+  readCustomer
+} = require('../customer/customerService')
+const { orderProductFilter } = require('./orderProductService')
 const {
   productFilter,
   hashProductPrice,
-  extractFieldProduct,
-} = require("../product/productService");
-const { createOrderLog } = require("./orderHistoryService");
-const { createUserTracking } = require("../behavior/behaviorService");
-const { createNotificationVersion1 } = require("../notification/notifyService");
+  extractFieldProduct
+} = require('../product/productService')
+const { createOrderLog } = require('./orderHistoryService')
+const { createUserTracking } = require('../behavior/behaviorService')
+const { createNotificationVersion1 } = require('../notification/notifyService')
 const {
-  sendNotificationThroughSms,
-} = require("../notification/smsIntegrationService");
-const { indexUsers, readUser } = require("../user/userService");
-const { readBranch } = require("../branch/branchService");
+  sendNotificationThroughSms
+} = require('../notification/smsIntegrationService')
+const { indexUsers, readUser } = require('../user/userService')
+const { readBranch } = require('../branch/branchService')
 const {
-  updateProductStatistic,
-} = require("../productStatistic/productStatisticService");
-const Sequelize = require("sequelize");
-const _ = require("lodash");
-const { Op } = Sequelize;
-const models = require("../../../database/models");
+  updateProductStatistic
+} = require('../productStatistic/productStatisticService')
+const Sequelize = require('sequelize')
+const _ = require('lodash')
+const { Op } = Sequelize
+const models = require('../../../database/models')
 const {
   orderStatuses,
   orderStatusOptions,
   paymentTypes,
   thresholdPercentDiscount,
-  discountTypes,
-} = require("./orderConstant");
-const { iconOrderNotificationId } = require("../notification/notifyConstant");
+  discountTypes
+} = require('./orderConstant')
+const { iconOrderNotificationId } = require('../notification/notifyConstant')
 const {
   PAGE_LIMIT,
   accountTypes,
-  logActions,
-} = require("../../helpers/choices");
-const { HttpStatusCode } = require("../../helpers/errorCodes");
-const { productTypes } = require("../product/productConstant");
-const { readBatch } = require("../batch/batchService");
-const { readProductUnit } = require("../product/productUnitService");
-const pointContant = require("../point/pointContant");
-const transactionContant = require("../transaction/transactionContant");
-const transactionService = require("../transaction/transactionService");
+  logActions
+} = require('../../helpers/choices')
+const { HttpStatusCode } = require('../../helpers/errorCodes')
+const { productTypes } = require('../product/productConstant')
+const { readBatch } = require('../batch/batchService')
+const { readProductUnit } = require('../product/productUnitService')
+const pointContant = require('../point/pointContant')
+const transactionContant = require('../transaction/transactionContant')
+const transactionService = require('../transaction/transactionService')
 
 const userAttributes = [
-  "id",
-  "username",
-  "email",
-  "fullName",
-  "avatarId",
-  "birthday",
-  "gender",
-  "phone",
-  "roleId",
-  "position",
-  "lastLoginAt",
-  "status",
-];
+  'id',
+  'username',
+  'email',
+  'fullName',
+  'avatarId',
+  'birthday',
+  'gender',
+  'phone',
+  'roleId',
+  'position',
+  'lastLoginAt',
+  'status'
+]
 
 const userIncludes = [
   {
     model: models.Image,
-    as: "avatar",
-    attributes: ["id", "originalName", "fileName", "filePath", "path"],
-  },
-];
+    as: 'avatar',
+    attributes: ['id', 'originalName', 'fileName', 'filePath', 'path']
+  }
+]
 
 const orderIncludes = [
   {
     model: models.Prescription,
-    as: "prescription",
+    as: 'prescription',
     include: [
       {
         model: models.Doctor,
-        as: "doctor",
-        attributes: ["name", "phone", "code", "email", "gender"],
+        as: 'doctor',
+        attributes: ['name', 'phone', 'code', 'email', 'gender']
       },
       {
         model: models.HealthFacility,
-        as: "healthFacility",
-        attributes: ["id", "name", "storeId"],
-      },
-    ],
+        as: 'healthFacility',
+        attributes: ['id', 'name', 'storeId']
+      }
+    ]
   },
   {
     model: models.SaleReturn,
-    as: "saleReturn",
-    attributes: ["code"],
+    as: 'saleReturn',
+    attributes: ['code']
   },
   {
     model: models.Branch,
-    as: "branch",
+    as: 'branch',
     attributes: [
-      "id",
-      "name",
-      "phone",
-      "code",
-      "zipCode",
-      "provinceId",
-      "districtId",
-      "wardId",
-      "isDefaultBranch",
-      "createdAt",
+      'id',
+      'name',
+      'phone',
+      'code',
+      'zipCode',
+      'provinceId',
+      'districtId',
+      'wardId',
+      'isDefaultBranch',
+      'createdAt'
     ]
   },
   {
     model: models.User,
-    as: "user",
+    as: 'user',
     attributes: userAttributes
   },
   {
     model: models.User,
-    as: "creator",
+    as: 'creator',
     attributes: userAttributes
   },
   {
     model: models.Customer,
-    as: "customer",
+    as: 'customer',
     attributes: [
-      "id",
-      "fullName",
-      "phone",
-      "email",
-      "address",
-      "groupCustomerId",
+      'id',
+      'fullName',
+      'phone',
+      'email',
+      'address',
+      'groupCustomerId'
     ]
-  },
-
-];
+  }
+]
 
 const orderAttributes = [
-  "id",
-  "code",
-  "description",
-  "userId",
-  "customerId",
-  "storeId",
-  "branchId",
-  "paymentType",
-  "point",
-  "totalPrice",
-  "cashOfCustomer",
-  "discountOrder",
-  "customerOwes",
-  "refund",
-  "discount",
-  "discountType",
-  "isVatInvoice",
-  "status",
-  "paymentPoint",
-  "discountByPoint",
-  "createdAt",
-  "createdBy",
-  "canReturn"
-];
+  'id',
+  'code',
+  'description',
+  'userId',
+  'customerId',
+  'storeId',
+  'branchId',
+  'paymentType',
+  'point',
+  'totalPrice',
+  'cashOfCustomer',
+  'discountOrder',
+  'customerOwes',
+  'refund',
+  'discount',
+  'discountType',
+  'isVatInvoice',
+  'status',
+  'paymentPoint',
+  'discountByPoint',
+  'createdAt',
+  'createdBy',
+  'canReturn'
+]
 
-const productAttributes = ["name", "shortName", "code", "barCode", "imageId"];
+const productAttributes = ['name', 'shortName', 'code', 'barCode', 'imageId']
 
 const orderProductIncludes = [
   {
     model: models.ProductUnit,
-    as: "productUnit",
-    attributes: ["id", "unitName", "exchangeValue", "price", "isBaseUnit"],
+    as: 'productUnit',
+    attributes: ['id', 'unitName', 'exchangeValue', 'price', 'isBaseUnit'],
     paranoid: false
   },
   {
     model: models.Product,
-    as: "product",
+    as: 'product',
     attributes: productAttributes,
     include: [
       {
         model: models.Image,
-        as: "image",
-        attributes: ["id", "originalName", "fileName", "filePath", "path"],
-      },
-    ],
+        as: 'image',
+        attributes: ['id', 'originalName', 'fileName', 'filePath', 'path']
+      }
+    ]
   },
 
   {
     model: models.OrderProductBatch,
-    as: "batches",
-    attributes: ["id", "quantity"],
+    as: 'batches',
+    attributes: ['id', 'quantity'],
     include: [
       {
         model: models.Batch,
-        as: "batch",
-        attributes: ["id", "name", "quantity", "expiryDate"],
-      },
-    ],
+        as: 'batch',
+        attributes: ['id', 'name', 'quantity', 'expiryDate']
+      }
+    ]
   }
-];
+]
 
-export async function indexOrders(params, loginUser) {
+export async function indexOrders (params, loginUser) {
   let {
     page = 1,
     limit = 10,
     keyword,
-    code = "",
-    phone = "",
+    code = '',
+    phone = '',
     userId,
     branchId,
     canReturn,
@@ -224,83 +223,83 @@ export async function indexOrders(params, loginUser) {
     productIds = [],
     groupCustomerId,
     groupCustomerIds = [],
-    paymentType = "",
+    paymentType = '',
     positions = [],
     dateRange = {},
     from,
     to
-  } = params;
+  } = params
   const query = {
     attributes: orderAttributes,
     offset: +limit * (+page - 1),
     include: orderIncludes,
     limit: +limit,
-    order: [["id", "DESC"]],
-    distinct: true,
-  };
+    order: [['id', 'DESC']],
+    distinct: true
+  }
 
   const where = {
     status: orderStatuses.SUCCEED
-  };
+  }
 
   if (storeId) {
-    where.storeId = storeId;
+    where.storeId = storeId
   }
   if (canReturn !== undefined && typeof canReturn === 'boolean') {
-    where.canReturn = canReturn;
+    where.canReturn = canReturn
   }
 
   if (branchId) {
-    where.branchId = branchId;
+    where.branchId = branchId
   }
 
   if (status) {
-    where.status = status;
+    where.status = status
   }
 
   if (code) {
     where.code = {
-      [Op.like]: `%${code.trim()}%`,
-    };
+      [Op.like]: `%${code.trim()}%`
+    }
   }
 
   if (keyword) {
     where.code = {
-      [Op.like]: `%${keyword.trim()}%`,
-    };
+      [Op.like]: `%${keyword.trim()}%`
+    }
   }
 
   // Tìm kiếm theo trạng thái đơn hàng
   if (_.isArray(statusIds) && statusIds.length) {
     where.status = {
-      [Op.in]: statusIds,
-    };
+      [Op.in]: statusIds
+    }
   }
 
   // Tìm kiếm theo ngày tạo đơn hàng
   try {
-    dateRange = JSON.parse(dateRange);
+    dateRange = JSON.parse(dateRange)
   } catch (e) {
-    dateRange = {};
+    dateRange = {}
   }
-  const { startDate, endDate } = dateRange;
+  const { startDate, endDate } = dateRange
   if (
     startDate &&
     moment(startDate).isValid() &&
     endDate &&
     moment(endDate).isValid()
   ) {
-    where.createdAt = addFilterByDate([startDate, endDate]);
+    where.createdAt = addFilterByDate([startDate, endDate])
   }
 
   // Tìm kiếm theo phương thức thanh toán
   if (paymentType) {
-    where.paymentType = paymentType;
+    where.paymentType = paymentType
   }
 
   // Tìm kiếm theo khách hàng
   if (customerId) {
-    customerIds.push(customerId);
+    customerIds.push(customerId)
   }
 
   if (_.isArray(customerIds) && customerIds.length) {
@@ -309,42 +308,42 @@ export async function indexOrders(params, loginUser) {
 
   // Tìm kiếm theo nhóm khách hàng
   if (groupCustomerId) {
-    groupCustomerIds.push(groupCustomerId);
+    groupCustomerIds.push(groupCustomerId)
   }
   if (_.isArray(groupCustomerIds) && groupCustomerIds.length) {
-    where.groupCustomerId = groupCustomerIds;
+    where.groupCustomerId = groupCustomerIds
   }
 
   // Tìm kiếm sản phẩm có trong đơn hàng
   if (_.isArray(productIds) && productIds.length) {
     const tempOrderProducts = await orderProductFilter({
-      productId: productIds,
-    });
-    const orderIds = tempOrderProducts.map((o) => o.orderId);
+      productId: productIds
+    })
+    const orderIds = tempOrderProducts.map(o => o.orderId)
     if (orderIds.length) {
       where.id = {
-        [Op.in]: orderIds,
-      };
+        [Op.in]: orderIds
+      }
     } else {
       return {
         success: true,
         data: {
           items: [],
           totalItem: 0,
-          totalPrice: 0,
-        },
-      };
+          totalPrice: 0
+        }
+      }
     }
   }
 
   // Tìm kiếm theo người phụ trách, dựa vào lịch sử duyệt đơn để nâng cấp chức năng này
   if (userId) {
-    userIds.push(userId);
+    userIds.push(userId)
   }
   if (_.isArray(userIds) && userIds.length) {
     where.createdBy = {
-      [Op.in]: userIds,
-    };
+      [Op.in]: userIds
+    }
   }
 
   if (from && to) {
@@ -356,12 +355,12 @@ export async function indexOrders(params, loginUser) {
     }
   }
 
-  query.where = where;
+  query.where = where
 
   const [items, totalItem] = await Promise.all([
     models.Order.findAll(query),
-    models.Order.count(query),
-  ]);
+    models.Order.count(query)
+  ])
 
   for (const item of items) {
     const products = await models.OrderProduct.findAll({
@@ -369,134 +368,146 @@ export async function indexOrders(params, loginUser) {
       where: {
         orderId: item.id,
         comboId: {
-          [Op.eq]: null,
-        },
+          [Op.eq]: null
+        }
       }
-    });
-    item.dataValues.products = products;
-    item.dataValues.totalProducts = products.length;
-    let totalQuantities = 0;
-    products.forEach((product) => {
-      totalQuantities += +product.quantity;
-    });
-    item.dataValues.totalQuantities = totalQuantities;
+    })
+    item.dataValues.products = products
+    item.dataValues.totalProducts = products.length
+    let totalQuantities = 0
+    products.forEach(product => {
+      totalQuantities += +product.quantity
+    })
+    item.dataValues.totalQuantities = totalQuantities
   }
 
   const totalPrices = await models.Order.findAll({
     attributes: [
-      [Sequelize.fn("sum", Sequelize.col("totalPrice")), "totalPrice"],
+      [Sequelize.fn('sum', Sequelize.col('totalPrice')), 'totalPrice']
     ],
     raw: true,
-    where,
-  });
+    where
+  })
 
-  const [totalPrice = {}] = totalPrices;
+  const [totalPrice = {}] = totalPrices
 
   return {
     success: true,
     data: {
       items,
       totalItem,
-      totalPrice: _.get(totalPrice, "totalPrice", 0) || 0,
-    },
-  };
+      totalPrice: _.get(totalPrice, 'totalPrice', 0) || 0
+    }
+  }
 }
 
-export async function readOrder(id) {
+export async function readOrder (id) {
   const order = await models.Order.findByPk(id, {
     include: orderIncludes,
-    attributes: orderAttributes,
-  });
+    attributes: orderAttributes
+  })
 
   const products = await models.OrderProduct.findAll({
-    attributes: ["productId", "comboId", "quantity", "customerId", "price", "itemPrice", "point"],
+    attributes: [
+      'productId',
+      'comboId',
+      'quantity',
+      'customerId',
+      'price',
+      'itemPrice',
+      'point'
+    ],
     include: orderProductIncludes,
     where: {
       orderId: id,
       comboId: {
-        [Op.eq]: null,
-      },
-    },
-  });
-
-  let totalPrice = 0;
-  for (const item of products) {
-    let itemPrice = item.itemPrice;
-    if (itemPrice == null) {
-      itemPrice = productUnit.price;
+        [Op.eq]: null
+      }
     }
-    totalPrice += item.itemPrice * item.quantity;
+  })
+
+  let totalPrice = 0
+  for (const item of products) {
+    let itemPrice = item.itemPrice
+    if (itemPrice == null) {
+      itemPrice = productUnit.price
+    }
+    totalPrice += item.itemPrice * item.quantity
   }
 
-  let discountAmount = order.discountType == 1 ? order.discount * totalPrice / 100 : order.discount;
+  let discountAmount =
+    order.discountType == 1
+      ? (order.discount * totalPrice) / 100
+      : order.discount
 
-  const totalDiscountOrder = order.discountOrder + discountAmount;
+  const totalDiscountOrder = order.discountOrder + discountAmount
 
-  order.dataValues.totalDiscountOrder = totalDiscountOrder;
-  order.dataValues.products = products;
-  order.dataValues.totalProducts = products.length;
-  let totalQuantities = 0;
-  products.forEach((product) => {
-    totalQuantities += +product.quantity;
-  });
-  order.dataValues.totalQuantities = totalQuantities;
+  order.dataValues.totalDiscountOrder = totalDiscountOrder
+  order.dataValues.products = products
+  order.dataValues.totalProducts = products.length
+  let totalQuantities = 0
+  products.forEach(product => {
+    totalQuantities += +product.quantity
+  })
+  order.dataValues.totalQuantities = totalQuantities
 
   return {
     success: true,
     data: {
       order,
-      products,
-    },
-  };
+      products
+    }
+  }
 }
 
-function generateOrderCode(no) {
-  if (no <= 0) return "DH000000000";
-  if (no < 10) return `DH00000000${no}`;
-  if (no < 100) return `DH0000000${no}`;
-  if (no < 1000) return `DH000000${no}`;
-  if (no < 10000) return `DH00000${no}`;
-  if (no < 100000) return `DH0000${no}`;
-  if (no < 1000000) return `DH000${no}`;
-  if (no < 10000000) return `DH00${no}`;
-  if (no < 100000000) return `DH0${no}`;
-  if (no < 1000000000) return `DH${no}`;
-  return no;
+function generateOrderCode (no) {
+  if (no <= 0) return 'DH000000000'
+  if (no < 10) return `DH00000000${no}`
+  if (no < 100) return `DH0000000${no}`
+  if (no < 1000) return `DH000000${no}`
+  if (no < 10000) return `DH00000${no}`
+  if (no < 100000) return `DH0000${no}`
+  if (no < 1000000) return `DH000${no}`
+  if (no < 10000000) return `DH00${no}`
+  if (no < 100000000) return `DH0${no}`
+  if (no < 1000000000) return `DH${no}`
+  return no
 }
 
 // Đơn hàng tạo trên quầy
 // discountType = 1 => %
 // discountType = 2 => VND
-async function handleCreateOrder(order, loginUser) {
+async function handleCreateOrder (order, loginUser) {
   if (!order.products || !order.products.length) {
     return {
       error: true,
       code: HttpStatusCode.BAD_REQUEST,
-      message: `Bạn cần chọn sản phẩm để tiến hành thanh toán`,
-    };
+      message: `Bạn cần chọn sản phẩm để tiến hành thanh toán`
+    }
   }
   const [responseReadCustomer, responseReadUser, responseReadBranch] =
     await Promise.all([
       readCustomer(order.customerId, loginUser),
       readUser(order.userId, loginUser),
-      readBranch(order.branchId, loginUser),
-    ]);
+      readBranch(order.branchId, loginUser)
+    ])
   if (responseReadCustomer.error) {
-    return responseReadCustomer;
+    return responseReadCustomer
   }
   if (responseReadUser.error) {
-    return responseReadUser;
+    return responseReadUser
   }
   if (responseReadBranch.error) {
-    return responseReadBranch;
+    return responseReadBranch
   }
 
-  const point = await models.Point.findOne({
-    where: {
-      storeId: loginUser.storeId,
-      status: "active"
-    }
-  }) || {};
+  const point =
+    (await models.Point.findOne({
+      where: {
+        storeId: loginUser.storeId,
+        status: 'active'
+      }
+    })) || {}
 
   if ((!point || point.isPointPayment == false) && order.paymentPoint > 0) {
     throw Error(
@@ -505,56 +516,62 @@ async function handleCreateOrder(order, loginUser) {
         code: HttpStatusCode.BAD_REQUEST,
         message: `Cửa hàng không áp dụng đổi điểm tích lũy`
       })
-    );
+    )
   }
 
   //Kiểm tra khách hàng có được áp mã không
-  let checkCustomer = 0;
+  let checkCustomer = 0
   if (point && point.isAllCustomer == true) {
-    checkCustomer = 1;
+    checkCustomer = 1
   } else {
     const customer = await models.Customer.findOne({
       where: {
         id: order.customerId || -1,
         storeId: loginUser.storeId
       }
-    });
+    })
     if (customer) {
-      const groupCustomer = (await models.GroupCustomer.findOne({
+      const groupCustomer = await models.GroupCustomer.findOne({
         where: {
           id: customer.groupCustomerId
         }
-      }));
+      })
       if (!groupCustomer) {
-        checkCustomer = 0;
-      }
-      else {
+        checkCustomer = 0
+      } else {
         const pointCustomerExist = await models.PointCustomer.findOne({
           where: {
             groupCustomerId: groupCustomer.id
           }
-        });
+        })
         if (pointCustomerExist) {
-          checkCustomer = 1;
+          checkCustomer = 1
         }
       }
     }
   }
   //End kiểm tra khách hàng có được áp mã không
-  const findCustomer = responseReadCustomer.data;
-  if (point && order.paymentPoint > 0 && (checkCustomer == 0 || (!order.customerId || findCustomer.dataValues.totalOrder < point.afterByTime))) {
+  const findCustomer = responseReadCustomer.data
+  if (
+    point &&
+    order.paymentPoint > 0 &&
+    (checkCustomer == 0 ||
+      !order.customerId ||
+      findCustomer.dataValues.totalOrder < point.afterByTime)
+  ) {
     throw Error(
       JSON.stringify({
         error: true,
         code: HttpStatusCode.BAD_REQUEST,
         message: `Khách hàng không đủ điều kiện thanh toán bằng điểm`
       })
-    );
+    )
   }
 
-  let moneyDiscountByPoint = 0;
+  let moneyDiscountByPoint = 0
   if (point) {
-    moneyDiscountByPoint = (order.paymentPoint / point.convertPoint * point.convertMoneyPayment) || 0;
+    moneyDiscountByPoint =
+      (order.paymentPoint / point.convertPoint) * point.convertMoneyPayment || 0
   }
   if (order.paymentPoint > findCustomer.point) {
     throw Error(
@@ -563,15 +580,15 @@ async function handleCreateOrder(order, loginUser) {
         code: HttpStatusCode.BAD_REQUEST,
         message: `Điểm không đủ`
       })
-    );
+    )
   }
 
-  let newOrder;
-  let discountAmount = 0;
-  await models.sequelize.transaction(async (t) => {
+  let newOrder
+  let discountAmount = 0
+  await models.sequelize.transaction(async t => {
     newOrder = await models.Order.create(
       {
-        code: `${loginUser.storeId || ""}S${randomString(12)}`,
+        code: `${loginUser.storeId || ''}S${randomString(12)}`,
         description: order.description,
         userId: order.userId,
         customerId: findCustomer.id,
@@ -593,105 +610,116 @@ async function handleCreateOrder(order, loginUser) {
         discountByPoint: moneyDiscountByPoint
       },
       { transaction: t }
-    );
+    )
 
-    const listDiscountId = order.listDiscountId || [];
+    const listDiscountId = order.listDiscountId || []
     for (const id of listDiscountId) {
-      await models.DiscountApply.create({
-        orderId: newOrder.id,
-        discountId: id
-      }, {
-        transaction: t
-      })
+      await models.DiscountApply.create(
+        {
+          orderId: newOrder.id,
+          discountId: id
+        },
+        {
+          transaction: t
+        }
+      )
     }
 
-    let totalPrice = 0;
-    let totalItemPrice = 0;
+    let totalPrice = 0
+    let totalItemPrice = 0
     let productItems = []
     for (const item of order.products) {
       const findProduct = await models.Product.findOne({
         where: {
           id: item.productId,
-          storeId: loginUser.storeId,
+          storeId: loginUser.storeId
         },
         include: [
           {
             model: models.ProductUnit,
-            as: "productUnit",
+            as: 'productUnit',
             attributes: [
-              "id",
-              "unitName",
-              "exchangeValue",
-              "price",
-              "productId",
-              "code",
-              "barCode",
-              "isDirectSale",
-              "isBaseUnit",
-              "point",
-              "createdBy",
-              "createdAt",
+              'id',
+              'unitName',
+              'exchangeValue',
+              'price',
+              'productId',
+              'code',
+              'barCode',
+              'isDirectSale',
+              'isBaseUnit',
+              'point',
+              'createdBy',
+              'createdAt'
             ],
             where: {
-              id: item.productUnitId,
-            },
-          },
-        ],
-      });
+              id: item.productUnitId
+            }
+          }
+        ]
+      })
       if (!findProduct) {
         throw Error(
           JSON.stringify({
             error: true,
             code: HttpStatusCode.BAD_REQUEST,
-            message: `Sản phẩm (${item.productId}) không tồn tại`,
+            message: `Sản phẩm (${item.productId}) không tồn tại`
           })
-        );
+        )
       }
       const productUnit = await models.ProductUnit.findOne({
         where: {
           id: item.productUnitId,
           productId: item.productId,
-          storeId: loginUser.storeId,
-        },
-      });
+          storeId: loginUser.storeId
+        }
+      })
       if (!productUnit) {
         throw Error(
           JSON.stringify({
             error: true,
             code: HttpStatusCode.BAD_REQUEST,
-            message: `Đơn vị sản phẩm không tồn tại`,
+            message: `Đơn vị sản phẩm không tồn tại`
           })
-        );
+        )
       }
-      let itemPrice = item.itemPrice;
+      let itemPrice = item.itemPrice
       if (itemPrice == null) {
-        itemPrice = productUnit.price;
+        itemPrice = productUnit.price
       }
-      totalPrice += itemPrice * item.quantity;
-      totalItemPrice += productUnit.price * item.quantity;
+      totalPrice += itemPrice * item.quantity
+      totalItemPrice += productUnit.price * item.quantity
       const inventory = await getInventory(order.branchId, item.productId)
       if (inventory < item.quantity * productUnit.exchangeValue) {
         throw Error(
           JSON.stringify({
             error: true,
             code: HttpStatusCode.BAD_REQUEST,
-            message: `Sản phẩm ${findProduct.name} không đủ số lượng`,
+            message: `Sản phẩm ${findProduct.name} không đủ số lượng`
           })
-        );
+        )
       }
 
-      await createWarehouseCard({
-        code: generateOrderCode(newOrder.id),
-        type: warehouseStatus.ORDER,
-        partner: findCustomer.fullName,
-        productId: item.productId,
-        branchId: order.branchId,
-        changeQty: -item.quantity * productUnit.exchangeValue,
-        remainQty: inventory - item.quantity * productUnit.exchangeValue,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }, t)
-      await addInventory(order.branchId, item.productId, -item.quantity * productUnit.exchangeValue, t)
+      await createWarehouseCard(
+        {
+          code: generateOrderCode(newOrder.id),
+          type: warehouseStatus.ORDER,
+          partner: findCustomer.fullName,
+          productId: item.productId,
+          branchId: order.branchId,
+          changeQty: -item.quantity * productUnit.exchangeValue,
+          remainQty: inventory - item.quantity * productUnit.exchangeValue,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        t
+      )
+      await addInventory(
+        order.branchId,
+        item.productId,
+        -item.quantity * productUnit.exchangeValue,
+        t
+      )
       const orderProduct = await models.OrderProduct.create(
         {
           orderId: newOrder.id,
@@ -699,7 +727,8 @@ async function handleCreateOrder(order, loginUser) {
           productUnitId: productUnit.id,
           isDiscount: item.isDiscount,
           itemPrice: +itemPrice * +item.quantity,
-          discountPrice: (+productUnit.price - +item.itemPrice) * +item.quantity,
+          discountPrice:
+            (+productUnit.price - +item.itemPrice) * +item.quantity,
           productUnitData: JSON.stringify(productUnit),
           price: +productUnit.price * +item.quantity,
           quantityBaseUnit: +productUnit.exchangeValue * +item.quantity,
@@ -716,52 +745,60 @@ async function handleCreateOrder(order, loginUser) {
           quantityLast: null,
           point: 0
         },
-        { transaction: t })
-      productItems.push(orderProduct);
+        { transaction: t }
+      )
+      productItems.push(orderProduct)
       if (findProduct.isBatchExpireControl) {
         for (const _batch of item.batches) {
-          const responseReadBatch = await readBatch(_batch.id, loginUser);
+          const responseReadBatch = await readBatch(_batch.id, loginUser)
           if (responseReadBatch.error) {
-            return responseReadBatch;
+            return responseReadBatch
           }
-          await models.OrderProductBatch.create({
-            orderProductId: orderProduct.id,
-            batchId: _batch.id,
-            quantity: _batch.quantity
-          }, { transaction: t })
+          await models.OrderProductBatch.create(
+            {
+              orderProductId: orderProduct.id,
+              batchId: _batch.id,
+              quantity: _batch.quantity
+            },
+            { transaction: t }
+          )
           const batch = responseReadBatch.data
           if (batch.quantity < _batch.quantity * productUnit.exchangeValue) {
             throw Error(
               JSON.stringify({
                 error: true,
                 code: HttpStatusCode.BAD_REQUEST,
-                message: `Sản phẩm (${findProduct.code}) không đủ số lượng tồn`,
+                message: `Sản phẩm (${findProduct.code}) không đủ số lượng tồn`
               })
-            );
+            )
           }
-          await models.Batch.increment({
-            quantity: -_batch.quantity * productUnit.exchangeValue
-          }, {
-            where: {
-              id: _batch.id
-            }, transaction: t
-          })
+          await models.Batch.increment(
+            {
+              quantity: -_batch.quantity * productUnit.exchangeValue
+            },
+            {
+              where: {
+                id: _batch.id
+              },
+              transaction: t
+            }
+          )
         }
       }
     }
 
-    const totalNewPriceItem = totalPrice;
+    const totalNewPriceItem = totalPrice
 
     if (order.discountType === discountTypes.MONEY) {
       discountAmount = order.discount
-      totalPrice = totalPrice - discountAmount;
+      totalPrice = totalPrice - discountAmount
     } else if (order.discountType === discountTypes.PERCENT) {
       discountAmount = Math.floor((order.discount * totalItemPrice) / 100)
-      totalPrice = totalPrice - discountAmount;
+      totalPrice = totalPrice - discountAmount
     }
 
-    totalPrice -= Math.abs(order.discountOrder || 0);
-    totalPrice -= moneyDiscountByPoint;
+    totalPrice -= Math.abs(order.discountOrder || 0)
+    totalPrice -= moneyDiscountByPoint
 
     if (
       order.paymentType === paymentTypes.CASH &&
@@ -771,9 +808,9 @@ async function handleCreateOrder(order, loginUser) {
         JSON.stringify({
           error: true,
           code: HttpStatusCode.BAD_REQUEST,
-          message: `Tiền khách trả đang nhỏ hơn số tiền phải thanh toán với hình thức thanh toán là Tiền mặt`,
+          message: `Tiền khách trả đang nhỏ hơn số tiền phải thanh toán với hình thức thanh toán là Tiền mặt`
         })
-      );
+      )
     }
 
     if (
@@ -784,9 +821,9 @@ async function handleCreateOrder(order, loginUser) {
         JSON.stringify({
           error: true,
           code: HttpStatusCode.BAD_REQUEST,
-          message: `Tiền khách trả đang nhỏ hơn số tiền phải thanh toán với hình thức thanh toán là Chuyển khoản`,
+          message: `Tiền khách trả đang nhỏ hơn số tiền phải thanh toán với hình thức thanh toán là Chuyển khoản`
         })
-      );
+      )
     }
     if (
       order.paymentType === paymentTypes.DEBT &&
@@ -796,31 +833,34 @@ async function handleCreateOrder(order, loginUser) {
         JSON.stringify({
           error: true,
           code: HttpStatusCode.BAD_REQUEST,
-          message: `Tiền khách trả đang lớn hoặc bằng số tiền phải thanh toán với hình thức thanh toán là Khách nợ`,
+          message: `Tiền khách trả đang lớn hoặc bằng số tiền phải thanh toán với hình thức thanh toán là Khách nợ`
         })
-      );
+      )
     }
 
-    let refund = 0;
+    let refund = 0
     if (
       order.cashOfCustomer > totalPrice &&
       [paymentTypes.CASH, paymentTypes.BANK].includes(order.paymentType)
     ) {
-      refund = order.cashOfCustomer - totalPrice;
+      refund = order.cashOfCustomer - totalPrice
     }
 
-    let customerOwes = 0;
+    let customerOwes = 0
     if (order.paymentType === paymentTypes.DEBT) {
-      customerOwes = totalPrice - (order.cashOfCustomer || 0);
-      await models.CustomerDebt.create({
-        totalAmount: totalPrice,
-        debtAmount: customerOwes,
-        customerId: newOrder.customerId,
-        orderId: newOrder.id,
-        type: 'ORDER'
-      }, { transaction: t })
+      customerOwes = totalPrice - (order.cashOfCustomer || 0)
+      await models.CustomerDebt.create(
+        {
+          totalAmount: totalPrice,
+          debtAmount: customerOwes,
+          customerId: newOrder.customerId,
+          orderId: newOrder.id,
+          type: 'ORDER'
+        },
+        { transaction: t }
+      )
     }
-    const code = generateOrderCode(newOrder.id);
+    const code = generateOrderCode(newOrder.id)
 
     // Update total price
     await models.Order.update(
@@ -831,51 +871,65 @@ async function handleCreateOrder(order, loginUser) {
         customerOwes,
         discount: order.discount || 0,
         code: code,
-        status: orderStatuses.SUCCEED,
+        status: orderStatuses.SUCCEED
       },
       {
         where: {
-          id: newOrder.id,
+          id: newOrder.id
         },
-        transaction: t,
+        transaction: t
       }
-    );
+    )
     newOrder.totalPrice = totalPrice
     newOrder.code = code
     await createOrderPayment(newOrder, t)
     for (const orderProduct of productItems) {
       const weight = orderProduct.price / totalItemPrice
-      await models.OrderProduct.update({ discount: Math.round(weight * (discountAmount + (order.discountOrder || 0))) }, { where: { id: orderProduct.id }, transaction: t })
+      await models.OrderProduct.update(
+        {
+          discount: Math.round(
+            weight * (discountAmount + (order.discountOrder || 0))
+          )
+        },
+        { where: { id: orderProduct.id }, transaction: t }
+      )
     }
 
-    const idString = (newOrder.id).toString();
-    const typeTransaction = await transactionService.generateTypeTransactionOrder(loginUser.storeId);
+    const idString = newOrder.id.toString()
+    const typeTransaction =
+      await transactionService.generateTypeTransactionOrder(loginUser.storeId)
     //Tạo transaction
-    await models.Transaction.create({
-      code: `TTHD${idString.padStart(9, '0')}`,
-      paymentDate: new Date(),
-      ballotType: transactionContant.BALLOTTYPE.INCOME,
-      typeId: typeTransaction,
-      value: order.totalPrice <= order.cashOfCustomer ? order.totalPrice : order.cashOfCustomer,
-      userId: order.userId,
-      createdBy: loginUser.id,
-      target: transactionContant.TARGET.CUSTOMER,
-      targetId: order.customerId,
-      isDebt: true,
-      branchId: order.branchId,
-      isPaymentOrder: true
-    }, {
-      transaction: t
-    });
+    await models.Transaction.create(
+      {
+        code: `TTHD${idString.padStart(9, '0')}`,
+        paymentDate: new Date(),
+        ballotType: transactionContant.BALLOTTYPE.INCOME,
+        typeId: typeTransaction,
+        value:
+          order.totalPrice <= order.cashOfCustomer
+            ? order.totalPrice
+            : order.cashOfCustomer,
+        userId: order.userId,
+        createdBy: loginUser.id,
+        target: transactionContant.TARGET.CUSTOMER,
+        targetId: order.customerId,
+        isDebt: true,
+        branchId: order.branchId,
+        isPaymentOrder: true
+      },
+      {
+        transaction: t
+      }
+    )
 
     //End tạo transaction
 
-    console.log("Total price " + newOrder.totalPrice);
+    console.log('Total price ' + newOrder.totalPrice)
     //Tích điểm
-    let pointResult = 0;
-    //Khuyến mãi - tích điểm 
+    let pointResult = 0
+    //Khuyến mãi - tích điểm
     if (order.pointOrder) {
-      pointResult += order.pointOrder;
+      pointResult += order.pointOrder
     }
     for (const item of order.products) {
       if (!item.itemPrice) {
@@ -883,120 +937,186 @@ async function handleCreateOrder(order, loginUser) {
           where: {
             id: item.productUnitId
           }
-        });
-        item.itemPrice = productUnit.price;
+        })
+        item.itemPrice = productUnit.price
       }
     }
     //End khuyến mãi - tích điểm
 
     if (point) {
-      if (!order.paymentPoint || order.paymentPoint == 0 || point.isPointBuy == true) { //Check áp dụng cho hóa đơn thanh toán bằng điểm không
-        if (order.customerId && point.status == pointContant.statusPoint.ACTIVE) {
+      if (
+        !order.paymentPoint ||
+        order.paymentPoint == 0 ||
+        point.isPointBuy == true
+      ) {
+        //Check áp dụng cho hóa đơn thanh toán bằng điểm không
+        if (
+          order.customerId &&
+          point.status == pointContant.statusPoint.ACTIVE
+        ) {
           if (checkCustomer == 1) {
             //Tính điểm áp mã
             if (point.type == pointContant.typePoint.ORDER) {
               //Tính tổng tiền đơn hàng = tổng giá của các sản phẩm (không áp  dụng km hóa đơn ,...)
-              if (((point.isDiscountOrder == false && !(order.discountOrder > 0)) || point.isDiscountOrder == true) && point.isDiscountProduct == true) {
-                pointResult += Math.floor(newOrder.totalPrice / point.convertMoneyBuy);
-                const weight = Math.floor(newOrder.totalPrice / point.convertMoneyBuy) / totalNewPriceItem;
+              if (
+                ((point.isDiscountOrder == false &&
+                  !(order.discountOrder > 0)) ||
+                  point.isDiscountOrder == true) &&
+                point.isDiscountProduct == true
+              ) {
+                pointResult += Math.floor(
+                  newOrder.totalPrice / point.convertMoneyBuy
+                )
+                const weight =
+                  Math.floor(newOrder.totalPrice / point.convertMoneyBuy) /
+                  totalNewPriceItem
                 for (const item of order.products) {
-                  await models.OrderProduct.increment({
-                    point: Sequelize.literal(`COALESCE(point, 0) + ${weight * item.itemPrice * item.quantity}`)
-                  }, {
-                    where: {
-                      orderId: newOrder.id,
-                      productId: item.productId,
-                      productUnitId: item.productUnitId
+                  await models.OrderProduct.increment(
+                    {
+                      point: Sequelize.literal(
+                        `COALESCE(point, 0) + ${
+                          weight * item.itemPrice * item.quantity
+                        }`
+                      )
                     },
-                    transaction: t
-                  })
-                }
-              }
-              else if (((point.isDiscountOrder == false && !(order.discountOrder > 0)) || point.isDiscountOrder == true) && point.isDiscountProduct == false) {
-                //Tính tổng các sản phẩm có isDiscount = 0 và trừ đi chiết khấu
-                let totalPriceNotDiscount = 0;
-                for (const item of order.products) {
-                  if (!item.isDiscount == true) {
-                    const productUnit = await models.ProductUnit.findOne({
-                      where: {
-                        id: item.productUnitId
-                      }
-                    });
-                    totalPriceNotDiscount += productUnit.price;
-                  }
-                }
-                totalPriceNotDiscount -= discountAmount;
-                if (totalPriceNotDiscount > 0) {
-                  pointResult += Math.floor(totalPriceNotDiscount / point.convertMoneyBuy);
-                }
-                //Cập nhật điểm cho từng sản phẩm
-                const weight = Math.floor(totalPriceNotDiscount / point.convertMoneyBuy) / (totalPriceNotDiscount + discountAmount);
-                for (const item of order.products) {
-                  if (!item.isDiscount == true) {
-                    await models.OrderProduct.increment({
-                      point: Sequelize.literal(`COALESCE(point, 0) + ${weight * item.itemPrice * item.quantity}`)
-                    }, {
+                    {
                       where: {
                         orderId: newOrder.id,
                         productId: item.productId,
                         productUnitId: item.productUnitId
                       },
                       transaction: t
+                    }
+                  )
+                }
+              } else if (
+                ((point.isDiscountOrder == false &&
+                  !(order.discountOrder > 0)) ||
+                  point.isDiscountOrder == true) &&
+                point.isDiscountProduct == false
+              ) {
+                //Tính tổng các sản phẩm có isDiscount = 0 và trừ đi chiết khấu
+                let totalPriceNotDiscount = 0
+                for (const item of order.products) {
+                  if (!item.isDiscount == true) {
+                    const productUnit = await models.ProductUnit.findOne({
+                      where: {
+                        id: item.productUnitId
+                      }
                     })
+                    totalPriceNotDiscount += productUnit.price
                   }
                 }
-                //End cập nhật điểm cho từng sản phẩm
-              }
-            }
-            else {
-              if (point.isDiscountOrder == true || (point.isDiscountOrder == false && !(order.discountOrder > 0))) {
-                if (point.isConvertDefault == false) {
-                  //Lấy điểm tích ở từng sản phẩm
-                  for (const item of order.products) {
-                    if (point.isDiscountProduct == true || (point.isDiscountProduct == false && !(item.isDiscount == true))) {
-                      const productUnit = await models.ProductUnit.findOne({
-                        where: {
-                          id: item.productUnitId
-                        }
-                      });
-                      if (productUnit && productUnit.point) {
-                        await models.OrderProduct.increment({
-                          point: Sequelize.literal(`COALESCE(point, 0) + ${productUnit.point * item.quantity}`)
-                        }, {
-                          where: {
-                            orderId: newOrder.id,
-                            productId: item.productId,
-                            productUnitId: item.productUnitId
-                          },
-                          transaction: t
-                        })
-                        pointResult += productUnit.point * item.quantity;
-                      }
-                    }
-                  }
-                } else {
-                  //Lấy mặc định
-                  for (const item of order.products) {
-                    if (point.isDiscountProduct == true || (point.isDiscountProduct == false && !(item.isDiscount == true))) {
-                      if (!item.itemPrice) {
-                        const productUnit = await models.ProductUnit.findOne({
-                          where: {
-                            id: item.productUnitId
-                          }
-                        });
-                        item.itemPrice = productUnit.price;
-                      }
-                      await models.OrderProduct.update({
-                        point: Sequelize.literal(`IFNULL(point, 0) + ${Math.floor(item.itemPrice * item.quantity / point.convertMoneyBuy)}`)
-                      }, {
+                totalPriceNotDiscount -= discountAmount
+                if (totalPriceNotDiscount > 0) {
+                  pointResult += Math.floor(
+                    totalPriceNotDiscount / point.convertMoneyBuy
+                  )
+                }
+                //Cập nhật điểm cho từng sản phẩm
+                const weight =
+                  Math.floor(totalPriceNotDiscount / point.convertMoneyBuy) /
+                  (totalPriceNotDiscount + discountAmount)
+                for (const item of order.products) {
+                  if (!item.isDiscount == true) {
+                    await models.OrderProduct.increment(
+                      {
+                        point: Sequelize.literal(
+                          `COALESCE(point, 0) + ${
+                            weight * item.itemPrice * item.quantity
+                          }`
+                        )
+                      },
+                      {
                         where: {
                           orderId: newOrder.id,
                           productId: item.productId,
                           productUnitId: item.productUnitId
                         },
                         transaction: t
+                      }
+                    )
+                  }
+                }
+                //End cập nhật điểm cho từng sản phẩm
+              }
+            } else {
+              if (
+                point.isDiscountOrder == true ||
+                (point.isDiscountOrder == false && !(order.discountOrder > 0))
+              ) {
+                if (point.isConvertDefault == false) {
+                  //Lấy điểm tích ở từng sản phẩm
+                  for (const item of order.products) {
+                    if (
+                      point.isDiscountProduct == true ||
+                      (point.isDiscountProduct == false &&
+                        !(item.isDiscount == true))
+                    ) {
+                      const productUnit = await models.ProductUnit.findOne({
+                        where: {
+                          id: item.productUnitId
+                        }
                       })
-                      pointResult += Math.floor(item.itemPrice * item.quantity / point.convertMoneyBuy);
+                      if (productUnit && productUnit.point) {
+                        await models.OrderProduct.increment(
+                          {
+                            point: Sequelize.literal(
+                              `COALESCE(point, 0) + ${
+                                productUnit.point * item.quantity
+                              }`
+                            )
+                          },
+                          {
+                            where: {
+                              orderId: newOrder.id,
+                              productId: item.productId,
+                              productUnitId: item.productUnitId
+                            },
+                            transaction: t
+                          }
+                        )
+                        pointResult += productUnit.point * item.quantity
+                      }
+                    }
+                  }
+                } else {
+                  //Lấy mặc định
+                  for (const item of order.products) {
+                    if (
+                      point.isDiscountProduct == true ||
+                      (point.isDiscountProduct == false &&
+                        !(item.isDiscount == true))
+                    ) {
+                      if (!item.itemPrice) {
+                        const productUnit = await models.ProductUnit.findOne({
+                          where: {
+                            id: item.productUnitId
+                          }
+                        })
+                        item.itemPrice = productUnit.price
+                      }
+                      await models.OrderProduct.update(
+                        {
+                          point: Sequelize.literal(
+                            `IFNULL(point, 0) + ${Math.floor(
+                              (item.itemPrice * item.quantity) /
+                                point.convertMoneyBuy
+                            )}`
+                          )
+                        },
+                        {
+                          where: {
+                            orderId: newOrder.id,
+                            productId: item.productId,
+                            productUnitId: item.productUnitId
+                          },
+                          transaction: t
+                        }
+                      )
+                      pointResult += Math.floor(
+                        (item.itemPrice * item.quantity) / point.convertMoneyBuy
+                      )
                     }
                   }
                 }
@@ -1008,91 +1128,105 @@ async function handleCreateOrder(order, loginUser) {
 
       for (const item of order.products) {
         if (item.pointProduct) {
-          pointResult += item.pointProduct;
-          await models.OrderProduct.update({
-            point: Sequelize.literal(`COALESCE(point, 0) + ${item.pointProduct}`)
-          }, {
-            where: {
-              orderId: newOrder.id,
-              productId: item.productId,
-              productUnitId: item.productUnitId
+          pointResult += item.pointProduct
+          await models.OrderProduct.update(
+            {
+              point: Sequelize.literal(
+                `COALESCE(point, 0) + ${item.pointProduct}`
+              )
             },
-            transaction: t
-          })
+            {
+              where: {
+                orderId: newOrder.id,
+                productId: item.productId,
+                productUnitId: item.productUnitId
+              },
+              transaction: t
+            }
+          )
         }
       }
 
-      pointResult -= order.paymentPoint || 0;
-      console.log("PointResult " + pointResult);
+      pointResult -= order.paymentPoint || 0
+      console.log('PointResult ' + pointResult)
       //End tích điểm
 
       //Cập nhật điểm
       if (pointResult != 0) {
-        await models.Customer.update({
-          point: Sequelize.literal(`COALESCE(point, 0) + ${pointResult}`)
-        }, {
-          where: {
-            id: order.customerId
+        await models.Customer.update(
+          {
+            point: Sequelize.literal(`COALESCE(point, 0) + ${pointResult}`)
           },
-          transaction: t
-        });
+          {
+            where: {
+              id: order.customerId
+            },
+            transaction: t
+          }
+        )
 
-        await models.Order.update({
-          point: pointResult + (order.paymentPoint || 0)
-        }, {
-          where: {
-            id: newOrder.id
+        await models.Order.update(
+          {
+            point: pointResult + (order.paymentPoint || 0)
           },
-          transaction: t
-        });
+          {
+            where: {
+              id: newOrder.id
+            },
+            transaction: t
+          }
+        )
 
-        await models.PointHistory.create({
-          customerId: order.customerId,
-          orderId: newOrder.id,
-          point: pointResult,
-          code: code
-        }, {
-          transaction: t
-        })
+        await models.PointHistory.create(
+          {
+            customerId: order.customerId,
+            orderId: newOrder.id,
+            point: pointResult,
+            code: code
+          },
+          {
+            transaction: t
+          }
+        )
       }
     }
-  });
+  })
 
-  const { data: refreshOrder } = await readOrder(newOrder.id);
+  const { data: refreshOrder } = await readOrder(newOrder.id)
 
   return {
     success: true,
-    data: refreshOrder,
-  };
-}
-
-export async function createOrder(order, loginUser) {
-  try {
-    return await handleCreateOrder(order, loginUser);
-  } catch (e) {
-    console.error(e);
-    let errorRes = {};
-    try {
-      errorRes = JSON.parse(e.message);
-    } catch {
-      errorRes = {};
-    }
-    if (errorRes.error) {
-      return errorRes;
-    }
-
-    const { errors = [] } = e;
-    const [error = {}] = errors;
-    return {
-      error: true,
-      code: HttpStatusCode.SYSTEM_ERROR,
-      message: `${e.message}: ${_.get(error, "message", "")}`,
-    };
+    data: refreshOrder
   }
 }
 
-export async function updateOrder(id, order) {
-  const findOrder = await models.Order.findByPk(id);
+export async function createOrder (order, loginUser) {
+  try {
+    return await handleCreateOrder(order, loginUser)
+  } catch (e) {
+    console.error(e)
+    let errorRes = {}
+    try {
+      errorRes = JSON.parse(e.message)
+    } catch {
+      errorRes = {}
+    }
+    if (errorRes.error) {
+      return errorRes
+    }
+
+    const { errors = [] } = e
+    const [error = {}] = errors
+    return {
+      error: true,
+      code: HttpStatusCode.SYSTEM_ERROR,
+      message: `${e.message}: ${_.get(error, 'message', '')}`
+    }
+  }
+}
+
+export async function updateOrder (id, order) {
+  const findOrder = await models.Order.findByPk(id)
   if (findOrder) {
     if (
       [orderStatuses.SUCCEED, orderStatuses.CANCELLED].includes(
@@ -1103,16 +1237,16 @@ export async function updateOrder(id, order) {
         error: true,
         code: HttpStatusCode.BAD_REQUEST,
         message:
-          "Không được thay đổi đơn hàng ở trạng thái đã hủy hoặc thành công",
-      };
+          'Không được thay đổi đơn hàng ở trạng thái đã hủy hoặc thành công'
+      }
     }
 
-    const { products = [], shippingAddress = {} } = order;
+    const { products = [], shippingAddress = {} } = order
 
     if (order.paymentType == paymentTypes.BANK) {
-      order.thresholdPercentDiscount = thresholdPercentDiscount;
+      order.thresholdPercentDiscount = thresholdPercentDiscount
     } else {
-      order.thresholdPercentDiscount = 0;
+      order.thresholdPercentDiscount = 0
     }
 
     // Cập nhật đơn hàng
@@ -1124,9 +1258,9 @@ export async function updateOrder(id, order) {
       note: order.note,
       customerId: findOrder.customerId,
       isVatInvoice: order.isVatInvoice,
-      storeName: order.isVatInvoice ? order.storeName : "",
-      storeTax: order.isVatInvoice ? order.storeTax : "",
-      storeAddress: order.isVatInvoice ? order.storeAddress : "",
+      storeName: order.isVatInvoice ? order.storeName : '',
+      storeTax: order.isVatInvoice ? order.storeTax : '',
+      storeAddress: order.isVatInvoice ? order.storeAddress : '',
       name: shippingAddress.receiver,
       phone: shippingAddress.phone,
       address: shippingAddress.detailAddress,
@@ -1136,29 +1270,29 @@ export async function updateOrder(id, order) {
       districtId: shippingAddress.districtId,
       wardId: shippingAddress.wardId,
       updatedBy: order.updatedBy,
-      updatedAt: new Date(),
-    };
+      updatedAt: new Date()
+    }
 
-    if (typeof order.totalPrice != "undefined") {
-      dataUpdate.totalPrice = order.totalPrice;
+    if (typeof order.totalPrice != 'undefined') {
+      dataUpdate.totalPrice = order.totalPrice
     }
 
     await Promise.all([
       createOrderLog({ orderId: id, newOrder: dataUpdate }),
       models.Order.update(dataUpdate, {
         where: {
-          id,
+          id
         },
-        individualHooks: true,
+        individualHooks: true
       }),
       models.OrderProduct.destroy({
         where: {
-          orderId: id,
-        },
-      }),
-    ]);
+          orderId: id
+        }
+      })
+    ])
 
-    let totalPrice = 0;
+    let totalPrice = 0
     for (let item of products) {
       await models.OrderProduct.create({
         orderId: findOrder.id,
@@ -1174,22 +1308,22 @@ export async function updateOrder(id, order) {
         createdBy: findOrder.createdBy,
         updatedBy: findOrder.createdBy,
         createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      totalPrice += item.price * item.quantity;
+        updatedAt: new Date()
+      })
+      totalPrice += item.price * item.quantity
     }
 
-    if (typeof order.totalPrice == "undefined") {
+    if (typeof order.totalPrice == 'undefined') {
       await models.Order.update(
         {
-          totalPrice,
+          totalPrice
         },
         {
           where: {
-            id: findOrder.id,
-          },
+            id: findOrder.id
+          }
         }
-      );
+      )
     }
 
     createUserTracking({
@@ -1197,8 +1331,8 @@ export async function updateOrder(id, order) {
       type: accountTypes.USER,
       objectId: findOrder.id,
       action: logActions.order_update.value,
-      data: { id, products, dataUpdate },
-    });
+      data: { id, products, dataUpdate }
+    })
 
     // Thông báo đến khách hàng
 
@@ -1207,32 +1341,32 @@ export async function updateOrder(id, order) {
       for (let item of products) {
         await updateProductStatistic({
           productId: item.productId,
-          sold: item.quantity,
-        });
+          sold: item.quantity
+        })
       }
     }
 
     return {
-      success: true,
-    };
+      success: true
+    }
   }
 
   return {
     error: true,
     code: HttpStatusCode.NOT_FOUND,
-    message: "Đơn hàng không tồn tại",
-  };
+    message: 'Đơn hàng không tồn tại'
+  }
 }
 
-export async function updateOrderStatus(id, order) {
-  const findOrder = await models.Order.findByPk(id);
+export async function updateOrderStatus (id, order) {
+  const findOrder = await models.Order.findByPk(id)
 
   if (!findOrder) {
     return {
       error: true,
       code: HttpStatusCode.NOT_FOUND,
-      message: "Đơn hàng không tồn tại",
-    };
+      message: 'Đơn hàng không tồn tại'
+    }
   }
 
   if (
@@ -1242,93 +1376,93 @@ export async function updateOrderStatus(id, order) {
       error: true,
       code: HttpStatusCode.BAD_REQUEST,
       message:
-        "Không được thay đổi đơn hàng ở trạng thái đã hủy hoặc thành công",
-    };
+        'Không được thay đổi đơn hàng ở trạng thái đã hủy hoặc thành công'
+    }
   }
 
   await Promise.all([
     createOrderLog({ orderId: id, newOrder: order }),
     models.Order.update(order, {
       where: {
-        id,
+        id
       },
-      individualHooks: true,
+      individualHooks: true
     }),
     createUserTracking({
       accountId: order.updatedBy,
       type: accountTypes.USER,
       objectId: id,
       action: logActions.order_update.value,
-      data: { id, ...order },
-    }),
-  ]);
+      data: { id, ...order }
+    })
+  ])
 
   return {
-    success: true,
-  };
+    success: true
+  }
 }
 
-export async function indexProductCustomers(id) {
+export async function indexProductCustomers (id) {
   const findOrder = await models.Order.findByPk(id, {
-    attributes: ["id", "customerId"],
-    raw: true,
-  });
+    attributes: ['id', 'customerId'],
+    raw: true
+  })
 
   if (!findOrder) {
     return {
       error: true,
       code: HttpStatusCode.NOT_FOUND,
-      message: "Đơn hàng không tồn tại",
-    };
+      message: 'Đơn hàng không tồn tại'
+    }
   }
 
-  const customer = await getCustomer(findOrder.customerId);
+  const customer = await getCustomer(findOrder.customerId)
 
   const hashPrice = _.isEmpty(customer)
     ? {}
-    : await hashProductPrice({ loginCustomer: customer });
+    : await hashProductPrice({ loginCustomer: customer })
 
   return {
     success: true,
     data: {
       items: await extractFieldProduct(
         await productFilter({
-          limit: PAGE_LIMIT,
+          limit: PAGE_LIMIT
         }),
         hashPrice,
         customer
-      ),
-    },
-  };
+      )
+    }
+  }
 }
 
-export async function getOrder(orderId) {
+export async function getOrder (orderId) {
   const order = await models.Order.findOne({
     attributes: ["id", "totalPrice", "customerId", "cashOfCustomer", "branchId", "userId", "paymentType"],
     where: { id: orderId }
   })
   if (!order) {
-    raiseBadRequestError("Đơn hàng không tồn tại")
+    raiseBadRequestError('Đơn hàng không tồn tại')
   }
   return order
 }
 
-export async function deleteOrder(id, loginUser) {
+export async function deleteOrder (id, loginUser) {
   const order = await models.Order.findByPk(id, {
-    attributes: ["id"],
-  });
+    attributes: ['id']
+  })
   if (!order) {
     return {
       error: true,
       code: HttpStatusCode.NOT_FOUND,
-      message: "Không tìm thấy đơn hàng",
-    };
+      message: 'Không tìm thấy đơn hàng'
+    }
   }
   await models.Order.destroy({
     where: {
-      id,
-    },
-  });
+      id
+    }
+  })
   createUserTracking({
     accountId: loginUser.id,
     type: accountTypes.USER,
@@ -1336,10 +1470,9 @@ export async function deleteOrder(id, loginUser) {
     action: logActions.order_delete.value,
     data: {
       id
-    },
-  });
+    }
+  })
   return {
-    success: true,
-  };
+    success: true
+  }
 }
-
