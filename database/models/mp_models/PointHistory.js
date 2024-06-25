@@ -32,6 +32,10 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.INTEGER(11),
                 allowNull: true
             },
+            note: {
+                allowNull: true,
+                type: Sequelize.STRING,
+            }
         },
         {
             tableName: "point_history",
