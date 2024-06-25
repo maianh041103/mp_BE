@@ -9,13 +9,17 @@ const {
   updateSupplier,
   createSupplier,
   deleteSupplier,
+  indexPaymentSupplier
 } = require("./supplierService");
+const {
+  indexSupplierDebt
+} = require("./supplierDebtService");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 
 export async function indexSuppliersController(req, res) {
   try {
     const { loginUser = {} } = req;
-    const result = await indexSuppliers({...req.query, storeId: loginUser.storeId});
+    const result = await indexSuppliers({ ...req.query, storeId: loginUser.storeId });
     if (result.success) res.json(respondItemSuccess(result.data));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
@@ -106,3 +110,35 @@ export async function deleteSupplierController(req, res) {
     res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
   }
 }
+
+export async function getTotalDebtController(req, res) {
+  try {
+    const { loginUser = {} } = req;
+    const { id } = req.params;
+    const result = await indexSupplierDebt({
+      ...req.query,
+      storeId: loginUser.storeId,
+      supplierId: id
+    });
+    if (result.success) res.json(respondItemSuccess(result.data));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
+export async function indexPaymentSupplierController(req, res) {
+  try {
+    const { supplierId } = req.params;
+    const result = await indexPaymentSupplier({ ...req.query, supplierId });
+    if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+

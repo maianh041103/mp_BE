@@ -1438,7 +1438,7 @@ export async function indexProductCustomers (id) {
 
 export async function getOrder (orderId) {
   const order = await models.Order.findOne({
-    attributes: ['id', 'totalPrice', 'customerId', 'cashOfCustomer'],
+    attributes: ["id", "totalPrice", "customerId", "cashOfCustomer", "branchId", "userId", "paymentType"],
     where: { id: orderId }
   })
   if (!order) {
