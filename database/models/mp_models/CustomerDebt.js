@@ -14,7 +14,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER(10).UNSIGNED,
     },
     orderId: {
-      allowNull: false,
+      allowNull: true,
       type: DataTypes.INTEGER(10).UNSIGNED,
     },
     debtAmount: {
@@ -41,7 +41,7 @@ module.exports = (sequelize, DataTypes) => {
     CustomerDebt.belongsTo(models.Order, {
       as: 'order',
       foreignKey: 'orderId',
-      sourceKey: 'id',
+      targetKey: 'id',
     });
   };
 

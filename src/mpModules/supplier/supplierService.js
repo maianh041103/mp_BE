@@ -284,7 +284,7 @@ export async function updateSupplier(id, payload) {
     }
   }
 
-  if(!findSupplier.code && !payload.code){
+  if (!findSupplier.code && !payload.code) {
     payload.code = `${generateSupplierCode(findSupplier.id)}`;
   }
 
@@ -363,4 +363,31 @@ export async function deleteSupplier(id, loginUser) {
   return {
     success: true,
   };
+}
+
+export async function indexPaymentSupplier(params, loginUser) {
+  let {
+    page = 1,
+    limit = 20,
+    supplierId
+  } = params
+  const where = {};
+  if (supplierId) {
+    where.supplierId = supplierId;
+  }
+  const payments = await models.Payment.findAll({
+    offset: +limit * (+page - 1),
+    limit: +limit,
+    include: {
+      model: models.User,
+      as: "fullnameCreator",
+      attributes: ["id", "fullName",],
+    },
+    order: [["id", "DESC"]],
+    where
+  })
+  return {
+    success: true,
+    data: payments
+  }
 }

@@ -16,6 +16,9 @@ const { addFilterByDate } = require("../../helpers/utils");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { accountTypes, logActions } = require("../../helpers/choices");
 const { createUserTracking } = require("../behavior/behaviorService");
+const transactionContant = require("../transaction/transactionContant");
+const transactionService = require("../transaction/transactionService");
+const inboundPaymentService = require("./inboundPaymentService");
 
 const userAttributes = [
   "id",
@@ -406,7 +409,7 @@ export async function handleCreateInbound(inbound, loginUser) {
         description: inbound.description,
         storeId: loginUser.storeId,
         branchId: inbound.branchId,
-        createdBy: loginUser.id,
+        createdBy: loginUser.id
       },
       { transaction: t }
     );
@@ -543,6 +546,27 @@ export async function handleCreateInbound(inbound, loginUser) {
         transaction: t,
       }
     );
+
+    //Create transaction
+    const typeTransaction = await transactionService.generateTypeTransactionInbound(loginUser.storeId);
+    await models.Transaction.create({
+      code: generateInboundCode(newInbound.id),
+      paymentDate: new Date(),
+      ballotType: transactionContant.BALLOTTYPE.EXPENSES,
+      typeId: typeTransaction,
+      value: newInbound.paid,
+      userId: newInbound.userId,
+      createdBy: loginUser.id,
+      target: transactionContant.TARGET.SUPPLIER,
+      targetId: newInbound.supplierId,
+      isDebt: true,
+      branchId: newInbound.branchId,
+      isPaymentOrder: true
+    }, {
+      transaction: t
+    });
+    //End transaction
+    await inboundPaymentService.createInboundPayment(newInbound, t);
 
     if (inbound.status === inboundStatus.SUCCEED) {
       for (const item of inbound.products) {

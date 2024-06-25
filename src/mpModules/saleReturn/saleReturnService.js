@@ -23,6 +23,9 @@ const {
 const { HttpStatusCode } = require('../../helpers/errorCodes')
 const { accountTypes, logActions } = require('../../helpers/choices')
 const { createUserTracking } = require('../behavior/behaviorService')
+const transactionContant = require("../transaction/transactionContant");
+const transactionService = require("../transaction/transactionService");
+
 
 export async function indexList(params, loginUser) {
   const filter = getFilter(params, loginUser)
@@ -297,6 +300,26 @@ export async function indexCreate(saleReturn, loginUser) {
         },
         { transaction: t }
       )
+
+      //Create transaction
+      const typeTransaction = await transactionService.generateTypeTransactionSaleReturn(loginUser.storeId);
+      await models.Transaction.create({
+        code: code,
+        paymentDate: new Date(),
+        ballotType: transactionContant.BALLOTTYPE.EXPENSES,
+        typeId: typeTransaction,
+        value: item.quantity * item.price,
+        userId: saleReturn.userId,
+        createdBy: loginUser.id,
+        target: transactionContant.TARGET.CUSTOMER,
+        targetId: saleReturn.customerId,
+        isDebt: true,
+        branchId: saleReturn.branchId,
+        isPaymentOrder: true
+      }, {
+        transaction: t
+      });
+      //End transaction
       if (findProduct.isBatchExpireControl) {
         for (const _batch of item.batches) {
           const responseReadBatch = await readBatch(_batch.id, loginUser)
@@ -333,8 +356,19 @@ export async function indexCreate(saleReturn, loginUser) {
     }, {
       where: {
         id: saleReturn.customerId
-      }
+      },
+      transaction: t
     })
+
+    await models.PointHistory.create({
+      customerId: saleReturn.customerId,
+      point: pointDecrement,
+      saleReturnId: newSaleReturn.id,
+      code: code
+    },
+      {
+        transaction: t
+      });
     //End trừ điểm tích lũy
   })
   const refresh = await indexDetail(newSaleReturn.id, loginUser)

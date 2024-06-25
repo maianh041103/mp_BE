@@ -106,7 +106,7 @@ module.exports.create = async (params) => {
             const userExists = await models.User.findOne({
                 where: {
                     id: userCreateId,
-                    branchId: branchId
+                    storeId: params.storeId
                 }
             });
             if (!userExists) {
