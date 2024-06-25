@@ -6,7 +6,7 @@ const {
   createController,
   updateController,
   updateStatus,
-  getProductCustomer, indexDelete,
+  getProductCustomer, indexDelete, createPaymentController
   // getOrderHistory,
 } = require("./inboundController");
 const { createValidator, updateStatusValidator } = require("./inboundValidator");
@@ -73,14 +73,25 @@ router.patch(
 );
 
 router.delete(
-    "/:id",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = "inbound_delete";
-        next();
-    },
-    authorize,
-    indexDelete
+  "/:id",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = "inbound_delete";
+    next();
+  },
+  authorize,
+  indexDelete
+);
+
+router.post(
+  "/:id/payment",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = "";
+    next();
+  },
+  authorize,
+  createPaymentController
 );
 
 module.exports = router;

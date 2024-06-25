@@ -527,6 +527,21 @@ export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
       }
     );
 
+    //Create Payment
+    await models.Payment.create({
+      isReturn: true,
+      amount: newPurchaseReturn.paid,
+      code: generatePurchaseReturnCode(newPurchaseReturn.id),
+      createdBy: loginUser.id,
+      paymentMethod: newPurchaseReturn.paymentType,
+      status: 'SUCCEED',
+      supplierId: newPurchaseReturn.supplierId,
+      totalAmount: newPurchaseReturn.totalPrice
+    }, {
+      transaction: t
+    })
+
+
     //Create transaction
     const typeTransaction = await transactionService.generateTypeTransactionPurchaseReturn(loginUser.storeId);
     await models.Transaction.create({

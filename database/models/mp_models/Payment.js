@@ -20,7 +20,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
     },
     customerId: {
-      allowNull: false,
+      allowNull: true,
       type: DataTypes.INTEGER(10).UNSIGNED,
     },
     createdBy: {
@@ -28,11 +28,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER(11).UNSIGNED,
     },
     orderId: {
-      allowNull: false,
+      allowNull: true,
       type: DataTypes.INTEGER(10).UNSIGNED,
     },
     paymentMethod: {
-      allowNull: false,
+      allowNull: true,
       type: DataTypes.ENUM("CASH", "BANK", "DEBT")
     },
     status: {
@@ -46,7 +46,15 @@ module.exports = (sequelize, DataTypes) => {
     transactionId: {
       allowNull: true,
       type: DataTypes.INTEGER(11).UNSIGNED
-    }
+    },
+    supplierId: {
+      allowNull: true,
+      type: DataTypes.INTEGER(10).UNSIGNED,
+    },
+    inboundId: {
+      allowNull: true,
+      type: DataTypes.INTEGER(10).UNSIGNED,
+    },
   }, {
     tableName: 'payments',
     timestamps: true,
@@ -68,6 +76,16 @@ module.exports = (sequelize, DataTypes) => {
     Payment.belongsTo(models.User, {
       as: 'fullnameCreator',
       foreignKey: 'createdBy',
+      targetKey: 'id',
+    });
+    Payment.belongsTo(models.Supplier, {
+      as: 'supplier',
+      foreignKey: 'supplierId',
+      targetKey: 'id',
+    });
+    Payment.belongsTo(models.Inbound, {
+      as: 'inbound',
+      foreignKey: 'inboundId',
       targetKey: 'id',
     });
   };
