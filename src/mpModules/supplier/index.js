@@ -6,6 +6,8 @@ const {
   createSupplierController,
   updateSupplierController,
   deleteSupplierController,
+  getTotalDebtController,
+  indexPaymentSupplierController
 } = require("./supplierController");
 const { createValidator } = require("./supplierValidator");
 
@@ -68,5 +70,24 @@ router.delete(
   authorize,
   deleteSupplierController
 );
+
+router.get("/:id/total-debt", authenticate, (req, res, next) => {
+  req.apiRole = "";
+  next();
+},
+  authorize,
+  getTotalDebtController
+);
+
+router.get(
+  "/:supplierId/payment",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = "";
+    next();
+  },
+  authorize,
+  indexPaymentSupplierController
+)
 
 module.exports = router;

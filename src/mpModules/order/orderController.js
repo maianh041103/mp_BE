@@ -1,5 +1,5 @@
-import {indexCreatePayment, indexPayment} from "./OrderPaymentService";
-import {respondWithClientError} from "../../helpers/response";
+import { createPaymentAndTransaction, indexPayment } from "./OrderPaymentService";
+import { respondWithClientError } from "../../helpers/response";
 
 const _ = require("lodash");
 const {
@@ -61,14 +61,14 @@ export async function createPaymentController(req, res) {
   try {
     const { loginUser = {} } = req;
     const { id } = req.params
-    const result = await indexCreatePayment(
-        {
-          ...req.body,
-          orderId: id,
-          storeId: loginUser.storeId,
-          createdBy: loginUser.id,
-        },
-        loginUser
+    const result = await createPaymentAndTransaction(
+      {
+        ...req.body,
+        orderId: id,
+        storeId: loginUser.storeId,
+        createdBy: loginUser.id,
+      },
+      loginUser
     );
     if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
     else res.json(respondWithError(result.code, result.message, {}));
@@ -90,8 +90,8 @@ export async function readController(req, res) {
 
 export async function readPaymentController(req, res) {
   try {
-    const {id: orderId} = req.params
-    const result = await indexPayment({...req.query, orderId});
+    const { id: orderId } = req.params
+    const result = await indexPayment({ ...req.query, orderId });
     if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
@@ -164,14 +164,14 @@ export async function getOrderHistory(req, res) {
 }
 
 export async function deleteController(req, res) {
-    try {
-        const { id } = req.params;
-        const { loginUser = {} } = req;
-        const result = await deleteOrder(id, loginUser);
-        if (result.success) res.json(respondItemSuccess(result.data));
-        else res.json(respondWithError(result.code, result.message, {}));
-    } catch (error) {
-        res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
-    }
+  try {
+    const { id } = req.params;
+    const { loginUser = {} } = req;
+    const result = await deleteOrder(id, loginUser);
+    if (result.success) res.json(respondItemSuccess(result.data));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
+  }
 }
 
