@@ -1,19 +1,20 @@
-import {moveAttributes, moveInclude, moveStatus} from "./constant";
-import {generateCode} from "../../helpers/codeGenerator";
-import {getProductUnit} from "../product/productUnitService";
-import {addInventory, getInventory} from "../inventory/inventoryService";
-import {raiseBadRequestError} from "../../helpers/exception";
-import {getProduct} from "../product/productService";
-import {createWarehouseCard} from "../warehouse/warehouseService";
-import {warehouseStatus} from "../warehouse/constant";
-import {addBatchQty, getBatch, getOrCreateBatch} from "../batch/batchService";
-import {getFilter} from "./filter";
+import { moveAttributes, moveInclude, moveStatus } from "./constant";
+import { generateCode } from "../../helpers/codeGenerator";
+import { getProductUnit } from "../product/productUnitService";
+import { addInventory, getInventory } from "../inventory/inventoryService";
+import { raiseBadRequestError } from "../../helpers/exception";
+import { getProduct } from "../product/productService";
+import { createWarehouseCard } from "../warehouse/warehouseService";
+import { warehouseStatus } from "../warehouse/constant";
+import { addBatchQty, getBatch, getOrCreateBatch } from "../batch/batchService";
+import { getFilter } from "./filter";
 const _ = require("lodash");
+const userLogContant = require("../userLog/userLogContant");
 
 const models = require("../../../database/models");
 export async function indexList(params, loginUser) {
     const filter = getFilter(params, loginUser)
-    const {limit, page} = params;
+    const { limit, page } = params;
     const [moves, count] = await Promise.all([
         models.Move.findAll({
             attributes: moveAttributes,
@@ -48,6 +49,11 @@ export async function indexCreate(moveReq, loginUser) {
 }
 
 async function createMove(moveReq, transaction) {
+    const products = moveReq.products || [];
+    let totalPrice = 0;
+    for (const product of products) {
+        totalPrice += product.price * product.quantity;
+    }
     const move = await models.Move.create({
         storeId: moveReq.storeId,
         fromBranchId: moveReq.fromBranchId,
@@ -57,13 +63,23 @@ async function createMove(moveReq, transaction) {
         status: moveStatus.MOVING,
         note: moveReq.note,
         totalItem: moveReq.totalItem,
-        totalPrice: moveReq.totalPrice
+        totalPrice: totalPrice
     },
-        {transaction: transaction}
+        { transaction: transaction }
     )
     move.code = moveReq.code || generateCode("MV", move.id)
-    await models.Move.update({code: move.code},
-        {where: {id: move.id}, transaction: transaction})
+    await models.Move.update({ code: move.code },
+        { where: { id: move.id }, transaction: transaction })
+
+    await models.UserLog.create({
+        userId: moveReq.movedBy,
+        type: userLogContant.TYPE.MOVE,
+        amount: totalPrice,
+        branchId: moveReq.fromBranchId,
+        code: move.dataValues.code
+    }, {
+        transaction: transaction
+    })
     return move
 }
 
@@ -82,7 +98,7 @@ async function createMoveItem(move, productsReq, loginUser, t) {
             productId: item.productId,
             quantity: item.quantity,
             price: item.price
-        }, {transaction: t})
+        }, { transaction: t })
 
         await createWarehouseCard({
             code: move.code,
@@ -110,14 +126,14 @@ async function createMoveItem(move, productsReq, loginUser, t) {
                     moveItemId: moveItem.id,
                     fromBatchId: batchReq.id,
                     quantity: batchReq.quantity
-                }, {transaction: t})
-                await addBatchQty(batchReq.id, -batchReq.quantity*productUnit.exchangeValue, t)
+                }, { transaction: t })
+                await addBatchQty(batchReq.id, -batchReq.quantity * productUnit.exchangeValue, t)
                 const toBatch = await getOrCreateBatch(loginUser.storeId, move.toBranchId, product.id, batch.name, batch.expiryDate)
                 await models.MoveItemToBatch.create({
                     moveItemId: moveItem.id,
                     toBatchId: toBatch.id,
                     quantity: 0
-                }, {transaction: t})
+                }, { transaction: t })
             }
         }
 
@@ -152,14 +168,15 @@ export async function getMoveItem(id) {
                     as: 'productUnit',
                     attributes: ['id', 'unitName', 'exchangeValue'],
                 },
-            ]})
+            ]
+        })
     if (!moveItem) {
         raiseBadRequestError("Sản phẩm không tồn tại")
     }
     return moveItem
 }
 export async function receiveMove(id, payload, loginUser) {
-    const {branchId, receivedBy, items, note} = payload
+    const { branchId, receivedBy, items, note } = payload
     const move = await getDetail(id)
     if (branchId !== move.toBranchId) {
         raiseBadRequestError("Chi nhánh không phù hợp để nhận hàng")
@@ -174,13 +191,13 @@ export async function receiveMove(id, payload, loginUser) {
             receiveNote: note,
             status: moveStatus.RECEIVED
         }, {
-            where: {id: id}, transaction: t
+            where: { id: id }, transaction: t
         })
         for (const item of items) {
             const moveItem = await getMoveItem(item.id)
             await models.MoveItem.update({
                 toQuantity: item.totalQuantity
-            }, {where: {id: moveItem.id}, transaction: t})
+            }, { where: { id: moveItem.id }, transaction: t })
             const exchangeValue = moveItem.productUnit.exchangeValue
             const totalQuantity = moveItem.quantity * exchangeValue
             await createWarehouseCard({
