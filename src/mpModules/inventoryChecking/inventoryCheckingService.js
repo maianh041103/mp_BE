@@ -4,6 +4,7 @@ const models = require("../../../database/models");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { warehouseStatus } = require("../warehouse/constant");
 const utils = require("../../helpers/utils");
+const userLogContant = require("../../../src/mpModules/userLog/userLogContant");
 
 const inventoryCheckingAttributes = [
     "id",
@@ -86,6 +87,15 @@ module.exports.create = async (params) => {
             where: {
                 id: newInventoryChecking.id
             },
+            transaction: t
+        })
+
+        await models.UserLog.create({
+            userId: userCreateId,
+            type: userLogContant.TYPE.INVENTORY_CHECKING,
+            branchId: branchId,
+            code
+        }, {
             transaction: t
         })
 
