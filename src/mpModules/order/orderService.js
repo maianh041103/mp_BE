@@ -920,7 +920,7 @@ async function handleCreateOrder(order, loginUser) {
         userId: order.userId,
         createdBy: loginUser.id,
         target: transactionContant.TARGET.CUSTOMER,
-        targetId: order.customerId,
+        targetId: findCustomer.id,
         isDebt: true,
         branchId: order.branchId,
         isPaymentOrder: true
