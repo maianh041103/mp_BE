@@ -24,6 +24,7 @@ const { accountTypes, logActions } = require("../../helpers/choices");
 const { createUserTracking } = require("../behavior/behaviorService");
 const transactionContant = require("../transaction/transactionContant");
 const transactionService = require("../transaction/transactionService");
+const userLogContant = require("../userLog/userLogContant");
 
 const purchaseReturnIncludes = [
   {
@@ -526,6 +527,14 @@ export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
         transaction: t,
       }
     );
+
+    await models.UserLog.create({
+      userId: newPurchaseReturn.createdBy,
+      type: userLogContant.TYPE.PURCHASE_RETURN,
+      amount: sumPrice,
+      branchId: newPurchaseReturn.branchId,
+      code: generatePurchaseReturnCode(newPurchaseReturn.id)
+    }, { transaction: t })
 
     //Create Payment
     await models.Payment.create({
