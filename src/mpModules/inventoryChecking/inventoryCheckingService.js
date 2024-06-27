@@ -4,6 +4,7 @@ const models = require("../../../database/models");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { warehouseStatus } = require("../warehouse/constant");
 const utils = require("../../helpers/utils");
+const userLogContant = require("../../../src/mpModules/userLog/userLogContant");
 
 const inventoryCheckingAttributes = [
     "id",
@@ -89,6 +90,15 @@ module.exports.create = async (params) => {
             transaction: t
         })
 
+        await models.UserLog.create({
+            userId: userCreateId,
+            type: userLogContant.TYPE.INVENTORY_CHECKING,
+            branchId: branchId,
+            code
+        }, {
+            transaction: t
+        })
+
         for (const item of products) {
             const { productUnitId, inventoryCheckingBatch, realQuantity } = item;
             const productUnitExists = await models.ProductUnit.findOne({
@@ -106,7 +116,7 @@ module.exports.create = async (params) => {
             const userExists = await models.User.findOne({
                 where: {
                     id: userCreateId,
-                    branchId: branchId
+                    storeId: params.storeId
                 }
             });
             if (!userExists) {

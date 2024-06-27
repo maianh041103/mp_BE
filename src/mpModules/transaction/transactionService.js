@@ -5,6 +5,7 @@ const models = require("../../../database/models");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 const utils = require("../../helpers/utils");
 const orderPaymentService = require("../order/OrderPaymentService");
+const inboundPaymentService = require("../inbound/inboundPaymentService");
 
 const transactionAttributes = [
     "id", "code", "ballotType", "paymentDate", "typeId", "value", "createdBy",
@@ -151,6 +152,17 @@ module.exports.createTransaction = async (params) => {
                 await orderPaymentService.indexCreatePayment({
                     amount: item.amount,
                     orderId: item.orderId,
+                    paymentMethod: "CASH",
+                    createdBy: createdBy,
+                    transactionId: newTransaction.id
+                })
+            }
+        }
+        if (target == transactionContant.TARGET.SUPPLIER) {
+            for (const item of orderPayment) {
+                await inboundPaymentService.indexCreatePayment({
+                    amount: item.amount,
+                    inboundId: item.inboundId,
                     paymentMethod: "CASH",
                     createdBy: createdBy,
                     transactionId: newTransaction.id
@@ -383,20 +395,37 @@ module.exports.deleteTransaction = async (params) => {
                     transactionId: id
                 }
             });
-            for (const payment of payments) {
-                await models.sequelize.transaction(async (t) => {
-                    await models.Order.decrement({
-                        cashOfCustomer: payment.amount
-                    }, { where: { id: payment.orderId } })
-                    await models.Payment.destroy({
-                        where: {
-                            id: payment.id
-                        }
-                    });
-                    await models.CustomerDebt.decrement({
-                        debtAmount: -payment.amount
-                    }, { where: { orderId: payment.orderId }, transaction: t })
-                })
+            if (transactionExists.target == transactionContant.TARGET.CUSTOMER) {
+                for (const payment of payments) {
+                    await models.sequelize.transaction(async (t) => {
+                        await models.Order.decrement({
+                            cashOfCustomer: payment.amount
+                        }, { where: { id: payment.orderId } })
+                        await models.Payment.destroy({
+                            where: {
+                                id: payment.id
+                            }
+                        });
+                        await models.CustomerDebt.decrement({
+                            debtAmount: -payment.amount
+                        }, { where: { orderId: payment.orderId }, transaction: t })
+                    })
+                }
+            }
+            if (transactionExists.target == transactionContant.TARGET.SUPPLIER) {
+                for (const payment of payments) {
+                    await models.sequelize.transaction(async (t) => {
+                        await models.Inbound.decrement({
+                            paid: payment.amount,
+                            debt: -payment.amount
+                        }, { where: { id: payment.inboundId } })
+                        await models.Payment.destroy({
+                            where: {
+                                id: payment.id
+                            }
+                        });
+                    })
+                }
             }
         }
         await models.Transaction.destroy({

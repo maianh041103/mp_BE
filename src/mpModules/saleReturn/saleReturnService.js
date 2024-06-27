@@ -6,6 +6,7 @@ import { getOrder } from '../order/orderService'
 import { saleReturnAttributes, saleReturnIncludes } from './attributes'
 import { getFilter } from './filter'
 import { moveAttributes, moveInclude } from '../move/constant'
+const userLogContant = require("../../../src/mpModules/userLog/userLogContant");
 
 const Sequelize = require('sequelize')
 const { Op } = Sequelize
@@ -95,7 +96,7 @@ function calculateTotalItemPrice(products) {
   let sumPrice = 0
   for (var i = 0; i < products.length; i++) {
     const product = products[i]
-    const totalProductPrice = product.price * product.totalQuantity
+    const totalProductPrice = product.price * product.quantity
     sumPrice += totalProductPrice
   }
   return sumPrice
@@ -171,6 +172,16 @@ export async function indexCreate(saleReturn, loginUser) {
         transaction: t
       }
     )
+
+    await models.UserLog.create({
+      userId: newSaleReturn.createdBy,
+      type: userLogContant.TYPE.SALE_RETURN,
+      amount: newSaleReturn.totalPrice,
+      branchId: newSaleReturn.branchId,
+      code
+    }, {
+      transaction: t
+    })
 
     let pointDecrement = 0;
     for (const item of saleReturn.products) {

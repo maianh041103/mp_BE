@@ -235,7 +235,7 @@ module.exports.checkStatus = async (params) => {
 }
 
 module.exports.changePointCustomer = async (params) => {
-    const { customerId, storeId, point } = params;
+    const { customerId, storeId, point, note } = params;
     const customerExists = await models.Customer.findOne({
         where: {
             id: customerId,
@@ -256,6 +256,7 @@ module.exports.changePointCustomer = async (params) => {
         newPointHistory = await models.PointHistory.create({
             customerId: customerId,
             point: subPoint,
+            note
         }, {
             transaction: t
         });
