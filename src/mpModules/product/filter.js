@@ -1,8 +1,8 @@
-import {filterInventories, productAttributes, productIncludes} from "./constant";
+import { filterInventories, productAttributes, productIncludes } from "./constant";
 import models from "../../../database/models";
 import { productStatisticFilter } from "../productStatistic/productStatisticService";
 import { Op } from "sequelize";
-import {getInventory} from "../inventory/inventoryService";
+import { getInventory } from "../inventory/inventoryService";
 const _ = require("lodash");
 
 export function getInventoryInclude(branchId, inventoryType) {
@@ -65,7 +65,7 @@ export async function queryFilter(params) {
         storeId,
         isSale,
         branchId,
-        inventoryType
+        inventoryType = -1
     } = params;
 
     const query = {
@@ -212,10 +212,10 @@ export async function queryFilter(params) {
     } else if (price == "asc") {
         query.order = [["cost", "ASC"]];
     }
-    // if (branchId) {
-    //     const invInclude = getInventoryInclude(branchId, inventoryType);
-    //     include.push(invInclude)
-    // }
+    if (branchId && inventoryType > 0) {
+        const invInclude = getInventoryInclude(branchId, inventoryType);
+        include.push(invInclude)
+    }
 
     query.where = where;
 
