@@ -397,7 +397,7 @@ module.exports.getDetailTransaction = async (params) => {
 }
 
 module.exports.updateTransaction = async (params) => {
-    let { storeId, id = -1, paymentDate, value, note } = params;
+    let { storeId, id = -1, paymentDate, value, note, typeId } = params;
     const transactionExists = await models.Transaction.findOne({
         where: {
             id
@@ -432,7 +432,7 @@ module.exports.updateTransaction = async (params) => {
 
     const t = await models.sequelize.transaction(async (t) => {
         await models.Transaction.update({
-            paymentDate, value, note
+            paymentDate, value, note, typeId
         }, {
             where: {
                 id
