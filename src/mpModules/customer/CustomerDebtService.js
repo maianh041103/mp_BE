@@ -1,4 +1,4 @@
-import {Op} from "sequelize";
+import { Op } from "sequelize";
 
 const models = require("../../../database/models");
 
@@ -12,9 +12,16 @@ export async function indexOrderDebt(params) {
         offset: +limit * (+page - 1),
         limit: +limit,
         order: [["id", "DESC"]],
+        include: [
+            {
+                model: models.Order,
+                as: "order",
+                attributes: ["code"]
+            }
+        ],
         where: {
             customerId: customerId,
-            debtAmount: {[Op.gt]: 0}
+            debtAmount: { [Op.gt]: 0 }
         }
     })
     return {

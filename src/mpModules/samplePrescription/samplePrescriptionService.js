@@ -1,5 +1,5 @@
-import {findAllBatchByProductId} from "../batch/batchService";
-import {getInventory} from "../inventory/inventoryService";
+import { findAllBatchByProductId } from "../batch/batchService";
+import { getInventory } from "../inventory/inventoryService";
 
 const _ = require("lodash");
 const Sequelize = require("sequelize");
@@ -138,7 +138,7 @@ function queryFilter(params) {
       "description",
       "status",
       "positionId",
-        "createdBy"
+      "createdBy"
     ],
     include = samplePrescriptionIncludes,
     storeId,
@@ -215,7 +215,7 @@ export async function indexService(params) {
   const { storeId, branchId } = params;
   for (const row of rows) {
     const products = await readSamplePrescriptionProduct(row.id);
-    console.log(products)
+    let totalQuantity = 0;
     for (const item of products) {
       item.dataValues.batches = [];
       if (!params.isSale) {
@@ -223,10 +223,17 @@ export async function indexService(params) {
       }
       const inventory = await getInventory(branchId, item.productId)
       item.dataValues.quantity = parseInt(
-          inventory / item.exchangeValue
+        inventory / item.exchangeValue
       );
-
+      totalQuantity += parseInt(inventory);
       item.dataValues.batches = await findAllBatchByProductId(item.productId, branchId);
+      if (item.dataValues.batches.length > 0) {
+        totalQuantity = 0;
+        totalQuantity += item.dataValues.batches.reduce((calc, item) => {
+          return calc + item.quantity;
+        }, 0);
+      }
+      item.quantity = totalQuantity;
     }
     row.dataValues.products = products;
   }

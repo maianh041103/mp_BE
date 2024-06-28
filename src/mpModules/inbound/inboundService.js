@@ -19,6 +19,7 @@ const { createUserTracking } = require("../behavior/behaviorService");
 const transactionContant = require("../transaction/transactionContant");
 const transactionService = require("../transaction/transactionService");
 const inboundPaymentService = require("./inboundPaymentService");
+const userLogContant = require("../userLog/userLogContant");
 
 const userAttributes = [
   "id",
@@ -546,6 +547,14 @@ export async function handleCreateInbound(inbound, loginUser) {
         transaction: t,
       }
     );
+
+    await models.UserLog.create({
+      userId: newInbound.createdBy,
+      type: userLogContant.TYPE.INBOUND,
+      amount: sumPrice,
+      branchId: newInbound.branchId,
+      code: generateInboundCode(newInbound.id)
+    }, { transaction: t })
 
     //Create transaction
     const typeTransaction = await transactionService.generateTypeTransactionInbound(loginUser.storeId);

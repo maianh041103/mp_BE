@@ -56,6 +56,7 @@ const { readProductUnit } = require('../product/productUnitService')
 const pointContant = require('../point/pointContant')
 const transactionContant = require('../transaction/transactionContant')
 const transactionService = require('../transaction/transactionService')
+const userLogContant = require('../userLog/userLogContant');
 
 const userAttributes = [
   'id',
@@ -204,7 +205,7 @@ const orderProductIncludes = [
   }
 ]
 
-export async function indexOrders (params, loginUser) {
+export async function indexOrders(params, loginUser) {
   let {
     page = 1,
     limit = 10,
@@ -401,7 +402,7 @@ export async function indexOrders (params, loginUser) {
   }
 }
 
-export async function readOrder (id) {
+export async function readOrder(id) {
   const order = await models.Order.findByPk(id, {
     include: orderIncludes,
     attributes: orderAttributes
@@ -460,7 +461,7 @@ export async function readOrder (id) {
   }
 }
 
-function generateOrderCode (no) {
+function generateOrderCode(no) {
   if (no <= 0) return 'DH000000000'
   if (no < 10) return `DH00000000${no}`
   if (no < 100) return `DH0000000${no}`
@@ -477,7 +478,7 @@ function generateOrderCode (no) {
 // Đơn hàng tạo trên quầy
 // discountType = 1 => %
 // discountType = 2 => VND
-async function handleCreateOrder (order, loginUser) {
+async function handleCreateOrder(order, loginUser) {
   if (!order.products || !order.products.length) {
     return {
       error: true,
@@ -882,6 +883,13 @@ async function handleCreateOrder (order, loginUser) {
     )
     newOrder.totalPrice = totalPrice
     newOrder.code = code
+    await models.UserLog.create({
+      userId: newOrder.createdBy,
+      type: userLogContant.TYPE.ORDER,
+      amount: totalPrice,
+      branchId: newOrder.branchId,
+      code: code
+    }, { transaction: t })
     await createOrderPayment(newOrder, t)
     for (const orderProduct of productItems) {
       const weight = orderProduct.price / totalItemPrice
@@ -912,7 +920,7 @@ async function handleCreateOrder (order, loginUser) {
         userId: order.userId,
         createdBy: loginUser.id,
         target: transactionContant.TARGET.CUSTOMER,
-        targetId: order.customerId,
+        targetId: findCustomer.id,
         isDebt: true,
         branchId: order.branchId,
         isPaymentOrder: true
@@ -974,8 +982,7 @@ async function handleCreateOrder (order, loginUser) {
                   await models.OrderProduct.increment(
                     {
                       point: Sequelize.literal(
-                        `COALESCE(point, 0) + ${
-                          weight * item.itemPrice * item.quantity
+                        `COALESCE(point, 0) + ${weight * item.itemPrice * item.quantity
                         }`
                       )
                     },
@@ -1022,8 +1029,7 @@ async function handleCreateOrder (order, loginUser) {
                     await models.OrderProduct.increment(
                       {
                         point: Sequelize.literal(
-                          `COALESCE(point, 0) + ${
-                            weight * item.itemPrice * item.quantity
+                          `COALESCE(point, 0) + ${weight * item.itemPrice * item.quantity
                           }`
                         )
                       },
@@ -1062,8 +1068,7 @@ async function handleCreateOrder (order, loginUser) {
                         await models.OrderProduct.increment(
                           {
                             point: Sequelize.literal(
-                              `COALESCE(point, 0) + ${
-                                productUnit.point * item.quantity
+                              `COALESCE(point, 0) + ${productUnit.point * item.quantity
                               }`
                             )
                           },
@@ -1101,7 +1106,7 @@ async function handleCreateOrder (order, loginUser) {
                           point: Sequelize.literal(
                             `IFNULL(point, 0) + ${Math.floor(
                               (item.itemPrice * item.quantity) /
-                                point.convertMoneyBuy
+                              point.convertMoneyBuy
                             )}`
                           )
                         },
@@ -1200,7 +1205,7 @@ async function handleCreateOrder (order, loginUser) {
   }
 }
 
-export async function createOrder (order, loginUser) {
+export async function createOrder(order, loginUser) {
   try {
     return await handleCreateOrder(order, loginUser)
   } catch (e) {
@@ -1225,7 +1230,7 @@ export async function createOrder (order, loginUser) {
   }
 }
 
-export async function updateOrder (id, order) {
+export async function updateOrder(id, order) {
   const findOrder = await models.Order.findByPk(id)
   if (findOrder) {
     if (
@@ -1358,7 +1363,7 @@ export async function updateOrder (id, order) {
   }
 }
 
-export async function updateOrderStatus (id, order) {
+export async function updateOrderStatus(id, order) {
   const findOrder = await models.Order.findByPk(id)
 
   if (!findOrder) {
@@ -1402,7 +1407,7 @@ export async function updateOrderStatus (id, order) {
   }
 }
 
-export async function indexProductCustomers (id) {
+export async function indexProductCustomers(id) {
   const findOrder = await models.Order.findByPk(id, {
     attributes: ['id', 'customerId'],
     raw: true
@@ -1436,7 +1441,7 @@ export async function indexProductCustomers (id) {
   }
 }
 
-export async function getOrder (orderId) {
+export async function getOrder(orderId) {
   const order = await models.Order.findOne({
     attributes: ["id", "totalPrice", "customerId", "cashOfCustomer", "branchId", "userId", "paymentType"],
     where: { id: orderId }
@@ -1447,7 +1452,7 @@ export async function getOrder (orderId) {
   return order
 }
 
-export async function deleteOrder (id, loginUser) {
+export async function deleteOrder(id, loginUser) {
   const order = await models.Order.findByPk(id, {
     attributes: ['id']
   })

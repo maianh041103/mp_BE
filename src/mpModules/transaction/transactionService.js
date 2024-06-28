@@ -281,11 +281,84 @@ module.exports.getAllTransaction = async (params) => {
         }
     }
 
+    const totalIncome = await models.Transaction.findAll({
+        attributes: [
+            [Sequelize.fn('SUM', Sequelize.col('value')), 'total']
+        ],
+        where: {
+            ...where,
+            ballotType: {
+                [Op.and]: [
+                    transactionContant.BALLOTTYPE.INCOME,
+                    where.ballotType || transactionContant.BALLOTTYPE.INCOME
+                ]
+            }
+        }
+    });
+
+    const totalExpenses = await models.Transaction.findAll({
+        attributes: [
+            [Sequelize.fn('SUM', Sequelize.col('value')), 'total']
+        ],
+        where: {
+            ...where,
+            ballotType: {
+                [Op.and]: [
+                    transactionContant.BALLOTTYPE.EXPENSES,
+                    where.ballotType || transactionContant.BALLOTTYPE.EXPENSES
+                ]
+            }
+        }
+    });
+
+    const startDateFilter = utils.formatStartDateTime(paymentDate["start"]);
+    const totalIncomeBefore = await models.Transaction.findAll({
+        attributes: [
+            [Sequelize.fn('SUM', Sequelize.col('value')), 'total']
+        ],
+        where: {
+            ...where,
+            ballotType: {
+                [Op.and]: [
+                    transactionContant.BALLOTTYPE.INCOME,
+                    where.ballotType || transactionContant.BALLOTTYPE.INCOME
+                ]
+            },
+            paymentDate: {
+                [Op.lt]: startDateFilter
+            }
+        }
+    });
+
+    const totalExpensesBefore = await models.Transaction.findAll({
+        attributes: [
+            [Sequelize.fn('SUM', Sequelize.col('value')), 'total']
+        ],
+        where: {
+            ...where,
+            ballotType: {
+                [Op.and]: [
+                    transactionContant.BALLOTTYPE.EXPENSES,
+                    where.ballotType || transactionContant.BALLOTTYPE.EXPENSES
+                ]
+            },
+            paymentDate: {
+                [Op.lt]: startDateFilter
+            }
+        }
+    });
+
+    console.log(parseInt(totalIncomeBefore[0].dataValues.total));
+    console.log(parseInt(totalExpensesBefore[0].dataValues.total))
+
     return {
         success: true,
         data: {
+            totalIncome: parseInt(totalIncome[0].dataValues.total) || 0,
+            totalExpenses: parseInt(totalExpenses[0].dataValues.total) || 0,
+            totalBefore: (parseInt(totalIncomeBefore[0].dataValues.total) || 0) - (parseInt(totalExpensesBefore[0].dataValues.total) || 0),
             items: rows,
-            totalItem: count
+            totalItem: count,
         }
     }
 }
@@ -324,7 +397,7 @@ module.exports.getDetailTransaction = async (params) => {
 }
 
 module.exports.updateTransaction = async (params) => {
-    let { storeId, id = -1, paymentDate, value, note } = params;
+    let { storeId, id = -1, paymentDate, value, note, typeId } = params;
     const transactionExists = await models.Transaction.findOne({
         where: {
             id
@@ -359,7 +432,7 @@ module.exports.updateTransaction = async (params) => {
 
     const t = await models.sequelize.transaction(async (t) => {
         await models.Transaction.update({
-            paymentDate, value, note
+            paymentDate, value, note, typeId
         }, {
             where: {
                 id
@@ -519,23 +592,4 @@ module.exports.generateTypeTransactionPurchaseReturn = async (storeId) => {
         });
     }
     return findTypeTransaction.id;
-}
-
-module.exports.getTotal = async (params) => {
-    const data = await models.Transaction.findAll({
-        attributes: [
-            [Sequelize.fn('SUM', Sequelize.col('value')), 'total']
-        ],
-        where: {
-            ballotType: params.ballotType,
-            branchId: params.branchId
-        }
-    });
-    let result = parseInt(data[0].dataValues.total);
-    return {
-        success: true,
-        data: {
-            total: result
-        }
-    }
 }

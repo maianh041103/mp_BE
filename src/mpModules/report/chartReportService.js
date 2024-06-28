@@ -112,13 +112,13 @@ export async function indexChartProductsReport(params, loginUser) {
       items:
         type === "quantity"
           ? items
-              .sort((a, b) => a.quantity - b.quantity)
-              .slice(0, limit)
-              .sort((a, b) => a.name - b.name)
+            .sort((a, b) => b.quantity - a.quantity)
+            .slice(0, limit)
+            .sort((a, b) => a.name - b.name)
           : items
-              .sort((a, b) => a.revenue - b.revenue)
-              .sort((a, b) => a.name - b.name)
-              .slice(0, limit),
+            .sort((a, b) => b.revenue - a.revenue)
+            .sort((a, b) => a.name - b.name)
+            .slice(0, limit),
     },
   };
 }
