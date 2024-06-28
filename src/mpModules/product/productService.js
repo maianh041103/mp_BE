@@ -40,6 +40,7 @@ const { HttpStatusCode } = require("../../helpers/errorCodes");
 const { accountTypes, logActions } = require("../../helpers/choices");
 const { productIncludes, productAttributes } = require("./constant")
 const { queryFilter } = require("./filter")
+const generateCode = require("../../helpers/codeGenerator");
 
 export async function productFilter(params) {
   try {
@@ -236,6 +237,23 @@ export async function createProduct(product, loginUser) {
       );
     }
 
+    //Tạo mới kiểm kho
+    let newInventoryCheking = await models.InventoryChecking.create({
+      userCreateId: product.createdBy,
+      branchId: product.branchId
+    }, {
+      transaction: t
+    });
+    await models.InventoryChecking.update({
+      code: generateCode.generateCode("KK", newInventoryCheking.id)
+    }, {
+      where: {
+        id: newInventoryCheking.id
+      },
+      transaction: t
+    });
+    //End tạo mới kiểm kho
+
     // add product units
     const productUnits = _.get(product, "productUnits", []).map((item) => ({
       productId: newProduct.id,
@@ -265,7 +283,21 @@ export async function createProduct(product, loginUser) {
         }
       }
     }
-    await models.ProductUnit.bulkCreate(productUnits, { transaction: t });
+    for (const productUnit of productUnits) {
+      const newProductUnit = await models.ProductUnit.create(productUnit, {
+        transaction: t
+      });
+      if (newProductUnit.isBaseUnit == true) {
+        await models.InventoryCheckingProduct.create({
+          inventoryCheckingId: newInventoryCheking.id,
+          productUnitId: newProductUnit.id,
+          realQuantity: product.inventory,
+          difference: product.inventory
+        }, {
+          transaction: t
+        })
+      }
+    }
     // sendTelegram({ message: 'Tạo thành công sản phẩm:' + JSON.stringify(newProduct) });
   })
   createUserTracking({
