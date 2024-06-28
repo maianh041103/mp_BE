@@ -49,12 +49,12 @@ module.exports = (sequelize, Sequelize) => {
     },
     // Giấy phép đăng ký kinh doanh
     businessRegistrationImageId: {
-      allowNull: false,
+      allowNull: true,
       type: Sequelize.INTEGER(11).UNSIGNED,
     },
     // Số đăng ký kinh doanh
     businessRegistrationNumber: {
-      allowNull: false,
+      allowNull: true,
       type: Sequelize.STRING
     },
     expiredDate: {
