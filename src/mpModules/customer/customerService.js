@@ -42,6 +42,7 @@ const customerAttributes = [
   "createdAt",
   "createdBy",
   "note",
+  "isDefault",
   [Sequelize.literal(`(SELECT COALESCE(SUM(debtAmount), 0) 
   FROM customer_debts 
   WHERE Customer.id = customer_debts.customerId and customer_debts.debtAmount >= 0)`), 'totalDebt'],
@@ -165,7 +166,7 @@ export async function indexCustomers(filter) {
     isDefault,
     createdBy,
     createdAtRange = {},
-    birthdayRange = {},
+    birthdayRange,
     totalDebtRange = {},
     totalOrderPayRange = {},
     pointRange = {},
@@ -204,13 +205,6 @@ export async function indexCustomers(filter) {
   if (groupCustomerId) conditions.groupCustomerId = groupCustomerId;
   if (position) conditions.position = position;
   if (status) conditions.status = status;
-  if (isDefault !== null) {
-    if (isDefault === true) {
-      conditions.isDefault = true;
-    } else {
-      conditions.isDefault = { [Op.or]: [false, null] }
-    }
-  }
   if (_.isArray(listCustomer) && listCustomer.length) {
     conditions.id = listCustomer;
   }
@@ -285,7 +279,7 @@ export async function indexCustomers(filter) {
     },
     limit: +limit,
     offset: +limit * (+page - 1),
-    order: [["id", "DESC"]]
+    order: [["isDefault", "DESC"], ["id", "DESC"]]
   };
   console.log(query)
   const [rows, count] = await Promise.all([
