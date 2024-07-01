@@ -59,6 +59,7 @@ export async function countProduct(query) {
     if (invInclude) {
       query.include = [invInclude];
     }
+    console.log(query.include);
     query.attributes = ["id"]
     return await models.Product.count(query);
   } catch (e) {
@@ -70,7 +71,7 @@ export async function countProduct(query) {
 export async function indexProducts(params) {
   const query = await queryFilter(params);
   const [items, count] = await Promise.all([
-    models.Product.findAll(query),
+    models.Product.findAll(query),                                                                                                                                                                                                                
     countProduct(query)
   ]);
   for (const item of items) {
