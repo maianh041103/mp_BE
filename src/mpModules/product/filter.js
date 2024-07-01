@@ -62,7 +62,7 @@ export async function queryFilter(params) {
         storeId,
         isSale,
         branchId,
-        inventoryType = -1
+        // inventoryType = -1
     } = params;
 
     const query = {

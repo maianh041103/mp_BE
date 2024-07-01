@@ -10,7 +10,7 @@ const schema = Joi.object().keys({
   address: Joi.string().max(255).required(),
   logoId: Joi.number().integer().allow(null).allow(""),
   businessRegistrationImageId: Joi.number().integer().allow(null),
-  businessRegistrationNumber: Joi.string().max(255).allow(null),
+  businessRegistrationNumber: Joi.string().max(255).allow(null).allow(""),
   wardId: Joi.number().integer().min(0).required(),
   districtId: Joi.number().integer().min(0).required(),
   provinceId: Joi.number().integer().min(0).required(),
