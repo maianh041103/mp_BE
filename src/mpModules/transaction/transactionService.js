@@ -16,12 +16,16 @@ const transactionIncludes = [
     {
         model: models.TypeTransaction,
         as: "typeTransaction",
-        attributes: ["name"],
+        attributes: ["name"]
     },
     {
         model: models.UserTransaction,
         as: "targetOther",
-        attributes: ["name", "phone"]
+        attributes: ["name", "phone"],
+        required: false,
+        where: {
+            [Op.and]: Sequelize.literal("Transaction.target = 'other'")
+        }
     },
     {
         model: models.User,
@@ -36,22 +40,38 @@ const transactionIncludes = [
     {
         model: models.Customer,
         as: "targetCustomer",
-        attributes: ["fullName", "phone"]
+        attributes: ["fullName", "phone"],
+        required: false,
+        where: {
+            [Op.and]: Sequelize.literal("Transaction.target = 'customer'")
+        }
     },
     {
         model: models.Supplier,
         as: "targetSupplier",
-        attributes: ["name", "phone"]
+        attributes: ["name", "phone"],
+        required: false,
+        where: {
+            [Op.and]: Sequelize.literal("Transaction.target = 'supplier'")
+        }
     },
     {
         model: models.User,
         as: "targetUser",
-        attributes: ["fullName", "phone"]
+        attributes: ["fullName", "phone"],
+        required: false,
+        where: {
+            [Op.and]: Sequelize.literal("Transaction.target = 'user'")
+        }
     },
     {
         model: models.Branch,
         as: "targetBranch",
-        attributes: ["name", "phone"]
+        attributes: ["name", "phone"],
+        required: false,
+        where: {
+            [Op.and]: Sequelize.literal("Transaction.target = 'branch'")
+        }
     },
     {
         model: models.Branch,
