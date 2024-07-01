@@ -1,4 +1,8 @@
-import { filterInventories, productAttributes, productIncludes } from "./constant";
+import {
+  filterInventories,
+  productAttributes,
+  productIncludes,
+} from "./constant";
 import models from "../../../database/models";
 import { productStatisticFilter } from "../productStatistic/productStatisticService";
 import { Op } from "sequelize";
@@ -65,38 +69,128 @@ export async function queryFilter(params) {
         inventoryType
     } = params;
 
-    const query = {
-        offset: +limit * (+page - 1),
-        limit: +limit,
-        order,
+  const query = {
+    offset: +limit * (+page - 1),
+    limit: +limit,
+    order,
+  };
+
+  if (raw) query.raw = true;
+
+  if (_.isArray(include) && include.length) {
+    query.include = include;
+    if (!isSale) {
+      for (const item of query.include) {
+        if (item.as === "productUnit") {
+          query.order = [
+            [models.ProductUnit, "exchangeValue", "DESC"],
+            ...query.order,
+          ];
+        }
+      }
+    }
+  }
+
+  if (_.isArray(attributes) && attributes.length) {
+    query.attributes = attributes;
+  }
+
+  if (_.isArray(order) && order.length) {
+    query.order = order;
+  }
+
+  const where = {};
+
+  if (storeId) {
+    where.storeId = storeId;
+  }
+
+  if (type) {
+    where.type = type;
+  }
+
+  if (status) {
+    where.status = status;
+  }
+
+  if (groupProductId) {
+    where.groupProductId = groupProductId;
+  }
+
+  if (productCategoryId) {
+    where.productCategoryId = productCategoryId;
+  }
+
+  if (notEqualId) {
+    where.id = {
+      [Op.ne]: notEqualId,
     };
+  }
 
     const include = [...productIncludes];
     const attributes = [...productAttributes];
 
     if (raw) query.raw = true;
 
-    if (_.isArray(include) && include.length) {
-        query.include = include;
-        if (!isSale) {
-            for (const item of query.include) {
-                if (item.as === "productUnit") {
-                    query.order = [
-                        [models.ProductUnit, "exchangeValue", "DESC"],
-                        ...query.order,
-                    ];
-                }
-            }
-        }
-    }
+  if (_.isArray(statusArray) && statusArray.length) {
+    where.status = {
+      [Op.in]: statusArray,
+    };
+  }
 
-    if (_.isArray(attributes) && attributes.length) {
-        query.attributes = attributes;
-    }
+  if (_.isArray(unitId) && unitId.length) {
+    where.unitId = {
+      [Op.in]: unitId,
+    };
+  }
 
-    if (_.isArray(order) && order.length) {
-        query.order = order;
+  if (_.isArray(manufactureId) && manufactureId.length) {
+    where.manufactureId = {
+      [Op.in]: manufactureId,
+    };
+  }
+
+  if (_.isArray(listProductId) && listProductId.length) {
+    where.id = listProductId;
+  }
+
+  if (tag) {
+    const tagToProducts = await tagToProductFilter({ tag });
+    where.id = tagToProducts;
+  }
+  if (keyword) {
+    let productId = null;
+    const productIdByCodeProductUnit = await models.ProductUnit.findOne({
+      where: {
+        code: {
+          [Op.like]: `%${keyword.trim()}%`,
+        },
+        storeId: storeId,
+      },
+    });
+    if (productIdByCodeProductUnit) {
+      productId = productIdByCodeProductUnit.productId;
     }
+    where[Op.or] = {
+      name: {
+        [Op.like]: `%${keyword.trim()}%`,
+      },
+      slug: {
+        [Op.like]: `%${keyword.trim()}%`,
+      },
+    };
+    if (productId) {
+      where[Op.or].id = productId;
+    }
+  }
+
+  if (name) {
+    where[Op.or] = {
+      name: {
+        [Op.like]: `%${keyword.trim()}%`,
+      },
+    };
+  }
 
     const where = {};
 

@@ -60,6 +60,7 @@ router.patch(
 // );
 router.get(
   "/list/getStore",
+  
   ListStoresController
 );
 module.exports = router;

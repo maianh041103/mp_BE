@@ -60,6 +60,7 @@ export async function countProduct(query) {
       query.include = [invInclude];
     }
     query.attributes = ["id"]
+    
     return await models.Product.count(query);
   } catch (e) {
     console.log(e);
