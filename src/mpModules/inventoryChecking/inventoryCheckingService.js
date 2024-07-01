@@ -267,7 +267,7 @@ module.exports.create = async (params) => {
 }
 
 module.exports.getAll = async (params) => {
-    const { branchId, limit = 20, page = 1, userCreateId, createdAt } = params;
+    const { branchId, limit = 20, page = 1, userCreateId, createdAt, keyword } = params;
     let where = {
         branchId: branchId
     }
@@ -278,14 +278,26 @@ module.exports.getAll = async (params) => {
     if (createdAt) {
         where.createdAt = utils.addFilterByDate([createdAt["start"], createdAt["end"]]);
     }
+    if (keyword) {
+        where[Op.or] = {
+            code: {
+                [Op.like]: `%${keyword.trim()}%`,
+            }
+        };
+    }
 
-    const { rows, count } = await models.InventoryChecking.findAndCountAll({
+    const rows = await models.InventoryChecking.findAll({
         attributes: inventoryCheckingAttributes,
         include: inventoryCheckingIncludes,
         where,
         limit: parseInt(limit),
         offset: parseInt((page - 1) * limit),
         order: [["id", "DESC"]],
+    });
+
+    const count = await models.InventoryChecking.count({
+        attributes: ["id"],
+        where
     });
 
     for (const item of rows) {
