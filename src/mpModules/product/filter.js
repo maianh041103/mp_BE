@@ -130,7 +130,7 @@ export async function queryFilter(params) {
     const include = [...productIncludes];
     const attributes = [...productAttributes];
 
-    if (raw) query.raw = true;
+  if (raw) query.raw = true;
 
   if (_.isArray(statusArray) && statusArray.length) {
     where.status = {
@@ -191,29 +191,6 @@ export async function queryFilter(params) {
       },
     };
   }
-
-    const where = {};
-
-    if (storeId) {
-        where.storeId = storeId;
-    }
-
-    if (type) {
-        where.type = type;
-    }
-
-    if (status) {
-        where.status = status;
-    }
-
-    if (groupProductId) {
-        where.groupProductId = groupProductId;
-    }
-
-    if (productCategoryId) {
-        where.productCategoryId = productCategoryId;
-    }
-
     if (notEqualId) {
         where.id = {
             [Op.ne]: notEqualId,
