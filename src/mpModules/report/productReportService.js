@@ -1,5 +1,5 @@
-import {PRODUCTS_CONCERN, SALES_CONCERN} from "./contant";
-import {groupByField} from "./util";
+import { PRODUCTS_CONCERN, SALES_CONCERN } from "./contant";
+import { groupByField } from "./util";
 
 const moment = require("moment");
 const { addFilterByDate } = require("../../helpers/utils");
@@ -29,6 +29,10 @@ export async function indexProductsReport(params) {
       return await getReportBySale(params);
     case PRODUCTS_CONCERN.CUSTOMER:
       return await getReportBySale(params);
+    case PRODUCTS_CONCERN.REVENUE:
+      return await getReportByRevenue(params);
+    case PRODUCTS_CONCERN.EMPLOYEE:
+      return await getReportBySale(params);
   }
 }
 
@@ -45,7 +49,7 @@ export async function getReportBySale(params) {
   let productWhere = {}
   let orderWhere = {}
   if (productIds) {
-    productWhere.productId = {[Op.in]: productIds}
+    productWhere.productId = { [Op.in]: productIds }
   }
   if (storeId) {
     productWhere.storeId = storeId
@@ -122,7 +126,104 @@ export async function getReportBySale(params) {
     success: true,
     data: {
       items: items,
-      summary: {totalCount: count.length, ...summary.dataValues}
+      summary: { totalCount: count.length, ...summary.dataValues }
+    }
+  };
+}
+
+export async function getReportByRevenue(params) {
+  const {
+    limit = 20,
+    page = 1,
+    branchId,
+    storeId,
+    from,
+    to
+  } = params;
+  let productWhere = {}
+  let orderWhere = {}
+  if (storeId) {
+    productWhere.storeId = storeId
+  }
+  if (from && to) {
+    orderWhere.createdAt = {
+      [Op.and]: {
+        [Op.gte]: moment(from).startOf("day"),
+        [Op.lte]: moment(to).endOf("day")
+      }
+    }
+  }
+
+  const attributes = [
+    [models.sequelize.literal('product.code'), 'title'],
+    [models.sequelize.literal('product.code'), 'productCode'],
+    [models.sequelize.literal('product.name'), 'productName'],
+    [models.sequelize.literal('product.id'), 'productId'],
+    [models.sequelize.literal('SUM(OrderProduct.quantity * productUnit.exchangeValue)'), 'totalSell'], //số lượng bán
+    [models.sequelize.literal('SUM(OrderProduct.price)-SUM(OrderProduct.discount)'), 'totalOrderPrice'], //doanh thu
+    //[models.sequelize.literal('SUM(saleReturnItem.quantity)'), 'returnQuality'],
+    [models.sequelize.literal('SUM(saleReturn.totalPrice)-SUM(saleReturn.returnFee)'), 'returnValue'],
+    [models.sequelize.literal('SUM(OrderProduct.price)-SUM(OrderProduct.discount) - (SUM(saleReturn.totalPrice)-SUM(saleReturn.returnFee))'), 'totalRevenue'], //doanh thu thuần
+  ]
+  const summaryAttribute = [
+    [models.sequelize.literal('SUM(OrderProduct.quantity * productUnit.exchangeValue)'), 'totalSell'],
+    [models.sequelize.literal('SUM(OrderProduct.price)-SUM(OrderProduct.discount)'), 'totalOrderPrice'],
+    [models.sequelize.literal('0'), 'returnQuality'],
+    [models.sequelize.literal('0'), 'returnValue'],
+    [models.sequelize.literal('SUM(OrderProduct.price)-SUM(OrderProduct.discount)'), 'totalRevenue'],
+  ]
+  const includes = [
+    {
+      model: models.ProductUnit,
+      attributes: [],
+      as: 'productUnit'
+    },
+    {
+      model: models.Product,
+      attributes: [],
+      as: 'product'
+    },
+    {
+      model: models.Order,
+      attributes: [],
+      as: 'order',
+      where: {
+        branchId
+      }
+    },
+    {
+      model: models.SaleReturn,
+      attributes: ["id"],
+      as: 'saleReturn'
+    }
+  ]
+  const [items, count] = await Promise.all([
+    models.OrderProduct.findAll({
+      attributes: attributes,
+      include: includes,
+      group: ['product.code'],
+      offset: +limit * (+page - 1),
+      limit: +limit,
+      where: orderWhere,
+      order: [[models.sequelize.literal('SUM(OrderProduct.price)-SUM(OrderProduct.discount)'), 'DESC']]
+    }),
+    await models.OrderProduct.count({
+      include: includes,
+      where: orderWhere,
+      group: ['product.code']
+    })
+  ])
+  const summaryObj = await models.OrderProduct.findAll({
+    attributes: summaryAttribute,
+    include: includes,
+    where: orderWhere,
+  })
+  const summary = summaryObj[0]
+  return {
+    success: true,
+    data: {
+      items: items,
+      summary: { totalCount: count.length, ...summary.dataValues }
     }
   };
 }
@@ -140,7 +241,7 @@ export async function getReportByWarehouseValue(params) {
   let productWhere = {}
   let orderWhere = {}
   if (productIds) {
-    productWhere.productId = {[Op.in]: productIds}
+    productWhere.productId = { [Op.in]: productIds }
   }
   if (storeId) {
     productWhere.storeId = storeId
@@ -217,7 +318,7 @@ export async function getReportByWarehouseValue(params) {
     success: true,
     data: {
       items: items,
-      summary: {totalCount: count.length, ...summary.dataValues}
+      summary: { totalCount: count.length, ...summary.dataValues }
     }
   };
 }
