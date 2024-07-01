@@ -65,7 +65,7 @@ export async function queryFilter(params) {
         storeId,
         isSale,
         branchId,
-        inventoryType = -1
+        // inventoryType = -1
     } = params;
 
     const query = {
@@ -212,10 +212,10 @@ export async function queryFilter(params) {
     } else if (price == "asc") {
         query.order = [["cost", "ASC"]];
     }
-    if (branchId && inventoryType > 0) {
-        const invInclude = getInventoryInclude(branchId, inventoryType);
-        include.push(invInclude)
-    }
+    // if (branchId && inventoryType > 0) {
+    //     const invInclude = getInventoryInclude(branchId, inventoryType);
+    //     include.push(invInclude)
+    // }
 
     query.where = where;
 
