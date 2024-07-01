@@ -16,7 +16,6 @@ export function getInventoryInclude(branchId, inventoryType) {
     }
     const type = parseInt(inventoryType);
     if (type === 1) {
-        console.log('DUOIDINHMUC')
         invInclude.where['quantity'] = {
             [Op.lte]: models.Sequelize.col("Product.minInventory")
         }
@@ -59,8 +58,6 @@ export async function queryFilter(params) {
         az,
         za,
         price,
-        include = productIncludes,
-        attributes = productAttributes,
         raw = false,
         storeId,
         isSale,
@@ -73,6 +70,9 @@ export async function queryFilter(params) {
         limit: +limit,
         order,
     };
+
+    const include = [...productIncludes];
+    const attributes = [...productAttributes];
 
     if (raw) query.raw = true;
 
@@ -212,11 +212,11 @@ export async function queryFilter(params) {
     } else if (price == "asc") {
         query.order = [["cost", "ASC"]];
     }
+
     if (branchId && inventoryType > 0) {
         const invInclude = getInventoryInclude(branchId, inventoryType);
         include.push(invInclude)
     }
-
     query.where = where;
 
     return query;

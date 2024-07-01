@@ -59,8 +59,6 @@ export async function countProduct(query) {
     if (invInclude) {
       query.include = [invInclude];
     }
-    console.log(query.include);
-    console.log(query.include[0].where);
     query.attributes = ["id"]
     return await models.Product.count(query);
   } catch (e) {
