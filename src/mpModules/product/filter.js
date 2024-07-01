@@ -62,7 +62,7 @@ export async function queryFilter(params) {
         storeId,
         isSale,
         branchId,
-        // inventoryType = -1
+        inventoryType
     } = params;
 
     const query = {
@@ -213,7 +213,7 @@ export async function queryFilter(params) {
         query.order = [["cost", "ASC"]];
     }
 
-    if (branchId && inventoryType > 0) {
+    if (branchId && inventoryType) {
         const invInclude = getInventoryInclude(branchId, inventoryType);
         include.push(invInclude)
     }
