@@ -72,7 +72,7 @@ export async function countProduct(query) {
 export async function indexProducts(params) {
   const query = await queryFilter(params);
   const [items, count] = await Promise.all([
-    models.Product.findAll(query),
+    models.Product.findAll(query),                                                                                                                                                                                                                
     countProduct(query)
   ]);
   for (const item of items) {

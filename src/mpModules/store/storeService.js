@@ -124,7 +124,17 @@ export async function indexStores(params) {
     },
   };
 }
-
+export async function listStore() {
+  const rows = await models.Store.findAll();
+    const count = await models.Store.count();
+  return {
+    success: true,
+    data: {
+      items: rows,
+      totalItem: count,
+    },
+  };
+}
 export async function createStore(payload) {
   const newStore = await models.Store.create(payload);
   await insertNewCode(newStore.id);

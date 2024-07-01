@@ -9,6 +9,7 @@ const {
   updateStore,
   createStore,
   deleteStore,
+  listStore
 } = require("./storeService");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
 
@@ -25,7 +26,15 @@ export async function indexStoresController(req, res) {
     res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
   }
 }
-
+export async function ListStoresController( req,res) {
+  try {
+    const result = await listStore();
+    if (result.success) res.json(respondItemSuccess(result.data));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
+  }
+}
 export async function createStoreController(req, res) {
   try {
     const result = await createStore({
