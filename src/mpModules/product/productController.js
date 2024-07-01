@@ -1,4 +1,4 @@
-import {detailMaster} from "./productMasterService";
+import { detailMaster } from "./productMasterService";
 
 const _ = require("lodash");
 const {
@@ -72,7 +72,7 @@ export async function indexDetailController(req, res) {
   } catch (error) {
     console.log(error);
     res.json(
-        respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
     );
   }
 }
@@ -133,8 +133,8 @@ export async function createController(req, res) {
       packingSpecification: _.get(req.body, "packingSpecification", null),
       manufactureId: _.get(req.body, "manufactureId", null),
       countryId: _.get(req.body, "countryId", null),
-      minInventory: _.get(req.body, "minInventory", null),
-      maxInventory: _.get(req.body, "maxInventory", null),
+      minInventory: _.get(req.body, "minInventory", 0),
+      maxInventory: _.get(req.body, "maxInventory", 999999999),
       description: _.get(req.body, "description", ""),
       note: _.get(req.body, "note", ""),
       status: _.get(req.body, "status", productStatuses.ACTIVE),
