@@ -61,6 +61,7 @@ export async function countProduct(query) {
     }
     console.log(query.include);
     query.attributes = ["id"]
+    
     return await models.Product.count(query);
   } catch (e) {
     console.log(e);
