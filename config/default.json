@@ -1,9 +1,9 @@
 {
   "mp": {
     "username": "user",
-    "password": "acd@2024",
+    "password": "acd@1234",
     "database": "mephar",
-    "host": "36.50.134.21",
+    "host": "157.10.44.228",
     "dialect": "mysql",
     "pool": {
       "max": 10,

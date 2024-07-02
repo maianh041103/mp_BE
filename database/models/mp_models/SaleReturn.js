@@ -1,7 +1,7 @@
 "use strict";
 
 
-const {SaleReturnStatus} = require("../../../src/mpModules/saleReturn/constant");
+const { SaleReturnStatus } = require("../../../src/mpModules/saleReturn/constant");
 module.exports = (sequelize, DataTypes) => {
   const SaleReturn = sequelize.define(
     "SaleReturn",
@@ -21,8 +21,8 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER(10).UNSIGNED,
       },
       orderId: {
-          allowNull: false,
-          type: DataTypes.INTEGER(10).UNSIGNED,
+        allowNull: false,
+        type: DataTypes.INTEGER(10).UNSIGNED,
       },
       branchId: {
         allowNull: false,
@@ -43,21 +43,21 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.INTEGER(10).UNSIGNED,
         defaultValue: 0,
       },
-    description: {
+      description: {
         allowNull: true,
         type: DataTypes.STRING,
-    },
+      },
       // Giảm giá
       discount: {
         allowNull: true,
         type: DataTypes.INTEGER(10).UNSIGNED,
         defaultValue: 0,
       },
-        returnFee: {
-            allowNull: true,
-            type: DataTypes.INTEGER(10).UNSIGNED,
-            defaultValue: 0,
-        },
+      returnFee: {
+        allowNull: true,
+        type: DataTypes.INTEGER(10).UNSIGNED,
+        defaultValue: 0,
+      },
       // Công nợ
       debt: {
         allowNull: true,
@@ -76,8 +76,8 @@ module.exports = (sequelize, DataTypes) => {
       status: {
         allowNull: false,
         type: DataTypes.ENUM(
-            SaleReturnStatus.TRASH,
-            SaleReturnStatus.SUCCEED
+          SaleReturnStatus.TRASH,
+          SaleReturnStatus.SUCCEED
         ),
         defaultValue: SaleReturnStatus.SUCCEED,
       },
@@ -97,7 +97,7 @@ module.exports = (sequelize, DataTypes) => {
     }
   );
   SaleReturn.associate = function (models) {
-      SaleReturn.belongsTo(models.Store, {
+    SaleReturn.belongsTo(models.Store, {
       as: "store",
       foreignKey: "storeId",
       targetKey: "id",
@@ -107,40 +107,34 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "orderId",
       targetKey: "id",
     });
-      SaleReturn.belongsTo(models.Branch, {
+    SaleReturn.belongsTo(models.Branch, {
       as: "branch",
       foreignKey: "branchId",
       targetKey: "id",
     });
 
-      SaleReturn.belongsTo(models.User, {
+    SaleReturn.belongsTo(models.User, {
       as: "user",
       foreignKey: "userId",
       targetKey: "id",
     });
 
-      SaleReturn.belongsTo(models.User, {
+    SaleReturn.belongsTo(models.User, {
       as: "updater",
       foreignKey: "updatedBy",
       targetKey: "id",
     });
 
-      SaleReturn.belongsTo(models.User, {
+    SaleReturn.belongsTo(models.User, {
       as: "creator",
       foreignKey: "createdBy",
       targetKey: "id",
     });
 
-      SaleReturn.belongsTo(models.Customer, {
+    SaleReturn.belongsTo(models.Customer, {
       as: "customer",
       foreignKey: "customerId",
       targetKey: "id",
-    });
-
-    SaleReturn.hasMany(models.SaleReturnItem, {
-      as: "items",
-      foreignKey: "saleReturnId",
-      sourceKey: "id",
     });
   };
   return SaleReturn;
