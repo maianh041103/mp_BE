@@ -29,9 +29,4 @@ router.delete("/:id", authenticate, (req, res, next) => {
     next();
 }, authorize, transactionController.deleteTransaction);
 
-router.get("/total/:ballotType", authenticate, (req, res, next) => {
-    req.apiRole = [];
-    next();
-}, authorize, transactionController.getTotal);
-
 module.exports = router;

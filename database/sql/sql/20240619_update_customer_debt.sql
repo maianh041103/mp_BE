@@ -12,7 +12,7 @@ ALTER TABLE transactions
 ADD FOREIGN KEY (userId) REFERENCES users(id);
 
 ALTER TABLE transactions
-CHANGE COLUMN code VARCHAR(15) NULL ;
+MODIFY COLUMN code VARCHAR(15) NULL ;
 
 -- Update user_transactions
 ALTER TABLE user_transactions

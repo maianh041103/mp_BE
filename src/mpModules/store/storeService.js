@@ -124,6 +124,30 @@ export async function indexStores(params) {
     },
   };
 }
+export async function listStore(params) {
+  console.log(params.page);
+  let page = parseInt(params.page, 10) || 1;
+  let limit = parseInt(params.limit, 10) || 10;
+
+console.log(page);
+  const offset = (page - 1) * limit;
+
+  // Thực hiện truy vấn với phân trang
+  const { count, rows } = await models.Store.findAndCountAll({
+    offset,
+    limit
+  });
+
+  return {
+    success: true,
+    data: {
+      items: rows,
+      totalItem: count,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page
+    },
+  };
+}
 
 export async function createStore(payload) {
   const newStore = await models.Store.create(payload);

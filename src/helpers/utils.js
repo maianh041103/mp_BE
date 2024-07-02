@@ -97,6 +97,13 @@ export function formatEndDateTime(date) {
   return moment(date).endOf("day").format("YYYY-MM-DD HH:mm:ss");
 }
 
+export function formatStartDateTime(date) {
+  if (!date || !moment(new Date(date)).isValid()) return null;
+  if (moment(date, "YYYY-MM-DD HH:mm:ss", true).isValid())
+    return moment(date).format("YYYY-MM-DD HH:mm:ss");
+  return moment(date).startOf("day").format("YYYY-MM-DD HH:mm:ss");
+}
+
 export function isTimeLowerThanNow(date) {
   if (moment(new Date(date)).unix() <= moment().unix()) return true;
   return false;
@@ -325,7 +332,7 @@ export function getReportType(days) {
     return 'hour'
   } else if (0 < days && days <= 31) {
     return 'day'
-  } else if (31 < days && days <=366) {
+  } else if (31 < days && days <= 366) {
     return 'month'
   }
   return 'year'

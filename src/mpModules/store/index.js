@@ -6,6 +6,7 @@ const {
   createStoreController,
   updateStoreController,
   // deleteStoreController,
+  ListStoresController
 } = require("./storeController");
 const { createValidator } = require("./storeValidator");
 const express = require("express");
@@ -57,5 +58,9 @@ router.patch(
 //   authorize,
 //   deleteStoreController
 // );
-
+router.get(
+  "/list/getStore",
+  
+  ListStoresController
+);
 module.exports = router;

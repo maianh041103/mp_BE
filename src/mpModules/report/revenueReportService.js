@@ -208,10 +208,7 @@ async function getReportByRevenue(from, to, branchId) {
     attributes: [
       [sequelize.literal(groupBy), 'title'],
       [sequelize.fn('SUM', sequelize.col('orderProducts.price')), 'totalPrice'],
-      [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscount'],
-      [sequelize.fn('SUM', sequelize.col('totalPrice')), 'totalRevenue'],
-      [sequelize.fn('SUM', sequelize.col('orderProducts.primePrice')), 'totalPrime'],
-      [sequelize.literal('SUM(totalPrice) - SUM(orderProducts.primePrice)'), 'profit']
+      [sequelize.fn('SUM', sequelize.literal('orderProducts.primePrice * orderProducts.quantityBaseUnit')), 'totalPrime'],
     ],
     include: [
       {
@@ -223,6 +220,24 @@ async function getReportByRevenue(from, to, branchId) {
     where: getFilter(from, to, branchId),
     group: sequelize.literal(groupBy)
   })
+
+  const res2 = await models.Order.findAll({
+    attributes: [
+      [sequelize.literal(groupBy), 'title'],
+      [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscount'],
+      [sequelize.fn('SUM', sequelize.col('totalPrice')), 'totalRevenue']
+    ],
+    where: getFilter(from, to, branchId),
+    group: sequelize.literal(groupBy)
+  });
+
+  for (let i = 0; i < res.length; i++) {
+    res[i].dataValues.totalPrime = parseInt(res[i].dataValues.totalPrime);
+    res[i].dataValues.totalPrice = parseInt(res[i].dataValues.totalPrice);
+    res[i].dataValues.totalDiscount = parseInt(res2[i].dataValues.totalDiscount);
+    res[i].dataValues.totalRevenue = parseInt(res2[i].dataValues.totalRevenue);
+    res[i].dataValues.profit = res2[i].dataValues.totalRevenue - res[i].dataValues.totalPrime;
+  }
   return {
     success: true,
     data: {

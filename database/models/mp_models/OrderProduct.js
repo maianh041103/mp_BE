@@ -139,7 +139,7 @@ module.exports = (sequelize, DataTypes) => {
       as: "batches",
       foreignKey: "orderProductId",
       sourceKey: "id",
-    })
+    });
   };
   return OrderProduct;
 };
