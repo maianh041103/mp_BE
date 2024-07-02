@@ -154,6 +154,11 @@ export async function getReportByRevenue(params) {
     }
   }
 
+  console.log(moment(from).startOf("day"));
+
+  let startDay = `2024-06-20 00:00:00`;
+  let endDay = `2024-07-20 00:00:00`;
+
   const attributes = [
     [models.sequelize.literal('product.code'), 'title'],
     [models.sequelize.literal('product.code'), 'productCode'],
@@ -161,9 +166,11 @@ export async function getReportByRevenue(params) {
     [models.sequelize.literal('product.id'), 'productId'],
     [models.sequelize.literal('SUM(OrderProduct.quantity * productUnit.exchangeValue)'), 'totalSell'], //số lượng bán
     [models.sequelize.literal('SUM(OrderProduct.price)-SUM(OrderProduct.discount)'), 'totalOrderPrice'], //doanh thu
-    //[models.sequelize.literal('SUM(saleReturnItem.quantity)'), 'returnQuality'],
-    [models.sequelize.literal('SUM(saleReturn.totalPrice)-SUM(saleReturn.returnFee)'), 'returnValue'],
-    [models.sequelize.literal('SUM(OrderProduct.price)-SUM(OrderProduct.discount) - (SUM(saleReturn.totalPrice)-SUM(saleReturn.returnFee))'), 'totalRevenue'], //doanh thu thuần
+    [models.sequelize.literal(`(SELECT SUM(sri.quantity) FROM sale_return_item AS sri WHERE sri.productUnitId = productUnit.id 
+      AND sri.deletedAt IS NULL AND sri.createdAt >= '${startDay}' AND sri.createdAt <= '${endDay}'
+      AND branchId ='${branchId}')`), 'returnQuality'],
+    //[models.sequelize.literal('SUM(saleReturn.totalPrice)-SUM(saleReturn.returnFee)'), 'returnValue'],
+    //[models.sequelize.literal('SUM(OrderProduct.price)-SUM(OrderProduct.discount) - (SUM(saleReturn.totalPrice)-SUM(saleReturn.returnFee))'), 'totalRevenue'], //doanh thu thuần
   ]
   const summaryAttribute = [
     [models.sequelize.literal('SUM(OrderProduct.quantity * productUnit.exchangeValue)'), 'totalSell'],
@@ -175,7 +182,7 @@ export async function getReportByRevenue(params) {
   const includes = [
     {
       model: models.ProductUnit,
-      attributes: [],
+      attributes: ["id"],
       as: 'productUnit'
     },
     {
@@ -190,18 +197,13 @@ export async function getReportByRevenue(params) {
       where: {
         branchId
       }
-    },
-    {
-      model: models.SaleReturn,
-      attributes: ["id"],
-      as: 'saleReturn'
     }
   ]
   const [items, count] = await Promise.all([
     models.OrderProduct.findAll({
       attributes: attributes,
       include: includes,
-      group: ['product.code'],
+      group: ['product.id'],
       offset: +limit * (+page - 1),
       limit: +limit,
       where: orderWhere,
@@ -210,7 +212,7 @@ export async function getReportByRevenue(params) {
     await models.OrderProduct.count({
       include: includes,
       where: orderWhere,
-      group: ['product.code']
+      group: ['product.id']
     })
   ])
   const summaryObj = await models.OrderProduct.findAll({
