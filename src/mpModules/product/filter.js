@@ -10,70 +10,73 @@ import { getInventory } from "../inventory/inventoryService";
 const _ = require("lodash");
 
 export function getInventoryInclude(branchId, inventoryType) {
-    const invInclude = {
-        model: models.Inventory,
-        as: 'inventories',
-        required: true,
-        where: {
-            branchId: branchId,
-        }
+  const invInclude = {
+    model: models.Inventory,
+    as: 'inventories',
+    required: true,
+    where: {
+      branchId: branchId,
     }
-    const type = parseInt(inventoryType);
-    if (type === 1) {
-        invInclude.where['quantity'] = {
-            [Op.lte]: models.Sequelize.col("Product.minInventory")
-        }
-    } else if (type === 2) {
-        invInclude.where['quantity'] = {
-            [Op.gte]: models.Sequelize.col("Product.maxInventory")
-        }
-    } else if (type === 3) {
-        invInclude.where['quantity'] = {
-            [Op.gt]: 0
-        }
-    } else if (type === 4) {
-        invInclude.where['quantity'] = {
-            [Op.lte]: 0
-        }
+  }
+  const type = parseInt(inventoryType);
+  if (type === 1) {
+    invInclude.where['quantity'] = {
+      [Op.lte]: models.Sequelize.col("Product.minInventory")
     }
-    return invInclude;
+  } else if (type === 2) {
+    invInclude.where['quantity'] = {
+      [Op.gte]: models.Sequelize.col("Product.maxInventory")
+    }
+  } else if (type === 3) {
+    invInclude.where['quantity'] = {
+      [Op.gt]: 0
+    }
+  } else if (type === 4) {
+    invInclude.where['quantity'] = {
+      [Op.lte]: 0
+    }
+  }
+  return invInclude;
 }
 
 export async function queryFilter(params) {
-    const {
-        page = 1,
-        limit = 20,
-        keyword = "",
-        name = "",
-        type,
-        status,
-        productCategoryId,
-        groupProductId,
-        statusArray = [],
-        unitId,
-        manufactureId,
-        notEqualManufactureId,
-        listProductId = [],
-        notEqualId,
-        order = [["id", "DESC"]],
-        tag,
-        newest,
-        bestseller,
-        az,
-        za,
-        price,
-        raw = false,
-        storeId,
-        isSale,
-        branchId,
-        inventoryType
-    } = params;
+  const {
+    page = 1,
+    limit = 20,
+    keyword = "",
+    name = "",
+    type,
+    status,
+    productCategoryId,
+    groupProductId,
+    statusArray = [],
+    unitId,
+    manufactureId,
+    notEqualManufactureId,
+    listProductId = [],
+    notEqualId,
+    order = [["id", "DESC"]],
+    tag,
+    newest,
+    bestseller,
+    az,
+    za,
+    price,
+    raw = false,
+    storeId,
+    isSale,
+    branchId,
+    inventoryType
+  } = params;
 
   const query = {
     offset: +limit * (+page - 1),
     limit: +limit,
     order,
   };
+
+  const include = [...productIncludes];
+  const attributes = [...productAttributes];
 
   if (raw) query.raw = true;
 
@@ -126,9 +129,6 @@ export async function queryFilter(params) {
       [Op.ne]: notEqualId,
     };
   }
-
-    const include = [...productIncludes];
-    const attributes = [...productAttributes];
 
   if (raw) query.raw = true;
 
@@ -191,104 +191,104 @@ export async function queryFilter(params) {
       },
     };
   }
-    if (notEqualId) {
-        where.id = {
-            [Op.ne]: notEqualId,
-        };
-    }
+  if (notEqualId) {
+    where.id = {
+      [Op.ne]: notEqualId,
+    };
+  }
 
-    if (notEqualManufactureId) {
-        where.manufactureId = {
-            [Op.ne]: notEqualManufactureId,
-        };
-    }
+  if (notEqualManufactureId) {
+    where.manufactureId = {
+      [Op.ne]: notEqualManufactureId,
+    };
+  }
 
-    if (_.isArray(statusArray) && statusArray.length) {
-        where.status = {
-            [Op.in]: statusArray,
-        };
-    }
+  if (_.isArray(statusArray) && statusArray.length) {
+    where.status = {
+      [Op.in]: statusArray,
+    };
+  }
 
-    if (_.isArray(unitId) && unitId.length) {
-        where.unitId = {
-            [Op.in]: unitId,
-        };
-    }
+  if (_.isArray(unitId) && unitId.length) {
+    where.unitId = {
+      [Op.in]: unitId,
+    };
+  }
 
-    if (_.isArray(manufactureId) && manufactureId.length) {
-        where.manufactureId = {
-            [Op.in]: manufactureId,
-        };
-    }
+  if (_.isArray(manufactureId) && manufactureId.length) {
+    where.manufactureId = {
+      [Op.in]: manufactureId,
+    };
+  }
 
-    if (_.isArray(listProductId) && listProductId.length) {
-        where.id = listProductId;
-    }
+  if (_.isArray(listProductId) && listProductId.length) {
+    where.id = listProductId;
+  }
 
-    if (tag) {
-        const tagToProducts = await tagToProductFilter({ tag });
-        where.id = tagToProducts;
+  if (tag) {
+    const tagToProducts = await tagToProductFilter({ tag });
+    where.id = tagToProducts;
+  }
+  if (keyword) {
+    let productId = null;
+    const productIdByCodeProductUnit = ((await models.ProductUnit.findOne({
+      where: {
+        code: {
+          [Op.like]: `%${keyword.trim()}%`,
+        },
+        storeId: storeId
+      }
+    })));
+    if (productIdByCodeProductUnit) {
+      productId = productIdByCodeProductUnit.productId;
     }
-    if (keyword) {
-        let productId = null;
-        const productIdByCodeProductUnit = ((await models.ProductUnit.findOne({
-            where: {
-                code: {
-                    [Op.like]: `%${keyword.trim()}%`,
-                },
-                storeId: storeId
-            }
-        })));
-        if (productIdByCodeProductUnit) {
-            productId = productIdByCodeProductUnit.productId;
-        }
-        where[Op.or] = {
-            name: {
-                [Op.like]: `%${keyword.trim()}%`,
-            },
-            slug: {
-                [Op.like]: `%${keyword.trim()}%`,
-            }
-        };
-        if (productId) {
-            where[Op.or].id = productId;
-        }
+    where[Op.or] = {
+      name: {
+        [Op.like]: `%${keyword.trim()}%`,
+      },
+      slug: {
+        [Op.like]: `%${keyword.trim()}%`,
+      }
+    };
+    if (productId) {
+      where[Op.or].id = productId;
     }
+  }
 
-    if (name) {
-        where[Op.or] = {
-            name: {
-                [Op.like]: `%${keyword.trim()}%`,
-            },
-        };
-    }
+  if (name) {
+    where[Op.or] = {
+      name: {
+        [Op.like]: `%${keyword.trim()}%`,
+      },
+    };
+  }
 
-    if (newest) {
-        query.order = [["id", "DESC"]];
-    } else if (bestseller) {
-        where.id = _.get(
-            await productStatisticFilter({
-                limit: 20,
-                orderBy: [["sold", "DESC"]],
-            }),
-            "statistics",
-            []
-        ).map((o) => o.productId);
-    } else if (az) {
-        query.order = [["name", "ASC"]];
-    } else if (za) {
-        query.order = [["name", "DESC"]];
-    } else if (price == "desc") {
-        query.order = [["cost", "DESC"]];
-    } else if (price == "asc") {
-        query.order = [["cost", "ASC"]];
-    }
+  if (newest) {
+    query.order = [["id", "DESC"]];
+  } else if (bestseller) {
+    where.id = _.get(
+      await productStatisticFilter({
+        limit: 20,
+        orderBy: [["sold", "DESC"]],
+      }),
+      "statistics",
+      []
+    ).map((o) => o.productId);
+  } else if (az) {
+    query.order = [["name", "ASC"]];
+  } else if (za) {
+    query.order = [["name", "DESC"]];
+  } else if (price == "desc") {
+    query.order = [["cost", "DESC"]];
+  } else if (price == "asc") {
+    query.order = [["cost", "ASC"]];
+  }
 
-    if (branchId && inventoryType) {
-        const invInclude = getInventoryInclude(branchId, inventoryType);
-        include.push(invInclude)
-    }
-    query.where = where;
+  if (branchId && inventoryType) {
+    const invInclude = getInventoryInclude(branchId, inventoryType);
+    include.push(invInclude)
+  }
+  query.where = where;
 
-    return query;
+  return query;
 }
