@@ -140,12 +140,6 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "orderProductId",
       sourceKey: "id",
     });
-
-    OrderProduct.hasMany(models.SaleReturn, {
-      as: "saleReturn",
-      foreignKey: "saleReturnId",
-      sourceKey: "id"
-    })
   };
   return OrderProduct;
 };
