@@ -136,6 +136,12 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "customerId",
       targetKey: "id",
     });
+
+    SaleReturn.hasMany(models.SaleReturnItem, {
+      as: "items",
+      foreignKey: "saleReturnId",
+      sourceKey: "id"
+    })
   };
   return SaleReturn;
 };
