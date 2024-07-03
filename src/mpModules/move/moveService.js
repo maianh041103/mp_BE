@@ -79,7 +79,18 @@ async function createMove(moveReq, transaction) {
         code: move.dataValues.code
     }, {
         transaction: transaction
+    });
+
+    await models.UserLog.create({
+        userId: moveReq.movedBy,
+        type: userLogContant.TYPE.MOVE,
+        amount: totalPrice,
+        branchId: moveReq.toBranchId,
+        code: move.dataValues.code
+    }, {
+        transaction: transaction
     })
+
     return move
 }
 
