@@ -890,7 +890,6 @@ async function handleCreateOrder(order, loginUser) {
       branchId: newOrder.branchId,
       code: code
     }, { transaction: t })
-    await createOrderPayment(newOrder, t)
     for (const orderProduct of productItems) {
       const weight = orderProduct.price / totalItemPrice
       await models.OrderProduct.update(
@@ -907,7 +906,7 @@ async function handleCreateOrder(order, loginUser) {
     const typeTransaction =
       await transactionService.generateTypeTransactionOrder(loginUser.storeId)
     //Tạo transaction
-    await models.Transaction.create(
+    const newTransaction = await models.Transaction.create(
       {
         code: `TTHD${idString.padStart(9, '0')}`,
         paymentDate: new Date(),
@@ -929,8 +928,9 @@ async function handleCreateOrder(order, loginUser) {
         transaction: t
       }
     )
-
     //End tạo transaction
+    newOrder.transactionId = newTransaction.id;
+    await createOrderPayment(newOrder, t)
 
     console.log('Total price ' + newOrder.totalPrice)
     //Tích điểm

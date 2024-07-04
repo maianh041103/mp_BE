@@ -536,24 +536,9 @@ export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
       code: generatePurchaseReturnCode(newPurchaseReturn.id)
     }, { transaction: t })
 
-    //Create Payment
-    await models.Payment.create({
-      isReturn: true,
-      amount: newPurchaseReturn.paid,
-      code: generatePurchaseReturnCode(newPurchaseReturn.id),
-      createdBy: loginUser.id,
-      paymentMethod: newPurchaseReturn.paymentType,
-      status: 'SUCCEED',
-      supplierId: newPurchaseReturn.supplierId,
-      totalAmount: newPurchaseReturn.totalPrice
-    }, {
-      transaction: t
-    })
-
-
     //Create transaction
     const typeTransaction = await transactionService.generateTypeTransactionPurchaseReturn(loginUser.storeId);
-    await models.Transaction.create({
+    const newTransaction = await models.Transaction.create({
       code: generatePurchaseReturnCode(newPurchaseReturn.id),
       paymentDate: new Date(),
       ballotType: transactionContant.BALLOTTYPE.INCOME,
@@ -570,6 +555,21 @@ export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
       transaction: t
     });
     //End create transaction
+
+    //Create Payment
+    await models.Payment.create({
+      isReturn: true,
+      amount: newPurchaseReturn.paid,
+      code: generatePurchaseReturnCode(newPurchaseReturn.id),
+      createdBy: loginUser.id,
+      paymentMethod: newPurchaseReturn.paymentType,
+      status: 'SUCCEED',
+      supplierId: newPurchaseReturn.supplierId,
+      totalAmount: newPurchaseReturn.totalPrice,
+      transactionId: newTransaction.id
+    }, {
+      transaction: t
+    })
   })
 
   const { data: refreshPurchaseReturn } = await readPurchaseReturn(
