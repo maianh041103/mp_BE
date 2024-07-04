@@ -558,7 +558,7 @@ export async function handleCreateInbound(inbound, loginUser) {
 
     //Create transaction
     const typeTransaction = await transactionService.generateTypeTransactionInbound(loginUser.storeId);
-    await models.Transaction.create({
+    const newTransaction = await models.Transaction.create({
       code: generateInboundCode(newInbound.id),
       paymentDate: new Date(),
       ballotType: transactionContant.BALLOTTYPE.EXPENSES,
@@ -575,6 +575,7 @@ export async function handleCreateInbound(inbound, loginUser) {
       transaction: t
     });
     //End transaction
+    newInbound.transactionId = newTransaction.id;
     await inboundPaymentService.createInboundPayment(newInbound, t);
 
     if (inbound.status === inboundStatus.SUCCEED) {
