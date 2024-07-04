@@ -239,8 +239,9 @@ export async function createProduct(product, loginUser) {
     }
 
     //Tạo mới kiểm kho
+    let newInventoryCheking;
     if (product.inventory) {
-      let newInventoryCheking = await models.InventoryChecking.create({
+      newInventoryCheking = await models.InventoryChecking.create({
         userCreateId: product.createdBy,
         branchId: product.branchId
       }, {
