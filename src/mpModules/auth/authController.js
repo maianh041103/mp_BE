@@ -5,6 +5,9 @@ const {
   updatePassword,
   readUserProfile,
   updateUserProfile,
+  checkEmail,
+  checkOtp,
+  changePassword
 } = require("./authService");
 const {
   respondWithError,
@@ -79,6 +82,54 @@ export async function updateUserProfileController(req, res) {
   try {
     const { loginUser = {} } = req;
     const result = await updateUserProfile(loginUser.id, req.body);
+    if (result.success)
+      res.json(respondItemSuccess(result.data, result.message));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
+export async function fillEmailController(req, res) {
+  try {
+    const result = await checkEmail({
+      email: req.body.email
+    });
+    if (result.success)
+      res.json(respondItemSuccess(result.data, result.message));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
+export async function fillOtpController(req, res) {
+  try {
+    const result = await checkOtp({
+      email: req.body.email,
+      otp: req.body.otp
+    });
+    if (result.success)
+      res.json(respondItemSuccess(result.data, result.message));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
+export async function changePasswordFPController(req, res) {
+  try {
+    const result = await changePassword({
+      email: req.body.email,
+      newPassword: req.body.newPassword,
+      reNewPassword: req.body.reNewPassword,
+    });
     if (result.success)
       res.json(respondItemSuccess(result.data, result.message));
     else res.json(respondWithError(result.code, result.message, {}));

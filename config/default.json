@@ -36,5 +36,15 @@
     "port": 6379
   },
   "enableMpApi": true,
-  "enableCronJob": false
+  "enableCronJob": false,
+  "email": {
+    "service": "gmail",
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "secure": false,
+    "auth": {
+      "user": "nguyenmaianh041103@gmail.com",
+      "pass": "lqim btrd weiz iqzk"
+    }
+  }
 }
