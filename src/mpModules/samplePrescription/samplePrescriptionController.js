@@ -17,7 +17,6 @@ export async function indexController(req, res) {
   try {
     const { loginUser = {} } = req;
     const result = await indexService({
-      branchId: loginUser.branchId,
       ...req.query,
       storeId: loginUser.storeId,
     });
