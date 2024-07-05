@@ -55,37 +55,42 @@ const userIncludes = [
     ],
   },
   {
-    model: models.Branch,
-    as: "branch",
-    attributes: [
-      "id",
-      "name",
-      "phone",
-      "code",
-      "zipCode",
-      "provinceId",
-      "districtId",
-      "wardId",
-      "isDefaultBranch",
-      "createdAt",
-    ],
-    include: [
-      {
-        model: models.Province,
-        as: "province",
-        attributes: ["id", "name"],
-      },
-      {
-        model: models.District,
-        as: "district",
-        attributes: ["id", "name"],
-      },
-      {
-        model: models.Ward,
-        as: "ward",
-        attributes: ["id", "name"],
-      },
-    ],
+    model: models.UserBranch,
+    as: "branches",
+    attributes: ["id"],
+    include: [{
+      model: models.Branch,
+      as: "branch",
+      attributes: [
+        "id",
+        "name",
+        "phone",
+        "code",
+        "zipCode",
+        "provinceId",
+        "districtId",
+        "wardId",
+        "isDefaultBranch",
+        "createdAt",
+      ],
+      include: [
+        {
+          model: models.Province,
+          as: "province",
+          attributes: ["id", "name"],
+        },
+        {
+          model: models.District,
+          as: "district",
+          attributes: ["id", "name"],
+        },
+        {
+          model: models.Ward,
+          as: "ward",
+          attributes: ["id", "name"],
+        },
+      ],
+    }]
   },
   {
     model: models.Role,
@@ -123,7 +128,6 @@ export async function login(credentials) {
       "phone",
       "roleId",
       "storeId",
-      "branchId",
       "position",
     ],
     include: userIncludes,
@@ -155,8 +159,7 @@ export async function login(credentials) {
       userId: user.id,
       phone: user.phone,
       email: user.email,
-      storeId: user.storeId,
-      branchId: user.branchId,
+      storeId: user.storeId
     },
     "sign"
   );
@@ -165,8 +168,7 @@ export async function login(credentials) {
       userId: user.id,
       phone: user.phone,
       email: user.email,
-      storeId: user.storeId,
-      branchId: user.branchId,
+      storeId: user.storeId
     },
     "refresh"
   );
@@ -178,6 +180,7 @@ export async function login(credentials) {
     fullName: user.fullName,
     position: user.position,
     store: user.store,
+    branches: user.branches,
     avatar: user.avatar,
     birthday: user.birthday,
     gender: user.gender,
@@ -225,7 +228,7 @@ export async function createAccount(credentials) {
   const findUserByStoreId = await models.User.findOne({
     where: {
       storeId,
-      branchId: null
+      isAdmin: true
     },
     raw: true,
   });
@@ -300,6 +303,7 @@ export async function createAccount(credentials) {
     position: userPositions.ADMIN,
     storeId,
     roleId: newRole.id,
+    isAdmin: true
   });
 
   return {

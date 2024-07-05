@@ -7,7 +7,7 @@ const { orderStatuses } = require("../order/orderConstant");
 export async function indexChartProductsReport(params, loginUser) {
   const {
     status = orderStatuses.SUCCEED,
-    branchId = loginUser.branchId,
+    branchId,
     productType = "",
     limit = 10,
     type = "quantity", // "revenue"
