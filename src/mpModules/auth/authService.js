@@ -16,6 +16,10 @@ const {
 const { createUserTracking } = require("../behavior/behaviorService");
 const { isExistStore } = require("../store/storeService");
 const { userPositions } = require("../user/userConstant.js");
+const otpGenerate = require("../../helpers/otpGenerate.js");
+const nodemailer = require("nodemailer");
+const config = require("../../../config/default.json");
+const { email } = require("./email.js");
 
 const userIncludes = [
   {
@@ -444,4 +448,94 @@ export async function updateUserProfile(userId, payload) {
   return {
     success: true,
   };
+}
+
+const transporter = nodemailer.createTransport(
+  config.email
+);
+
+
+export async function checkEmail(params) {
+  try {
+    const user = await models.User.findOne({
+      where: {
+        email: params.email
+      }
+    });
+    if (!user) {
+      return {
+        error: true,
+        code: HttpStatusCode.NOT_FOUND,
+        message: "Tài khoản không được tìm thấy",
+      };
+    }
+    const otp = otpGenerate.otp(6);
+    await models.OtpEmail.create({
+      email: params.email,
+      status: "active",
+      otp: otp
+    });
+    const info = await transporter.sendMail({
+      from: 'nguyenmaianh041103@gmail.com',
+      to: params.email,
+      subject: "Lấy lại mật khẩu Mephar",
+      text: `Text...`,
+      html: email(otp),
+    });
+  } catch (error) {
+    return {
+      error: true,
+      code: HttpStatusCode.NOT_FOUND,
+      message: "Lỗi trong quá trình gửi mail",
+    }
+  }
+
+  return {
+    success: true,
+    data: null
+  }
+}
+
+export async function checkOtp(params) {
+  const otp = params.otp;
+  const email = params.email;
+  const otpExists = await models.OtpEmail.findOne({
+    where: {
+      otp, email,
+      status: "active"
+    }
+  });
+  if (!otpExists) {
+    return {
+      error: true,
+      code: HttpStatusCode.NOT_FOUND,
+      message: "Mã OTP không hợp lệ",
+    };
+  }
+  return {
+    success: true,
+    data: null
+  }
+}
+
+export async function changePassword(params) {
+  const { email, newPassword, reNewPassword } = params;
+  if (newPassword != reNewPassword) {
+    return {
+      error: true,
+      code: HttpStatusCode.NOT_FOUND,
+      message: "Mật khẩu nhập lại không đúng",
+    }
+  }
+  await models.User.update({
+    password: hashPassword(newPassword)
+  }, {
+    where: {
+      email: email
+    }
+  })
+  return {
+    success: true,
+    data: null
+  }
 }
