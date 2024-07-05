@@ -36,7 +36,7 @@ const inventoryCheckingIncludes = [
             {
                 model: models.ProductUnit,
                 as: "productUnit",
-                attributes: ["id", "unitName", "exchangeValue", "price", "isBaseUnit"],
+                attributes: ["code", "id", "unitName", "exchangeValue", "price", "isBaseUnit"],
                 include: [
                     {
                         model: models.Product,
