@@ -101,7 +101,6 @@ export async function queryFilter(params) {
   if (_.isArray(order) && order.length) {
     query.order = order;
   }
-
   const where = {};
 
   if (storeId) {
@@ -124,73 +123,6 @@ export async function queryFilter(params) {
     where.productCategoryId = productCategoryId;
   }
 
-  if (notEqualId) {
-    where.id = {
-      [Op.ne]: notEqualId,
-    };
-  }
-
-  if (raw) query.raw = true;
-
-  if (_.isArray(statusArray) && statusArray.length) {
-    where.status = {
-      [Op.in]: statusArray,
-    };
-  }
-
-  if (_.isArray(unitId) && unitId.length) {
-    where.unitId = {
-      [Op.in]: unitId,
-    };
-  }
-
-  if (_.isArray(manufactureId) && manufactureId.length) {
-    where.manufactureId = {
-      [Op.in]: manufactureId,
-    };
-  }
-
-  if (_.isArray(listProductId) && listProductId.length) {
-    where.id = listProductId;
-  }
-
-  if (tag) {
-    const tagToProducts = await tagToProductFilter({ tag });
-    where.id = tagToProducts;
-  }
-  if (keyword) {
-    let productId = null;
-    const productIdByCodeProductUnit = await models.ProductUnit.findOne({
-      where: {
-        code: {
-          [Op.like]: `%${keyword.trim()}%`,
-        },
-        storeId: storeId,
-      },
-    });
-    if (productIdByCodeProductUnit) {
-      productId = productIdByCodeProductUnit.productId;
-    }
-    where[Op.or] = {
-      name: {
-        [Op.like]: `%${keyword.trim()}%`,
-      },
-      slug: {
-        [Op.like]: `%${keyword.trim()}%`,
-      },
-    };
-    if (productId) {
-      where[Op.or].id = productId;
-    }
-  }
-
-  if (name) {
-    where[Op.or] = {
-      name: {
-        [Op.like]: `%${keyword.trim()}%`,
-      },
-    };
-  }
   if (notEqualId) {
     where.id = {
       [Op.ne]: notEqualId,
@@ -248,6 +180,9 @@ export async function queryFilter(params) {
       },
       slug: {
         [Op.like]: `%${keyword.trim()}%`,
+      },
+      barCode: {
+        [Op.like]: `%${keyword.trim()}%`
       }
     };
     if (productId) {
