@@ -90,6 +90,14 @@ module.exports = (sequelize, Sequelize) => {
         allowNull: true,
         type: Sequelize.INTEGER(2).UNSIGNED,
       },
+      lat: {
+        allowNull: true,
+        type: Sequelize.STRING
+      },
+      lng: {
+        allowNull: true,
+        type: Sequelize.STRING
+      },
       // Loại tài khoản
       type: {
         allowNull: true,
