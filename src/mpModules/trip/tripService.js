@@ -171,14 +171,29 @@ module.exports.createTrip = async (params) => {
 }
 
 module.exports.getListTrip = async (params) => {
-    const { storeId } = params;
+    const { storeId, page = 1, limit = 20, keyword } = params;
+    let where = {};
+    if (keyword) {
+        where = {
+            [Op.or]: {
+                name: {
+                    [Op.like]: `%${keyword}%`
+                },
+                code: {
+                    [Op.like]: `%${keyword}%`
+                }
+            }
+        }
+    }
+    where.storeId = storeId;
+
     const rows = await models.Trip.findAll({
         attributes: tripAttributes,
         include: tripIncludes,
-        where: {
-            storeId
-        },
-        orderBy: [["createdAt", "DESC"]]
+        where,
+        orderBy: [["createdAt", "DESC"]],
+        limit: parseInt(limit),
+        offset: parseInt(parseInt(limit) * (parseInt(page) - 1))
     });
     const count = await models.Trip.count({
         where: {

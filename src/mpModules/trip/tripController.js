@@ -22,7 +22,8 @@ module.exports.createTrip = async (req, res) => {
 module.exports.getTrips = async (req, res) => {
     try {
         const { loginUser = {} } = req;
-        const result = await tripService.getListTrip({ storeId: loginUser.storeId });
+        const { limit, page, keyword } = req.query;
+        const result = await tripService.getListTrip({ storeId: loginUser.storeId, limit, page, keyword });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {
