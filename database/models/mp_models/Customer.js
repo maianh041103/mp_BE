@@ -110,7 +110,7 @@ module.exports = (sequelize, Sequelize) => {
       },
       status: {
         allowNull: false,
-        type: Sequelize.ENUM("draft", "active", "inactive"),
+        type: Sequelize.ENUM("draft", "active", "inactive", "potential"),
         defaultValue: "active",
       },
       lastLoginAt: {
