@@ -52,6 +52,7 @@ import typeTransactionRouter from "../../src/mpModules/typeTransaction/index.js"
 import userTransactionRouter from "../../src/mpModules/userTransaction/index.js";
 import customerNoteRouter from "../../src/mpModules/customerNote/index.js";
 import userLogRouter from "../../src/mpModules/userLog/index.js";
+import tripRouter from "../../src/mpModules/trip/index.js";
 
 const mpRouterManager = function (app) {
   app.use("/mp/api/address", addressApiRouter);
@@ -107,6 +108,7 @@ const mpRouterManager = function (app) {
   app.use("/mp/api/user-transaction", userTransactionRouter);
   app.use("/mp/api/customer-note", customerNoteRouter);
   app.use("/mp/api/user_log", userLogRouter);
+  app.use("/mp/api/trip", tripRouter);
 };
 
 module.exports = mpRouterManager;

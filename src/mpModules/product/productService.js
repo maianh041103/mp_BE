@@ -212,35 +212,10 @@ export async function createProduct(product, loginUser) {
       }),
     }, { transaction: t });
     await newInventory(product.branchId, newProduct.id, product.inventory, t)
-    if (product.inventory) {
-      await createWarehouseCard({
-        code: "",
-        type: warehouseStatus.ADJUSTMENT,
-        partner: "",
-        productId: newProduct.id,
-        branchId: product.branchId,
-        changeQty: product.inventory,
-        remainQty: product.inventory,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }, t)
-    }
-    if (!product.code) {
-      const nextValue = await getNextValue(product.storeId, product.type)
-      const code = generateProductCode(product.type, nextValue)
-      product.code = code
-      if (!product.barCode) {
-        product.barCode = code
-      }
-      await models.Product.update(
-        { code: code, barCode: product.barCode },
-        { where: { id: newProduct.id }, transaction: t }
-      );
-    }
 
-    //Tạo mới kiểm kho
     let newInventoryCheking;
-    if (product.inventory) {
+
+    if (product.inventory && product.isBatchExpireControl == false) {
       newInventoryCheking = await models.InventoryChecking.create({
         userCreateId: product.createdBy,
         branchId: product.branchId
@@ -255,8 +230,31 @@ export async function createProduct(product, loginUser) {
         },
         transaction: t
       });
+
+      await createWarehouseCard({
+        code: generateCode.generateCode("KK", newInventoryCheking.id),
+        type: warehouseStatus.ADJUSTMENT,
+        partner: "",
+        productId: newProduct.id,
+        branchId: product.branchId,
+        changeQty: product.inventory,
+        remainQty: product.inventory,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }, t);
     }
-    //End tạo mới kiểm kho
+    if (!product.code) {
+      const nextValue = await getNextValue(product.storeId, product.type)
+      const code = generateProductCode(product.type, nextValue)
+      product.code = code
+      if (!product.barCode) {
+        product.barCode = code
+      }
+      await models.Product.update(
+        { code: code, barCode: product.barCode },
+        { where: { id: newProduct.id }, transaction: t }
+      );
+    }
 
     // add product units
     const productUnits = _.get(product, "productUnits", []).map((item) => ({
@@ -291,7 +289,7 @@ export async function createProduct(product, loginUser) {
       const newProductUnit = await models.ProductUnit.create(productUnit, {
         transaction: t
       });
-      if (newProductUnit.isBaseUnit == true && product.inventory) {
+      if (newProductUnit.isBaseUnit == true && product.inventory && product.isBatchExpireControl) {
         await models.InventoryCheckingProduct.create({
           inventoryCheckingId: newInventoryCheking.id,
           productUnitId: newProductUnit.id,

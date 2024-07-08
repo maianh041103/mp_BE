@@ -109,7 +109,9 @@ export async function createController(req, res) {
       storeId: loginUser.storeId,
       createdBy: loginUser.id,
       createdAt: new Date(),
-      note: _.get(req.body, "note", "")
+      note: _.get(req.body, "note", ""),
+      lat: _.get(req.body, "lat", ""),
+      lng: _.get(req.body, "lng", "")
     };
     const result = await createCustomer(customer, loginUser);
     if (result.success) res.json(respondItemSuccess(result.data));
@@ -143,6 +145,8 @@ export async function updateController(req, res) {
       districtId: _.get(req.body, "districtId", null),
       provinceId: _.get(req.body, "provinceId", null),
       note: _.get(req.body, "note", null),
+      lat: _.get(req.body, "lat", ""),
+      lng: _.get(req.body, "lng", ""),
       ...(status && { status }),
       updatedBy: loginUser.id,
       updatedAt: new Date(),
