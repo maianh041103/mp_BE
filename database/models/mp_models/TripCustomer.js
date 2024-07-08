@@ -17,14 +17,6 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.INTEGER.UNSIGNED,
             allowNull: false
         },
-        lat: {
-            type: DataTypes.STRING(100),
-            allowNull: false
-        },
-        lng: {
-            type: DataTypes.STRING(100),
-            allowNull: false
-        },
         status: {
             type: DataTypes.ENUM(TRIPSTATUS.VISITED, TRIPSTATUS.SKIP, TRIPSTATUS.NOT_VISITED),
             allowNull: true,

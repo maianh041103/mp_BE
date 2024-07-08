@@ -31,11 +31,11 @@ const tripIncludes = [
     {
         model: models.TripCustomer,
         as: "tripCustomer",
-        attributes: ["id", "customerId", "lat", "lng", "status"],
+        attributes: ["id", "customerId", "status"],
         include: [{
             model: models.Customer,
             as: "customer",
-            attributes: ["fullName"]
+            attributes: ["fullName", "lat", "lng"]
         }]
     }
 ]
@@ -153,8 +153,6 @@ module.exports.createTrip = async (params) => {
             await models.TripCustomer.create({
                 tripId: newTrip.id,
                 customerId: id,
-                lat: customer.lat,
-                lng: customer.lng,
                 status: tripContant.TRIPSTATUS.NOT_VISITED
             }, {
                 transaction: t
@@ -222,7 +220,7 @@ module.exports.getDetailTrip = async (params) => {
     });
     let tripCustomer = trip.tripCustomer || [];
     let listPoint = tripCustomer.map(item => {
-        return `${item.lat},${item.lng}`;
+        return `${item.customer.lat},${item.customer.lng}`;
     });
 
     let res = await sortMap(listPoint);
@@ -299,8 +297,6 @@ module.exports.updateTrip = async (params) => {
                 await models.TripCustomer.create({
                     tripId: id,
                     customerId: customerId,
-                    lat: customer.lat,
-                    lng: customer.lng,
                     status: tripContant.TRIPSTATUS.NOT_VISITED
                 }, {
                     transaction: t
