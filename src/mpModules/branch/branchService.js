@@ -85,6 +85,7 @@ function processQuery(params) {
     storeId,
     branchId,
     status,
+    userId
   } = params;
   const query = {
     attributes,
@@ -125,6 +126,12 @@ function processQuery(params) {
   if (wardId) {
     where.wardId = wardId;
   }
+  if (userId) {
+
+    where.id = {
+      [Op.in]: [Sequelize.literal(`SELECT branchId FROM user_branches WHERE user_branches.userId = ${userId}`)]
+    }
+  }
   if (typeof status !== "undefined") {
     where.status = status;
   }
@@ -152,6 +159,24 @@ export async function isExistBranchStore(branchId, storeId) {
 }
 
 export async function indexBranches(params) {
+  if (params.userId) {
+    const userExists = await models.User.findOne({
+      where: {
+        id: params.userId,
+        storeId: params.storeId
+      }
+    });
+    if (!userExists) {
+      return {
+        error: true,
+        code: HttpStatusCode.BAD_REQUEST,
+        message: `Người dùng có id là ${params.userId} không tồn tại trong cửa hàng ${params.storeId}`,
+      };
+    }
+    if (userExists.isAdmin == true) {
+      delete params.userId;
+    }
+  }
   const { rows, count } = await models.Branch.findAndCountAll(
     processQuery(params)
   );
@@ -303,5 +328,5 @@ export async function deleteBranch(id, loginUser) {
 }
 
 export async function getAllBranchFromStore(storeId) {
-  return await models.Branch.findAll({attributes: ["id"], where: {storeId: storeId}})
+  return await models.Branch.findAll({ attributes: ["id"], where: { storeId: storeId } })
 }

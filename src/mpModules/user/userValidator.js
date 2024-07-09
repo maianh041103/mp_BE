@@ -21,13 +21,12 @@ export async function createValidator(req, res, next) {
     phone: Joi.string().required(),
     avatarId: Joi.number().integer().allow(null).allow(""),
     roleId: Joi.number().integer().allow(null).allow(""),
-    branchId: Joi.number().integer().min(0).required(),
     position: Joi.string()
       .valid(["admin", "management", "staff"])
       .allow(null)
       .allow(""),
     address: Joi.string().allow(null).allow(""),
-  });
+  }).options({ allowUnknown: true });
 
   const result = Joi.validate(body, validSchema);
 
@@ -61,13 +60,12 @@ export async function updateValidator(req, res, next) {
     phone: Joi.string().required(),
     avatarId: Joi.number().integer().allow(null).allow(""),
     roleId: Joi.number().integer().allow(null).allow(""),
-    branchId: Joi.number().integer().min(0).required(),
     position: Joi.string()
       .valid(["admin", "management", "staff"])
       .allow(null)
       .allow(""),
     address: Joi.string().allow(null).allow(""),
-  });
+  }).options({ allowUnknown: true });
 
   const result = Joi.validate(body, validSchema);
   if (result.error) {

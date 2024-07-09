@@ -63,6 +63,11 @@ module.exports = (sequelize, Sequelize) => {
       allowNull: true,
       type: Sequelize.STRING
     },
+    isAdmin: {
+      allowNull: true,
+      type: Sequelize.BOOLEAN,
+      defaultValue: false
+    },
     lastLoginAt: {
       allowNull: true,
       type: Sequelize.DATE
@@ -113,6 +118,11 @@ module.exports = (sequelize, Sequelize) => {
       foreignKey: 'branchId',
       targetKey: 'id',
     });
+    User.hasMany(models.UserBranch, {
+      as: "branches",
+      foreignKey: 'userId',
+      sourceKey: 'id'
+    })
   };
   return User;
 };

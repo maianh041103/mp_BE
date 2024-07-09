@@ -14,7 +14,7 @@ const { orderStatuses } = require("../order/orderConstant");
 export async function indexRevenuesReport(params, loginUser) {
   const {
     status = orderStatuses.SUCCEED,
-    branchId = loginUser.branchId,
+    branchId,
     type = "date", // "day"
   } = params;
 
