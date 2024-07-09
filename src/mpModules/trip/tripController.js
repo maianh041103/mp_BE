@@ -75,3 +75,31 @@ module.exports.changeStatusTrip = async (req, res) => {
         );
     }
 }
+
+module.exports.searchMap = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
+        const { keyword } = req.query;
+        const result = await tripService.searchMap({ storeId: loginUser.storeId, keyword });
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}
+
+module.exports.getPlace = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
+        const { refId } = req.query;
+        const result = await tripService.getPlace({ storeId: loginUser.storeId, refId });
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}
