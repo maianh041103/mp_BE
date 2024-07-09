@@ -136,6 +136,7 @@ console.log(page);
   const { count, rows } = await models.Store.findAndCountAll({
     offset,
     limit,
+    include:StoreInclude,
     order: [['createdAt', 'DESC']]
   });
 
@@ -144,11 +145,19 @@ console.log(page);
     data: {
       items: rows,
       totalItem: count,
+      
       totalPages: Math.ceil(count / limit),
       currentPage: page
     },
   };
 }
+const StoreInclude = [
+  {
+    model: models.Ward,
+    as: "ward",
+    attributes: ["name", "name2", "province", "district","address","name3"],
+  },
+];
 
 export async function createStore(payload) {
   const newStore = await models.Store.create(payload);
