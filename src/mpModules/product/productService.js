@@ -60,7 +60,7 @@ export async function countProduct(query) {
       query.include = [invInclude];
     }
     query.attributes = ["id"]
-    
+
     return await models.Product.count(query);
   } catch (e) {
     console.log(e);
@@ -71,7 +71,7 @@ export async function countProduct(query) {
 export async function indexProducts(params) {
   const query = await queryFilter(params);
   const [items, count] = await Promise.all([
-    models.Product.findAll(query),                                                                                                                                                                                                                
+    models.Product.findAll(query),
     countProduct(query)
   ]);
   for (const item of items) {
@@ -212,9 +212,27 @@ export async function createProduct(product, loginUser) {
       }),
     }, { transaction: t });
     await newInventory(product.branchId, newProduct.id, product.inventory, t)
-    if (product.inventory) {
+
+    let newInventoryCheking;
+
+    if (product.inventory && product.isBatchExpireControl == false) {
+      newInventoryCheking = await models.InventoryChecking.create({
+        userCreateId: product.createdBy,
+        branchId: product.branchId
+      }, {
+        transaction: t
+      });
+      await models.InventoryChecking.update({
+        code: generateCode.generateCode("KK", newInventoryCheking.id)
+      }, {
+        where: {
+          id: newInventoryCheking.id
+        },
+        transaction: t
+      });
+
       await createWarehouseCard({
-        code: "",
+        code: generateCode.generateCode("KK", newInventoryCheking.id),
         type: warehouseStatus.ADJUSTMENT,
         partner: "",
         productId: newProduct.id,
@@ -223,7 +241,7 @@ export async function createProduct(product, loginUser) {
         remainQty: product.inventory,
         createdAt: new Date(),
         updatedAt: new Date()
-      }, t)
+      }, t);
     }
     if (!product.code) {
       const nextValue = await getNextValue(product.storeId, product.type)
@@ -237,23 +255,6 @@ export async function createProduct(product, loginUser) {
         { where: { id: newProduct.id }, transaction: t }
       );
     }
-
-    //Tạo mới kiểm kho
-    let newInventoryCheking = await models.InventoryChecking.create({
-      userCreateId: product.createdBy,
-      branchId: product.branchId
-    }, {
-      transaction: t
-    });
-    await models.InventoryChecking.update({
-      code: generateCode.generateCode("KK", newInventoryCheking.id)
-    }, {
-      where: {
-        id: newInventoryCheking.id
-      },
-      transaction: t
-    });
-    //End tạo mới kiểm kho
 
     // add product units
     const productUnits = _.get(product, "productUnits", []).map((item) => ({
@@ -288,7 +289,7 @@ export async function createProduct(product, loginUser) {
       const newProductUnit = await models.ProductUnit.create(productUnit, {
         transaction: t
       });
-      if (newProductUnit.isBaseUnit == true) {
+      if (newProductUnit.isBaseUnit == true && product.inventory && product.isBatchExpireControl) {
         await models.InventoryCheckingProduct.create({
           inventoryCheckingId: newInventoryCheking.id,
           productUnitId: newProductUnit.id,
@@ -979,9 +980,13 @@ export async function randomProducts(params) {
   return arr;
 }
 
-export async function indexInventory(id, storeId) {
+export async function indexInventory(id, storeId, branchId) {
+  let where = { productId: id };
+  if (branchId) {
+    where.branchId = branchId;
+  }
   const inventories = await models.Inventory.findAll({
-    where: { productId: id },
+    where,
     attributes: ["id", "quantity", "productId", "branchId"],
     include: [
       {

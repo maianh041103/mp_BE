@@ -46,11 +46,11 @@ export async function createController(req, res) {
       position: _.get(req, "body.position", ""),
       roleId: _.get(req, "body.roleId", null),
       storeId: loginUser.storeId,
-      branchId: _.get(req, "body.branchId", null),
       avatarId: _.get(req, "body.avatarId", null),
       address: _.get(req, "body.address", ""),
+      isAdmin: _.get(req, "body.isAdmin", false),
       createdBy: loginUser.id,
-    });
+    }, req.body.listBranchId || []);
     if (result.success) res.json(respondItemSuccess(result.data));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
@@ -90,7 +90,7 @@ export async function updateController(req, res) {
         password: _.get(req, "body.password", ""),
         position: _.get(req, "body.position", ""),
         roleId: _.get(req, "body.roleId", null),
-        branchId: _.get(req, "body.branchId", null),
+        listBranchId: _.get(req, "body.listBranchId", null),
         avatarId: _.get(req, "body.avatarId", null),
         address: _.get(req, "body.address", ""),
         updatedBy: loginUser.id,

@@ -96,24 +96,9 @@ export async function createPaymentAndTransaction(payment) {
             cashOfCustomer: order.cashOfCustomer + payment.amount
         }, { where: { id: order.id }, transaction: t })
 
-        await createPayment({
-            amount: payment.amount,
-            totalAmount: order.totalPrice,
-            customerId: order.customerId,
-            orderId: order.id,
-            paymentMethod: payment.paymentMethod,
-            createdBy: payment.createdBy,
-            status: 'DONE',
-            transactionId: payment.transactionId
-        }, t)
-        await models.CustomerDebt.increment({
-            debtAmount: -payment.amount
-        }, { where: { orderId: order.id }, transaction: t })
-
-
         const idString = (order.id).toString();
         const typeTransaction = await transactionService.generateTypeTransactionOrder(payment.storeId);
-        await models.Transaction.create({
+        const newTransaction = await models.Transaction.create({
             code: `TTHD${idString.padStart(9, '0')}`,
             paymentDate: new Date(),
             ballotType: transactionContant.BALLOTTYPE.INCOME,
@@ -129,6 +114,20 @@ export async function createPaymentAndTransaction(payment) {
         }, {
             transaction: t
         });
+
+        await createPayment({
+            amount: payment.amount,
+            totalAmount: order.totalPrice,
+            customerId: order.customerId,
+            orderId: order.id,
+            paymentMethod: payment.paymentMethod,
+            createdBy: payment.createdBy,
+            status: 'DONE',
+            transactionId: newTransaction.id
+        }, t)
+        await models.CustomerDebt.increment({
+            debtAmount: -payment.amount
+        }, { where: { orderId: order.id }, transaction: t })
     });
 
     return {
@@ -154,7 +153,8 @@ export async function createOrderPayment(order, transaction) {
             orderId: order.id,
             paymentMethod: order.paymentType,
             createdBy: order.createdBy,
-            status: 'DONE'
+            status: 'DONE',
+            transactionId: order.transactionId
         }, transaction)
     }
 }

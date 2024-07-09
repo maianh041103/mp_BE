@@ -296,25 +296,10 @@ export async function indexCreate(saleReturn, loginUser) {
         },
         { transaction: t }
       )
-      console.log()
-      const paymentSaleReturn = await models.Payment.create(
-        {
-          isReturn: true,
-          amount: item.quantity * item.price,
-          code: code,
-          orderId: saleReturn.orderId,
-          createdBy: loginUser.id,
-          paymentMethod: saleReturn.paymentType,
-          status: 'DONE',
-          customerId: saleReturn.customerId,
-          totalAmount: item.quantity * item.price
-        },
-        { transaction: t }
-      )
 
       //Create transaction
       const typeTransaction = await transactionService.generateTypeTransactionSaleReturn(loginUser.storeId);
-      await models.Transaction.create({
+      const newTransaction = await models.Transaction.create({
         code: code,
         paymentDate: new Date(),
         ballotType: transactionContant.BALLOTTYPE.EXPENSES,
@@ -331,6 +316,23 @@ export async function indexCreate(saleReturn, loginUser) {
         transaction: t
       });
       //End transaction
+
+      const paymentSaleReturn = await models.Payment.create(
+        {
+          isReturn: true,
+          amount: item.quantity * item.price,
+          code: code,
+          orderId: saleReturn.orderId,
+          createdBy: loginUser.id,
+          paymentMethod: saleReturn.paymentType,
+          status: 'DONE',
+          customerId: saleReturn.customerId,
+          totalAmount: item.quantity * item.price,
+          transactionId: newTransaction.id
+        },
+        { transaction: t }
+      )
+
       if (findProduct.isBatchExpireControl) {
         for (const _batch of item.batches) {
           const responseReadBatch = await readBatch(_batch.id, loginUser)

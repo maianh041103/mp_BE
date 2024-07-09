@@ -135,7 +135,9 @@ console.log(page);
   // Thực hiện truy vấn với phân trang
   const { count, rows } = await models.Store.findAndCountAll({
     offset,
-    limit
+    limit,
+    include:StoreInclude,
+    order: [['createdAt', 'DESC']]
   });
 
   return {
