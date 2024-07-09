@@ -145,7 +145,7 @@ console.log(page);
     data: {
       items: rows,
       totalItem: count,
-      
+      include:StoreInclude,
       totalPages: Math.ceil(count / limit),
       currentPage: page
     },
@@ -155,10 +155,19 @@ const StoreInclude = [
   {
     model: models.Ward,
     as: "ward",
-    attributes: ["name", "name2", "province", "district","address","name3"],
+    attributes: ["name"],
+  },
+  {
+    model: models.Province,
+    as: "province",
+    attributes: ["name"],
+  },
+  {
+    model: models.District,
+    as: "district",
+    attributes: ["name"],
   },
 ];
-
 export async function createStore(payload) {
   const newStore = await models.Store.create(payload);
   await insertNewCode(newStore.id);
