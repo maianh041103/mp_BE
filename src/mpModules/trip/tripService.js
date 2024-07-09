@@ -324,3 +324,27 @@ module.exports.changeStatusTrip = async (params) => {
         data: null
     }
 }
+
+module.exports.searchMap = async (params) => {
+    const { keyword } = params;
+    let API_KEY = tripContant.KEY.API_KEY;
+    const apiUrl = `https://maps.vietmap.vn/api/search/v3?apikey=${API_KEY}&text=${keyword}`;
+    const response = await axios.get(apiUrl);
+    const data = response.data;
+    return {
+        success: true,
+        data
+    }
+}
+
+module.exports.getPlace = async (params) => {
+    const { refId } = params;
+    let API_KEY = tripContant.KEY.API_KEY;
+    const apiUrl = `https://maps.vietmap.vn/api/place/v3?apikey=${API_KEY}&refid=${refId}`;
+    const response = await axios.get(apiUrl);
+    const data = response.data;
+    return {
+        success: true,
+        data
+    }
+}

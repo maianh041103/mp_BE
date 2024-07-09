@@ -29,5 +29,15 @@ router.patch("/:tripCustomerId/:status", authenticate, (req, res, next) => {
     next();
 }, authorize, tripController.changeStatusTrip);
 
+router.get("/search/ref", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, tripController.searchMap);
+
+router.get("/search/place", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, tripController.getPlace);
+
 module.exports = router;
 
