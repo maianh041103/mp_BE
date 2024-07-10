@@ -39,7 +39,7 @@ let tripIncludes = [
     {
         model: models.TripCustomer,
         as: "tripCustomer",
-        attributes: ["id", "customerId", "lat", "lng", "status", "stt"],
+        attributes: ["id", "customerId", "lat", "lng", "status", "stt", "address"],
         where: {
             status: {
                 [Op.ne]: tripContant.TRIPSTATUS.SKIP
@@ -180,13 +180,16 @@ module.exports.createTrip = async (params) => {
                     }
                 });
                 const index = res.findIndex(item => item == i + 1);
+                const address = await reverse(customer.lng, customer.lat);
+
                 await models.TripCustomer.create({
                     tripId: newTrip.id,
                     customerId: listCustomer[i],
                     lat: customer.lat,
                     lng: customer.lng,
                     status: tripContant.TRIPSTATUS.NOT_VISITED,
-                    stt: index
+                    stt: index,
+                    address
                 }, {
                     transaction: t
                 });
@@ -197,13 +200,15 @@ module.exports.createTrip = async (params) => {
                     id: listCustomer[0]
                 }
             });
+            const address = await reverse(customer.lng, customer.lat);
             await models.TripCustomer.create({
                 tripId: newTrip.id,
                 customerId: listCustomer[0],
                 lat: customer.lat,
                 lng: customer.lng,
                 status: tripContant.TRIPSTATUS.NOT_VISITED,
-                stt: 1
+                stt: 1,
+                address
             }, {
                 transaction: t
             });
@@ -216,6 +221,14 @@ module.exports.createTrip = async (params) => {
             trip: newTrip
         },
     }
+}
+
+const reverse = async (lng, lat) => {
+    let API_KEY = tripContant.KEY.API_KEY;
+    const apiUrl = `https://maps.vietmap.vn/api/reverse/v3?apikey=${API_KEY}&lng=${lng}&lat=${lat}`;
+    const response = await axios.get(apiUrl);
+    const data = response.data;
+    return data[0].address;
 }
 
 module.exports.getListTrip = async (params) => {
@@ -386,12 +399,14 @@ module.exports.updateTrip = async (params) => {
                 if (!customer) {
                     throw new Error("Không tồn tại khách hàng hoặc địa chỉ không hợp lệ");
                 }
+                const address = await reverse(customer.lng, customer.lat);
                 await models.TripCustomer.create({
                     tripId: id,
                     customerId: customerId,
                     lat: customer.lat,
                     lng: customer.lng,
-                    status: tripContant.TRIPSTATUS.NOT_VISITED
+                    status: tripContant.TRIPSTATUS.NOT_VISITED,
+                    address
                 }, {
                     transaction: t
                 });
@@ -520,9 +535,12 @@ module.exports.updateTripCustomer = async (params) => {
         };
     }
 
+    const address = await reverse(tripCustomer.lng, tripCustomer.lat);
+
     let data = {
         lng: lng || tripCustomer.lng,
-        lat: lat || tripCustomer.lat
+        lat: lat || tripCustomer.lat,
+        address
     };
     const t = await models.sequelize.transaction(async (t) => {
         await models.TripCustomer.update(data, {
