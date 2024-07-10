@@ -119,3 +119,17 @@ module.exports.getPlace = async (req, res) => {
         );
     }
 }
+
+module.exports.reverse = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
+        const { lng, lat } = req.query;
+        const result = await tripService.reverse({ storeId: loginUser.storeId, lng, lat });
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}
