@@ -37,6 +37,10 @@ module.exports = (sequelize, DataTypes) => {
         note: {
             type: DataTypes.STRING,
             allowNull: true
+        },
+        address: {
+            type: DataTypes.STRING,
+            allowNull: true
         }
     }, {
         tableName: 'trip_customer',
