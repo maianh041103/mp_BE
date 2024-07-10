@@ -1481,3 +1481,38 @@ export async function deleteOrder(id, loginUser) {
     success: true
   }
 }
+
+const discountApplyInclude = [
+  {
+    model: models.Discount,
+    as: "discount",
+    include: [{
+      model: models.DiscountItem,
+      as: "discountItem",
+      attributes: ["id", "orderFrom", "fromQuantity", "maxQuantity", "discountValue", "discountType", "pointType", "isGift", "pointValue",
+        "fixedPrice", "changeType"
+      ],
+      include: [
+        {
+          model: models.ProductDiscountItem,
+          as: "productDiscount",
+          attributes: ["productUnitId", "groupId", "isCondition"],
+        }
+      ]
+    }]
+  }
+]
+
+export async function getOrderDiscountService(params) {
+  const { id } = params;
+  const listDiscountOrder = await models.DiscountApply.findAll({
+    include: discountApplyInclude,
+    where: {
+      orderId: id
+    }
+  });
+  return {
+    success: true,
+    data: listDiscountOrder
+  }
+}
