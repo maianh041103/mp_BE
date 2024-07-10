@@ -29,6 +29,8 @@ const createSchema = Joi.object().keys({
   point: Joi.number().integer().allow(null).allow(""),
   debt: Joi.number().integer().allow(null).allow(""),
   status: Joi.string().allow(null).allow(""),
+  lat: Joi.string().allow(null).allow(""),
+  lng: Joi.string().allow(null).allow("")
 });
 
 export function createValidator(req, res, next) {
@@ -86,6 +88,8 @@ const updateSchema = Joi.object().keys({
   provinceId: Joi.number().integer().min(0).allow(null).allow(""),
   type: Joi.number().integer().allow(null).allow(""),
   status: Joi.string().allow(null).allow(""),
+  lat: Joi.string().allow(null).allow(""),
+  lng: Joi.string().allow(null).allow("")
 });
 
 export async function updateValidator(req, res, next) {

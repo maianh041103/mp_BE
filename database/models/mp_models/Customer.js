@@ -90,6 +90,14 @@ module.exports = (sequelize, Sequelize) => {
         allowNull: true,
         type: Sequelize.INTEGER(2).UNSIGNED,
       },
+      lat: {
+        allowNull: true,
+        type: Sequelize.STRING
+      },
+      lng: {
+        allowNull: true,
+        type: Sequelize.STRING
+      },
       // Loại tài khoản
       type: {
         allowNull: true,
@@ -102,7 +110,7 @@ module.exports = (sequelize, Sequelize) => {
       },
       status: {
         allowNull: false,
-        type: Sequelize.ENUM("draft", "active", "inactive"),
+        type: Sequelize.ENUM("draft", "active", "inactive", "potential"),
         defaultValue: "active",
       },
       lastLoginAt: {
