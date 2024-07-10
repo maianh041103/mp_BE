@@ -5,5 +5,8 @@ module.exports.KEY = {
 module.exports.TRIPSTATUS = {
     SKIP: "skip",
     VISITED: "visited",
-    NOT_VISITED: "not_visited"
+    NOT_VISITED: "not_visited",
+    WAITED: "waited",
+    DONE: "done",
+    PENDING: "pending"
 }

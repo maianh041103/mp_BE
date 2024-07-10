@@ -1,5 +1,6 @@
 'use strict';
 const Sequelize = require("sequelize");
+const tripContant = require("../../../src/mpModules/trip/tripContant");
 module.exports = (sequelize, DataTypes) => {
   const Trip = sequelize.define('Trip', {
     id: {
@@ -43,6 +44,17 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false
     },
+    currentAddress: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true
+    },
+    status: {
+      type: DataTypes.ENUM(tripContant.TRIPSTATUS.DONE,
+        tripContant.TRIPSTATUS.PENDING
+      ),
+      allowNull: true,
+      defaultValue: tripContant.TRIPSTATUS.PENDING
+    },
     createdAt: {
       allowNull: true,
       type: Sequelize.DATE,
@@ -74,6 +86,11 @@ module.exports = (sequelize, DataTypes) => {
       as: "userManager",
       foreignKey: 'userId',
       targetKey: "id",
+    });
+    Trip.belongsTo(models.TripCustomer, {
+      as: "customerCurrent",
+      foreignKey: "currentAddress",
+      sourceKey: "id"
     })
   };
   return Trip;
