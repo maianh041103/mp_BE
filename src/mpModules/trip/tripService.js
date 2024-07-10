@@ -171,21 +171,39 @@ module.exports.createTrip = async (params) => {
             }
             listPoint.push(`${customer.lat},${customer.lng}`);
         }
-        let res = await sortMap(listPoint);
-        for (let i = 0; i < listCustomer.length; i++) {
+        if (listCustomer.length > 1) {
+            let res = await sortMap(listPoint);
+            for (let i = 0; i < listCustomer.length; i++) {
+                const customer = await models.Customer.findOne({
+                    where: {
+                        id: listCustomer[i]
+                    }
+                });
+                const index = res.findIndex(item => item == i + 1);
+                await models.TripCustomer.create({
+                    tripId: newTrip.id,
+                    customerId: listCustomer[i],
+                    lat: customer.lat,
+                    lng: customer.lng,
+                    status: tripContant.TRIPSTATUS.NOT_VISITED,
+                    stt: index
+                }, {
+                    transaction: t
+                });
+            }
+        } else {
             const customer = await models.Customer.findOne({
                 where: {
-                    id: listCustomer[i]
+                    id: listCustomer[0]
                 }
             });
-            const index = res.findIndex(item => item == i + 1);
             await models.TripCustomer.create({
                 tripId: newTrip.id,
-                customerId: listCustomer[i],
+                customerId: listCustomer[0],
                 lat: customer.lat,
                 lng: customer.lng,
                 status: tripContant.TRIPSTATUS.NOT_VISITED,
-                stt: index
+                stt: 1
             }, {
                 transaction: t
             });
@@ -233,10 +251,15 @@ module.exports.getListTrip = async (params) => {
     });
     for (let row of rows) {
         if (row.status != tripContant.TRIPSTATUS.DONE) {
-            const nextCustomer = row.tripCustomer.find(item => {
-                return item.stt == row.customerCurrent.stt + 1;
-            });
-            row.dataValues.nextCustomer = nextCustomer;
+            if (row.customerCurrent) {
+                const nextCustomer = row.tripCustomer.find(item => {
+                    return item.stt == row.customerCurrent.stt + 1;
+                });
+                row.dataValues.nextCustomer = nextCustomer;
+            }
+            else {
+                row.dataValues.nextCustomer = row.tripCustomer[0];
+            }
         }
     }
     const count = await models.Trip.count({
