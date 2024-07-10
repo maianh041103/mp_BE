@@ -234,7 +234,7 @@ module.exports.getListTrip = async (params) => {
     for (let row of rows) {
         if (row.status != tripContant.TRIPSTATUS.DONE) {
             const nextCustomer = row.tripCustomer.find(item => {
-                return item.stt = row.customerCurrent.stt + 1;
+                return item.stt == row.customerCurrent.stt + 1;
             });
             row.dataValues.nextCustomer = nextCustomer;
         }
