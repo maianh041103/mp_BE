@@ -13,6 +13,7 @@ const {
   // confirmPayment,
   getProductCustomer,
   getOrderHistory, readPaymentController, createPaymentController,
+  getOrderDiscount
 } = require("./orderController");
 const {
   createValidator,
@@ -69,25 +70,25 @@ router.get(
 );
 
 router.get(
-    "/:id/payment-history",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = "order_read";
-        next();
-    },
-    authorize,
-    readPaymentController
+  "/:id/payment-history",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = "order_read";
+    next();
+  },
+  authorize,
+  readPaymentController
 );
 
 router.post(
-    "/:id/payment",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = "order_create";
-        next();
-    },
-    authorize,
-    createPaymentController
+  "/:id/payment",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = "order_create";
+    next();
+  },
+  authorize,
+  createPaymentController
 );
 
 router.patch(
@@ -116,10 +117,10 @@ router.patch(
 );
 
 router.delete('/:id',
-    authenticate,
-    (req, res, next) => { req.apiRole = 'order_delete'; next(); },
-    authorize,
-    deleteController
+  authenticate,
+  (req, res, next) => { req.apiRole = 'order_delete'; next(); },
+  authorize,
+  deleteController
 );
 
 // Xác nhận thanh toán
@@ -140,5 +141,14 @@ router.get(
   authorize,
   getOrderHistory
 );
+
+router.get("/:id/get-discount",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = ["order_read", "order_view_all"];
+    next();
+  },
+  authorize,
+  getOrderDiscount)
 
 module.exports = router;

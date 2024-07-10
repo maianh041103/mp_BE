@@ -14,6 +14,7 @@ const {
   deleteOrder,
   updateOrderStatus,
   indexProductCustomers,
+  getOrderDiscountService
 } = require("./orderService");
 const { orderLogList } = require("./orderHistoryService");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
@@ -172,6 +173,17 @@ export async function deleteController(req, res) {
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
     res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
+  }
+}
+
+export async function getOrderDiscount(req, res) {
+  try {
+    const { id } = req.params;
+    const result = await getOrderDiscountService({ id });
+    if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(respondWithClientError(error))
   }
 }
 
