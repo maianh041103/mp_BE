@@ -44,5 +44,10 @@ router.get("/search/place", authenticate, (req, res, next) => {
     next();
 }, authorize, tripController.getPlace);
 
+router.get("/search/reverse", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, tripController.reverse);
+
 module.exports = router;
 
