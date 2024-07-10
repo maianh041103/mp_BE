@@ -24,10 +24,15 @@ router.patch("/:id", authenticate, (req, res, next) => {
     next();
 }, authorize, tripController.updateTrip);
 
-router.patch("/:tripCustomerId/:status", authenticate, (req, res, next) => {
+router.patch("/tripCustomer/:tripCustomerId", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-}, authorize, tripController.changeStatusTrip);
+}, authorize, tripController.updateTripCustomer);
+
+router.patch("/changeStatus/:tripCustomerId/:status", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, tripController.changeStatus);
 
 router.get("/search/ref", authenticate, (req, res, next) => {
     req.apiRole = [];

@@ -22,8 +22,8 @@ module.exports.createTrip = async (req, res) => {
 module.exports.getTrips = async (req, res) => {
     try {
         const { loginUser = {} } = req;
-        const { limit, page, keyword } = req.query;
-        const result = await tripService.getListTrip({ storeId: loginUser.storeId, limit, page, keyword });
+        const { limit, page, keyword, status } = req.query;
+        const result = await tripService.getListTrip({ storeId: loginUser.storeId, limit, page, keyword, status });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {
@@ -62,11 +62,27 @@ module.exports.updateTrip = async (req, res) => {
     }
 }
 
-module.exports.changeStatusTrip = async (req, res) => {
+module.exports.updateTripCustomer = async (req, res) => {
+    try {
+        const { tripCustomerId } = req.params;
+        const body = req.body;
+        const { loginUser } = req;
+        const result = await tripService.updateTripCustomer({ storeId: loginUser.storeId, tripCustomerId, ...body });
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}
+
+module.exports.changeStatus = async (req, res) => {
     try {
         const { tripCustomerId, status } = req.params;
+        const { isUpdateAddress, note } = req.body;
         const { loginUser } = req;
-        const result = await tripService.changeStatusTrip({ storeId: loginUser.storeId, tripCustomerId, status });
+        const result = await tripService.changeStatus({ storeId: loginUser.storeId, tripCustomerId, status, isUpdateAddress, note });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {
