@@ -145,7 +145,7 @@ console.log(page);
     data: {
       items: rows,
       totalItem: count,
-      include:StoreInclude,
+     
       totalPages: Math.ceil(count / limit),
       currentPage: page
     },
