@@ -246,7 +246,7 @@ export async function indexOrders(params, loginUser) {
   if (storeId) {
     where.storeId = storeId
   }
-  if (canReturn !== undefined && typeof canReturn === 'boolean') {
+  if (canReturn) {
     where.canReturn = canReturn
   }
 
@@ -1479,5 +1479,40 @@ export async function deleteOrder(id, loginUser) {
   })
   return {
     success: true
+  }
+}
+
+const discountApplyInclude = [
+  {
+    model: models.Discount,
+    as: "discount",
+    include: [{
+      model: models.DiscountItem,
+      as: "discountItem",
+      attributes: ["id", "orderFrom", "fromQuantity", "maxQuantity", "discountValue", "discountType", "pointType", "isGift", "pointValue",
+        "fixedPrice", "changeType"
+      ],
+      include: [
+        {
+          model: models.ProductDiscountItem,
+          as: "productDiscount",
+          attributes: ["productUnitId", "groupId", "isCondition"],
+        }
+      ]
+    }]
+  }
+]
+
+export async function getOrderDiscountService(params) {
+  const { id } = params;
+  const listDiscountOrder = await models.DiscountApply.findAll({
+    include: discountApplyInclude,
+    where: {
+      orderId: id
+    }
+  });
+  return {
+    success: true,
+    data: listDiscountOrder
   }
 }
