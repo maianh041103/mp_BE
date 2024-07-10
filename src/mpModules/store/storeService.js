@@ -135,7 +135,9 @@ console.log(page);
   // Thực hiện truy vấn với phân trang
   const { count, rows } = await models.Store.findAndCountAll({
     offset,
-    limit
+    limit,
+    include:StoreInclude,
+    order: [['createdAt', 'DESC']]
   });
 
   return {
@@ -143,12 +145,34 @@ console.log(page);
     data: {
       items: rows,
       totalItem: count,
+      include:StoreInclude,
       totalPages: Math.ceil(count / limit),
       currentPage: page
     },
   };
 }
-
+const StoreInclude = [
+  {
+    model: models.Ward,
+    as: "ward",
+    attributes: ["name"],
+  },
+  {
+    model: models.Province,
+    as: "province",
+    attributes: ["name"],
+  },
+  {
+    model: models.District,
+    as: "district",
+    attributes: ["name"],
+  },
+  {
+    model: models.Image,
+    as: "image",
+    attributes: ["id", "path"],
+  },
+];
 export async function createStore(payload) {
   const newStore = await models.Store.create(payload);
   await insertNewCode(newStore.id);
