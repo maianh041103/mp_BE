@@ -145,7 +145,7 @@ console.log(page);
     data: {
       items: rows,
       totalItem: count,
-      include:StoreInclude,
+     
       totalPages: Math.ceil(count / limit),
       currentPage: page
     },
@@ -166,6 +166,11 @@ const StoreInclude = [
     model: models.District,
     as: "district",
     attributes: ["name"],
+  },
+  {
+    model: models.Image,
+    as: "image",
+    attributes: ["id", "path"],
   },
 ];
 export async function createStore(payload) {
