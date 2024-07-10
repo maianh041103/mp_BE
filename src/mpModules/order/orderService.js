@@ -246,7 +246,7 @@ export async function indexOrders(params, loginUser) {
   if (storeId) {
     where.storeId = storeId
   }
-  if (canReturn !== undefined && typeof canReturn === 'boolean') {
+  if (canReturn) {
     where.canReturn = canReturn
   }
 
