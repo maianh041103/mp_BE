@@ -247,7 +247,7 @@ export async function indexOrders(params, loginUser) {
     where.storeId = storeId
   }
   if (canReturn) {
-    where.canReturn = canReturn
+    where.canReturn = canReturn == 'true' ? 1 : 0
   }
 
   if (branchId) {
