@@ -28,11 +28,7 @@ const include = [
     as: "businessRegistrationImage",
     attributes: ["id", "path"],
   },
-  {
-    model: models.Image,
-    as: "logo",
-    attributes: ["id", "path"],
-  },
+
   {
     model: models.Province,
     as: "province",

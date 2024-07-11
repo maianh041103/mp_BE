@@ -49,5 +49,10 @@ router.get("/search/reverse", authenticate, (req, res, next) => {
     next();
 }, authorize, tripController.reverse);
 
+router.post("/geofencing", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, tripController.geofencing);
+
 module.exports = router;
 
