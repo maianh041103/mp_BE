@@ -485,7 +485,8 @@ module.exports.changeStatus = async (params) => {
             });
         }
     });
-    await updateIndex(tripCustomer.tripId);
+    if (status == tripContant.TRIPSTATUS.WAITED || status == tripContant.TRIPSTATUS.VISITED)
+        await updateIndex(tripCustomer.tripId);
     if (status == tripContant.TRIPSTATUS.WAITED) {
         let count = await models.TripCustomer.count({
             where: {
@@ -594,6 +595,7 @@ const updateIndex = async (tripId) => {
         listPoint.push(`${customer.lat},${customer.lng}`);
     }
     if (!trip.currentAddress) {
+        listTripCustomer.unshift({ id: -1 })
         listPoint.unshift(`${trip.lat},${trip.lng}`);
     }
     if (listPoint.length > 1) {
