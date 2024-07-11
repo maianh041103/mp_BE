@@ -133,3 +133,16 @@ module.exports.reverse = async (req, res) => {
         );
     }
 }
+
+module.exports.geofencing = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
+        const result = await tripService.geofencing({ storeId: loginUser.storeId, ...req.body, ...req.query });
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}
