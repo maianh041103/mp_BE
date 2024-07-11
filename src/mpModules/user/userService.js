@@ -20,6 +20,7 @@ const userAttributes = [
   "avatarId",
   "birthday",
   "gender",
+  "address",
   "phone",
   "roleId",
   "position",
