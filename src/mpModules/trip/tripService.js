@@ -485,9 +485,7 @@ module.exports.changeStatus = async (params) => {
             });
         }
     });
-    if (isUpdateAddress == true) {
-        await updateIndex(tripCustomer.tripId);
-    }
+    await updateIndex(tripCustomer.tripId);
     if (status == tripContant.TRIPSTATUS.WAITED) {
         let count = await models.TripCustomer.count({
             where: {
@@ -624,7 +622,9 @@ const updateIndex = async (tripId) => {
     const countNotVisited = await models.TripCustomer.count({
         where: {
             tripId: tripId,
-            status: tripContant.TRIPSTATUS.NOT_VISITED
+            status: {
+                [Op.ne]: tripContant.TRIPSTATUS.SKIP
+            }
         }
     });
     if (countNotVisited == 0) {
