@@ -326,6 +326,8 @@ module.exports.getDetailTrip = async (params) => {
         trip.dataValues.tripCustomer[i].dataValues.duration = result.durations[0][i];
         trip.dataValues.tripCustomer[i].dataValues.distances = result.distances[0][i];
     }
+    trip.dataValues.startAddress = await reverse(trip.lng, trip.lat);
+
     return {
         success: true,
         data: trip
