@@ -507,6 +507,7 @@ module.exports.changeStatus = async (params) => {
         });
     }
     if (status == tripContant.TRIPSTATUS.SKIP) {
+        let stt = tripCustomer.stt;
         await models.TripCustomer.update({
             stt: null
         }, {
@@ -514,6 +515,16 @@ module.exports.changeStatus = async (params) => {
                 id: tripCustomerId
             },
             transaction: t
+        });
+        await models.TripCustomer.decrement({
+            stt: 1
+        }, {
+            where: {
+                tripId: tripCustomer.tripId,
+                stt: {
+                    [Op.gt]: stt
+                }
+            }
         });
     }
     return {
