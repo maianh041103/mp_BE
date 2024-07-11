@@ -168,6 +168,11 @@ const StoreInclude = [
     as: "businessRegistrationImage",
     attributes: ["id", "path"],
   },
+  {
+    model: models.User,
+    as: "users",
+    attributes: ["id", "username", "email", "phone", "position"],
+  }
 ];
 
 
