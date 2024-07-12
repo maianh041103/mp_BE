@@ -153,40 +153,52 @@ module.exports.createTrip = async (params) => {
         })
         newTrip.code = code;
         let listPoint = [];
-        for (const id of listCustomer) {
-            const customer = await models.Customer.findOne({
-                where: {
-                    id: id,
-                    lat: {
-                        [Op.ne]: null
-                    },
-                    lng: {
-                        [Op.ne]: null
-                    },
-                    storeId: storeId
+        for (const item of listCustomer) {
+            if (!item.lat || !item.lng) {
+                const customer = await models.Customer.findOne({
+                    where: {
+                        id: item.id,
+                        lat: {
+                            [Op.ne]: null
+                        },
+                        lng: {
+                            [Op.ne]: null
+                        },
+                        storeId: storeId
+                    }
+                });
+                if (!customer) {
+                    throw new Error("Không tồn tại khách hàng hoặc địa chỉ không hợp lệ");
                 }
-            });
-            if (!customer) {
-                throw new Error("Không tồn tại khách hàng hoặc địa chỉ không hợp lệ");
+                listPoint.push(`${customer.lat},${customer.lng}`);
+            } else {
+                listPoint.push(`${item.lat},${item.lng}`);
             }
-            listPoint.push(`${customer.lat},${customer.lng}`);
         }
         if (listCustomer.length > 1) {
             let res = await sortMap(listPoint);
             for (let i = 0; i < listCustomer.length; i++) {
-                const customer = await models.Customer.findOne({
-                    where: {
-                        id: listCustomer[i]
-                    }
-                });
+                let lng, lat;
+                if (!listCustomer[i].lng || !listCustomer[i].lat) {
+                    const customer = await models.Customer.findOne({
+                        where: {
+                            id: listCustomer[i].id
+                        }
+                    });
+                    lng = customer.lng;
+                    lat = customer.lat;
+                } else {
+                    lng = listCustomer[i].lng;
+                    lat = listCustomer[i].lat;
+                }
                 const index = res.findIndex(item => item == i + 1);
-                const address = await reverse(customer.lng, customer.lat);
+                const address = await reverse(lng, lat);
 
                 await models.TripCustomer.create({
                     tripId: newTrip.id,
-                    customerId: listCustomer[i],
-                    lat: customer.lat,
-                    lng: customer.lng,
+                    customerId: listCustomer[i].id,
+                    lat: lat,
+                    lng: lng,
                     status: tripContant.TRIPSTATUS.NOT_VISITED,
                     stt: index,
                     address
@@ -195,17 +207,25 @@ module.exports.createTrip = async (params) => {
                 });
             }
         } else {
-            const customer = await models.Customer.findOne({
-                where: {
-                    id: listCustomer[0]
-                }
-            });
-            const address = await reverse(customer.lng, customer.lat);
+            let lng, lat;
+            if (!listCustomer[0].lng || !listCustomer[0].lat) {
+                const customer = await models.Customer.findOne({
+                    where: {
+                        id: listCustomer[0].id
+                    }
+                });
+                lng = customer.lng;
+                lat = customer.lat;
+            } else {
+                lng = listCustomer[0].lng;
+                lat = listCustomer[0].lat;
+            }
+            const address = await reverse(lng, lat);
             await models.TripCustomer.create({
                 tripId: newTrip.id,
-                customerId: listCustomer[0],
-                lat: customer.lat,
-                lng: customer.lng,
+                customerId: listCustomer[0].id,
+                lat: lat,
+                lng: lng,
                 status: tripContant.TRIPSTATUS.NOT_VISITED,
                 stt: 1,
                 address
@@ -370,50 +390,74 @@ module.exports.updateTrip = async (params) => {
             },
             transaction: t
         });
+        const listCustomerId = listCustomer.map(item => item.id);
         await models.TripCustomer.destroy({
             where: {
                 customerId: {
-                    [Op.notIn]: listCustomer
+                    [Op.notIn]: listCustomerId
                 },
                 tripId: id
             },
             transaction: t
         })
-        for (const customerId of listCustomer) {
+        for (const item of listCustomer) {
             const isExists = await models.TripCustomer.findOne({
                 where: {
-                    customerId,
+                    customerId: item.id,
                     tripId: id
                 }
             });
 
             if (!isExists) {
-                const customer = await models.Customer.findOne({
-                    where: {
-                        id: customerId,
-                        lat: {
-                            [Op.ne]: null
-                        },
-                        lng: {
-                            [Op.ne]: null
-                        },
-                        storeId: storeId
+                let lat, lng;
+                if (!item.lat || !item.lng) {
+                    const customer = await models.Customer.findOne({
+                        where: {
+                            id: item.id,
+                            lat: {
+                                [Op.ne]: null
+                            },
+                            lng: {
+                                [Op.ne]: null
+                            },
+                            storeId: storeId
+                        }
+                    });
+                    if (!customer) {
+                        throw new Error("Không tồn tại khách hàng hoặc địa chỉ không hợp lệ");
                     }
-                });
-                if (!customer) {
-                    throw new Error("Không tồn tại khách hàng hoặc địa chỉ không hợp lệ");
+                    lat = customer.lat;
+                    lng = customer.lng;
+                } else {
+                    lat = item.lat;
+                    lng = item.lng;
                 }
-                const address = await reverse(customer.lng, customer.lat);
+                const address = await reverse(lng, lat);
                 await models.TripCustomer.create({
                     tripId: id,
-                    customerId: customerId,
-                    lat: customer.lat,
-                    lng: customer.lng,
+                    customerId: item.id,
+                    lat: lat,
+                    lng: lng,
                     status: tripContant.TRIPSTATUS.NOT_VISITED,
                     address
                 }, {
                     transaction: t
                 });
+            } else {
+                if (item.lng && item.lat) {
+                    const address = await reverse(lng, lat);
+                    await models.TripCustomer.update({
+                        lng: item.lng,
+                        lat: item.lat,
+                        address: address
+                    }, {
+                        where: {
+                            customerId: item.id,
+                            tripId: id
+                        },
+                        transaction: t
+                    });
+                }
             }
         }
     });
@@ -528,43 +572,6 @@ module.exports.changeStatus = async (params) => {
             }
         });
     }
-    return {
-        success: true,
-        data: null
-    }
-}
-
-module.exports.updateTripCustomer = async (params) => {
-    const { tripCustomerId, lng, lat, storeId } = params;
-    const tripCustomer = await models.TripCustomer.findOne({
-        where: {
-            id: tripCustomerId
-        }
-    });
-    if (tripCustomer.status == tripContant.TRIPSTATUS.VISITED) {
-        return {
-            error: true,
-            code: HttpStatusCode.BAD_REQUEST,
-            message: "Không thể thay đổi khi ở trạng thái đã đi thăm"
-        };
-    }
-
-    const address = await reverse(tripCustomer.lng, tripCustomer.lat);
-
-    let data = {
-        lng: lng || tripCustomer.lng,
-        lat: lat || tripCustomer.lat,
-        address
-    };
-    const t = await models.sequelize.transaction(async (t) => {
-        await models.TripCustomer.update(data, {
-            where: {
-                id: tripCustomerId
-            },
-            transaction: t
-        });
-        await updateIndex(tripCustomer.tripId);
-    })
     return {
         success: true,
         data: null
