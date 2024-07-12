@@ -100,12 +100,12 @@ const travel = (data) => {
                 X[i] = j;
                 d += c[X[i - 1]][X[i]];
                 if (i == n) {
-                    if (ans > d + c[X[n]][1]) {
-                        ans = d + c[X[n]][1];
+                    if (ans > d) {
+                        ans = d;
                         X_best = [...X];
                     }
                 }
-                else if (d + (n - i + 1) * cmin < ans) {
+                else if (d + (n - i) * cmin < ans) {
                     Try(i + 1);
                 }
                 //backtrack
@@ -336,15 +336,16 @@ module.exports.getDetailTrip = async (params) => {
         }
         return `${item.lat},${item.lng}`;
     });
+    listPoint.unshift(`${trip.lat},${trip.lng}`);
     if (!trip.currentAddress) {
         currentIndex = 0;
-        listPoint.unshift(`${trip.lat},${trip.lng}`);
     }
 
+    console.log(currentIndex);
     let result = await getDistance(listPoint, currentIndex);
     for (let i = 0; i < trip.dataValues.tripCustomer.length; i++) {
-        trip.dataValues.tripCustomer[i].dataValues.duration = result.durations[0][i];
-        trip.dataValues.tripCustomer[i].dataValues.distances = result.distances[0][i];
+        trip.dataValues.tripCustomer[i].dataValues.duration = result.durations[0][i + 1];
+        trip.dataValues.tripCustomer[i].dataValues.distances = result.distances[0][i + 1];
     }
     trip.dataValues.startAddress = await reverse(trip.lng, trip.lat);
 
