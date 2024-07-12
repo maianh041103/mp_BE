@@ -24,11 +24,6 @@ router.patch("/:id", authenticate, (req, res, next) => {
     next();
 }, authorize, tripController.updateTrip);
 
-router.patch("/tripCustomer/:tripCustomerId", authenticate, (req, res, next) => {
-    req.apiRole = [];
-    next();
-}, authorize, tripController.updateTripCustomer);
-
 router.patch("/changeStatus/:tripCustomerId/:status", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
