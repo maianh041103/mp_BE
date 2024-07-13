@@ -70,6 +70,7 @@ module.exports = (sequelize, DataTypes) => {
   }, {
     tableName: 'trips',
     timestamps: true,
+    paranoid: true
   });
   Trip.associate = function (models) {
     Trip.hasMany(models.TripCustomer, {

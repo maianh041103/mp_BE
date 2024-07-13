@@ -49,5 +49,10 @@ router.post("/geofencing", authenticate, (req, res, next) => {
     next();
 }, authorize, tripController.geofencing);
 
+router.delete("/:id", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, tripController.deleteTrip)
+
 module.exports = router;
 
