@@ -446,7 +446,7 @@ module.exports.updateTrip = async (params) => {
                 });
             } else {
                 if (item.lng && item.lat) {
-                    const address = await reverse(lng, lat);
+                    const address = await reverse(item.lng, item.lat);
                     await models.TripCustomer.update({
                         lng: item.lng,
                         lat: item.lat,
