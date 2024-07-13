@@ -635,9 +635,11 @@ const updateIndex = async (tripId) => {
     const countNotVisited = await models.TripCustomer.count({
         where: {
             tripId: tripId,
-            [Op.or]: {
-                status: tripContant.TRIPSTATUS.NOT_VISITED,
-                status: tripContant.TRIPSTATUS.WAITED
+            status: {
+                [Op.or]: [
+                    tripContant.TRIPSTATUS.NOT_VISITED,
+                    tripContant.TRIPSTATUS.WAITED
+                ]
             }
         }
     });
