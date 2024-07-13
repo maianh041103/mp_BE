@@ -632,6 +632,34 @@ const updateIndex = async (tripId) => {
             }
         }
     }
+    const countNotWaited = await models.TripCustomer.count({
+        where: {
+            tripId: tripId,
+            status: {
+                [Op.or]: [
+                    tripContant.TRIPSTATUS.NOT_VISITED,
+                    tripContant.TRIPSTATUS.VISITED
+                ]
+            }
+        }
+    });
+    const listCustomerWaited = await models.TripCustomer.findAll({
+        where: {
+            tripId: tripId,
+            status: tripContant.TRIPSTATUS.WAITED
+        },
+        order: [["stt", "ASC"]]
+    });
+    for (let i = 0; i < listCustomerWaited.length; i++) {
+        await models.TripCustomer.update({
+            stt: countNotWaited + i + 1
+        }, {
+            where: {
+                tripId: tripId,
+                id: listCustomerWaited[i].id
+            }
+        })
+    }
     const countNotVisited = await models.TripCustomer.count({
         where: {
             tripId: tripId,
