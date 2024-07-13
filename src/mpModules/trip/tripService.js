@@ -513,6 +513,7 @@ module.exports.changeStatus = async (params) => {
         if (status == tripContant.TRIPSTATUS.VISITED) {
             await models.TripCustomer.update({
                 status: tripContant.TRIPSTATUS.VISITED,
+                visitedAt: new Date()
             }, {
                 where: {
                     id: tripCustomerId

@@ -9,7 +9,8 @@ const {
   getCustomerListByGroup,
   readController,
   updateStatus, getTotalDebtController, getDefaultCustomer,
-  readPaymentCustomerController, historyPoint
+  readPaymentCustomerController, historyPoint,
+  historyVisited
 } = require("./customerController");
 const {
   updateValidator,
@@ -177,5 +178,11 @@ router.get("/:customerId/history-point", authenticate,
     req.apiRole = "order_read";
     next();
   }, authorize, historyPoint)
+
+router.get("/:id/history-visited", authenticate,
+  (req, res, next) => {
+    req.apiRole = "order_read";
+    next();
+  }, authorize, historyVisited);
 
 module.exports = router;
