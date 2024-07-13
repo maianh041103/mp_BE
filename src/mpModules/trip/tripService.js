@@ -750,3 +750,25 @@ module.exports.geofencing = async (params) => {
         data: result
     }
 }
+
+module.exports.deleteTrip = async (params) => {
+    const { id } = params;
+    const t = await models.sequelize.transaction(async (t) => {
+        await models.TripCustomer.destroy({
+            where: {
+                tripId: id
+            },
+            transaction: t
+        });
+        await models.Trip.destroy({
+            where: {
+                id
+            },
+            transaction: t
+        });
+    })
+    return {
+        success: true,
+        data: null
+    }
+}
