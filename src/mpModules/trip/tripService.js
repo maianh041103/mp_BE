@@ -341,7 +341,6 @@ module.exports.getDetailTrip = async (params) => {
         currentIndex = 0;
     }
 
-    console.log(currentIndex);
     let result = await getDistance(listPoint, currentIndex);
     for (let i = 0; i < trip.dataValues.tripCustomer.length; i++) {
         trip.dataValues.tripCustomer[i].dataValues.duration = result.durations[0][i + 1];
@@ -614,7 +613,8 @@ const updateIndex = async (tripId) => {
         const tripCustomerCurrent = await models.TripCustomer.findOne({
             where: {
                 id: trip.currentAddress
-            }
+            },
+            paranoid: false
         });
         listTripCustomer.unshift(tripCustomerCurrent);
     }

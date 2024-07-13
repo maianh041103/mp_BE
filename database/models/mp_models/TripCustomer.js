@@ -48,7 +48,8 @@ module.exports = (sequelize, DataTypes) => {
         }
     }, {
         tableName: 'trip_customer',
-        timestamps: false,
+        timestamps: true,
+        paranoid: true
     });
     TripCustomer.associate = function (models) {
         TripCustomer.belongsTo(models.Customer, {
