@@ -581,6 +581,24 @@ module.exports.changeStatus = async (params) => {
 }
 
 const updateIndex = async (tripId) => {
+    const listCustomerVisited = await models.TripCustomer.findAll({
+        where: {
+            tripId,
+            status: tripContant.TRIPSTATUS.VISITED
+        },
+        order: [["visitedAt", "ASC"]]
+    });
+    for (let i = 0; i < listCustomerVisited.length; i++) {
+        if (listCustomerVisited[i].stt != i + 1) {
+            await models.TripCustomer.update({
+                stt: i + 1
+            }, {
+                where: {
+                    id: listCustomerVisited[i].id
+                }
+            })
+        }
+    }
     let listTripCustomer = await models.TripCustomer.findAll({
         where: {
             tripId,
