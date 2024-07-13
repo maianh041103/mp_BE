@@ -178,27 +178,27 @@ module.exports.createTrip = async (params) => {
         if (listCustomer.length > 1) {
             let res = await sortMap(listPoint);
             for (let i = 0; i < listCustomer.length; i++) {
-                let lng, lat;
+                let lngTmp, latTmp;
                 if (!listCustomer[i].lng || !listCustomer[i].lat) {
                     const customer = await models.Customer.findOne({
                         where: {
                             id: listCustomer[i].id
                         }
                     });
-                    lng = customer.lng;
-                    lat = customer.lat;
+                    lngTmp = customer.lng;
+                    latTmp = customer.lat;
                 } else {
-                    lng = listCustomer[i].lng;
-                    lat = listCustomer[i].lat;
+                    lngTmp = listCustomer[i].lng;
+                    latTmp = listCustomer[i].lat;
                 }
                 const index = res.findIndex(item => item == i + 1);
-                const address = await reverse(lng, lat);
+                const address = await reverse(lngTmp, latTmp);
 
                 await models.TripCustomer.create({
                     tripId: newTrip.id,
                     customerId: listCustomer[i].id,
-                    lat: lat,
-                    lng: lng,
+                    lat: latTmp,
+                    lng: lngTmp,
                     status: tripContant.TRIPSTATUS.NOT_VISITED,
                     stt: index,
                     address
