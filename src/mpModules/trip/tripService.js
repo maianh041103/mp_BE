@@ -248,7 +248,7 @@ const reverse = async (lng, lat) => {
     const apiUrl = `https://maps.vietmap.vn/api/reverse/v3?apikey=${API_KEY}&lng=${lng}&lat=${lat}`;
     const response = await axios.get(apiUrl);
     const data = response.data;
-    return data[0].address;
+    return data[0].display;
 }
 
 module.exports.getListTrip = async (params) => {
