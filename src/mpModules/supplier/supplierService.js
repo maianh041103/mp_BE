@@ -226,6 +226,18 @@ export async function createSupplier(payload) {
       message: `Nhóm nhà cung cấp có id = ${payload.groupSupplierId} không tồn tại`,
     };
   }
+  const existsPhone = await models.Supplier.findOne({
+    where: {
+      phone: payload.phone
+    }
+  });
+  if (existsPhone) {
+    return {
+      error: true,
+      code: HttpStatusCode.BAD_REQUEST,
+      message: `Số điện thoại ${payload.phone} đã tồn tại`,
+    };
+  }
   const newSupplier = await models.Supplier.create(payload);
 
   if (!payload.code) {
@@ -269,6 +281,22 @@ export async function updateSupplier(id, payload) {
       code: HttpStatusCode.BAD_REQUEST,
       message: `Store có id = ${payload.storeId} không tồn tại`,
     };
+  }
+
+  const existsPhone = await models.Supplier.findOne({
+    where: {
+      phone: payload.phone,
+      id: {
+        [Op.ne]: id
+      }
+    }
+  });
+  if (existsPhone) {
+    return {
+      error: true,
+      code: HttpStatusCode.BAD_REQUEST,
+      message: `Số điện thoại ${payload.phone} đã tồn tại`,
+    }
   }
 
   if (payload.groupSupplierId) {
