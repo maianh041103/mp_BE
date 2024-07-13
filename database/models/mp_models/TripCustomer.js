@@ -1,7 +1,7 @@
 'use strict';
 
 const { TRIPSTATUS } = require("../../../src/mpModules/trip/tripContant");
-
+const Sequelize = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
     const TripCustomer = sequelize.define('TripCustomer', {
         id: {
@@ -41,6 +41,10 @@ module.exports = (sequelize, DataTypes) => {
         address: {
             type: DataTypes.STRING,
             allowNull: true
+        },
+        visitedAt: {
+            allowNull: true,
+            type: Sequelize.DATE
         }
     }, {
         tableName: 'trip_customer',
