@@ -242,6 +242,18 @@ export async function receiveMove(id, payload, loginUser) {
                 }
             }
         }
+        await models.UserLog.create({
+            userId: receivedBy,
+            code: move.code,
+            type: userLogContant.TYPE.RECEIVE,
+            branchId
+        })
+        await models.UserLog.create({
+            userId: receivedBy,
+            code: move.code,
+            type: userLogContant.TYPE.RECEIVE,
+            branchId: move.fromBranchId,
+        });
     })
     return {
         success: true,

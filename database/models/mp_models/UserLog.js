@@ -23,7 +23,8 @@ module.exports = (sequelize, Sequelize) => {
                 userLogContant.TYPE.INBOUND,
                 userLogContant.TYPE.PURCHASE_RETURN,
                 userLogContant.TYPE.INVENTORY_CHECKING,
-                userLogContant.TYPE.MOVE
+                userLogContant.TYPE.MOVE,
+                userLogContant.TYPE.RECEIVE
             ),
             allowNull: false
         },
