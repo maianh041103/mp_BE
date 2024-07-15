@@ -980,7 +980,7 @@ export async function randomProducts(params) {
   return arr;
 }
 
-export async function indexInventory(id, storeId, branchId) {
+export async function indexInventory(id, storeId, branchId, productUnitId) {
   let where = { productId: id };
   if (branchId) {
     where.branchId = branchId;
@@ -995,7 +995,15 @@ export async function indexInventory(id, storeId, branchId) {
         attributes: ["id", "name", "code"]
       }
     ]
-  })
+  });
+  if (productUnitId) {
+    const productUnit = await models.ProductUnit.findOne({
+      where: {
+        id: productUnitId
+      }
+    });
+    inventories[0].dataValues.quantityProductUnit = parseInt(Math.floor(inventories[0].quantity / productUnit.exchangeValue));
+  }
   return {
     success: true,
     data: inventories
