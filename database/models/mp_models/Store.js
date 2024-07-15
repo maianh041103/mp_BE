@@ -122,6 +122,12 @@ module.exports = (sequelize, Sequelize) => {
       foreignKey: 'logoId',
       targetKey: 'id',
     });
-  };
+
+    Store.hasMany(models.User, {
+      as: 'users',
+      foreignKey: 'storeId',
+      targetKey: 'id'
+    });
+  }
   return Store;
 };
