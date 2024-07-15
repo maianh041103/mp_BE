@@ -396,8 +396,8 @@ module.exports.updateTrip = async (params) => {
             },
             transaction: t
         });
-        const listTripCustomerId = listCustomer.filter(item => item.id != null)
-            .map(item => item.id);
+        const listTripCustomerId = listCustomer.filter(item => item.tripCustomerId != null)
+            .map(item => item.tripCustomerId);
         await models.TripCustomer.destroy({
             where: {
                 id: {
@@ -408,11 +408,11 @@ module.exports.updateTrip = async (params) => {
             transaction: t
         })
         for (const item of listCustomer) {
-            if (!item.id) {
+            if (!item.tripCustomerId) {
                 const address = await reverse(item.lng, item.lat);
                 await models.TripCustomer.create({
                     tripId: id,
-                    customerId: item.customerId,
+                    customerId: item.id,
                     lat: item.lat,
                     lng: item.lng,
                     status: tripContant.TRIPSTATUS.NOT_VISITED,
@@ -421,38 +421,34 @@ module.exports.updateTrip = async (params) => {
                     transaction: t
                 });
             } else {
-                const tripCustomer = await models.TripCustomer.findOne({
+                const tripCustomer = await models.Customer.findOne({
                     where: {
-                        id: item.customerId,
                         id: item.id
                     }
                 });
                 if (!tripCustomer) {
-                    throw new Error(`Khách hàng có id = ${item.customerId} không hợp lệ`);
+                    throw new Error(`Không tồn tại khách hàng có id = ${item.id}`);
                 }
-                if (tripCustomer.lng != item.lng && tripCustomer.lat != item.lng) {
-                    const address = await reverse(item.lng, item.lat);
-                    await models.TripCustomer.update({
-                        lng: item.lng,
-                        lat: item.lat,
-                        address: address
-                    }, {
-                        where: {
-                            id: item.id,
-                            tripId: id
-                        },
-                        transaction: t
-                    });
-                }
+                const address = await reverse(item.lng, item.lat);
+                await models.TripCustomer.update({
+                    customerId: item.id,
+                    lng: item.lng,
+                    lat: item.lat,
+                    address: address
+                }, {
+                    where: {
+                        id: item.tripCustomerId,
+                        tripId: id
+                    },
+                    transaction: t
+                });
             }
         }
     });
     await updateIndex(id);
     return {
         success: true,
-        data: {
-
-        }
+        data: {}
     }
 }
 
