@@ -423,12 +423,11 @@ module.exports.updateTrip = async (params) => {
             } else {
                 const tripCustomer = await models.TripCustomer.findOne({
                     where: {
-                        id: item.customerId,
-                        id: item.id
+                        id: item.customerId
                     }
                 });
                 if (!tripCustomer) {
-                    throw new Error(`Khách hàng có id = ${item.customerId} không hợp lệ`);
+                    throw new Error(`Không tồn tại khách hàng có id = ${item.customerId}`);
                 }
                 if (tripCustomer.lng != item.lng && tripCustomer.lat != item.lng) {
                     const address = await reverse(item.lng, item.lat);
