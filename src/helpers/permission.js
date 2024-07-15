@@ -138,6 +138,10 @@ export const modelPermissions = [
   {
     name: "connect_delivery",
     text: "Kết nối giao hàng"
+  },
+  {
+    name: "map",
+    text: "Tạo chuyến đi"
   }
 ];
 
