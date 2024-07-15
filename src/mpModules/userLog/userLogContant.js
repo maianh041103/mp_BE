@@ -4,5 +4,6 @@ export const TYPE = {
     INBOUND: 'inbound',
     PURCHASE_RETURN: 'purchase_return',
     INVENTORY_CHECKING: 'inventory_checking',
-    MOVE: 'move'
+    MOVE: 'move',
+    RECEIVE: 'receive'
 }
