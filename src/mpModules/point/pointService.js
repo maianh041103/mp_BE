@@ -41,7 +41,8 @@ module.exports.createPoint = async (params) => {
                 for (const item of groupCustomers) {
                     await models.PointCustomer.create({
                         pointId: newPoint.id,
-                        groupCustomerId: item
+                        groupCustomerId: item,
+                        type: type
                     }, {
                         transaction: t
                     })
@@ -62,6 +63,15 @@ module.exports.createPoint = async (params) => {
                 },
                 transaction: t
             });
+
+            await models.PointCustomer.destroy({
+                where: {
+                    groupCustomerId: {
+                        [Op.notIn]: groupCustomers
+                    },
+                    pointId: newPoint.id
+                }
+            })
 
             //Update trạng thái của loại còn lại
             await models.Point.update({
@@ -87,7 +97,8 @@ module.exports.createPoint = async (params) => {
                     if (!itemExists) {
                         await models.PointCustomer.create({
                             pointId: newPoint.id,
-                            groupCustomerId: item
+                            groupCustomerId: item,
+                            type: type
                         }, {
                             transaction: t
                         })
