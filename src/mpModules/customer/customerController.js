@@ -17,7 +17,8 @@ const {
   readCustomer,
   updateCustomerStatus,
   indexPaymentCustomer,
-  historyPointService
+  historyPointService,
+  historyVisitedService
 } = require("./customerService");
 const { hashPassword } = require("../auth/authService");
 const { formatMobileToSave } = require("../../helpers/utils");
@@ -109,7 +110,9 @@ export async function createController(req, res) {
       storeId: loginUser.storeId,
       createdBy: loginUser.id,
       createdAt: new Date(),
-      note: _.get(req.body, "note", "")
+      note: _.get(req.body, "note", ""),
+      lat: _.get(req.body, "lat", ""),
+      lng: _.get(req.body, "lng", "")
     };
     const result = await createCustomer(customer, loginUser);
     if (result.success) res.json(respondItemSuccess(result.data));
@@ -143,6 +146,8 @@ export async function updateController(req, res) {
       districtId: _.get(req.body, "districtId", null),
       provinceId: _.get(req.body, "provinceId", null),
       note: _.get(req.body, "note", null),
+      lat: _.get(req.body, "lat", ""),
+      lng: _.get(req.body, "lng", ""),
       ...(status && { status }),
       updatedBy: loginUser.id,
       updatedAt: new Date(),
@@ -241,3 +246,18 @@ export async function historyPoint(req, res) {
     );
   }
 }
+
+export async function historyVisited(req, res) {
+  try {
+    const customerId = req.params.id;
+    const query = req.query;
+    const result = await historyVisitedService(customerId, query);
+    if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+

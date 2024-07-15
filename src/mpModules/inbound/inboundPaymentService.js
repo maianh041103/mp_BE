@@ -118,20 +118,9 @@ export async function createPaymentAndTransaction(payment) {
             debt: -payment.amount
         }, { where: { id: inbound.id } })
 
-        await createPayment({
-            amount: payment.amount,
-            totalAmount: inbound.totalPrice,
-            supplierId: inbound.supplierId,
-            inbound: inbound.id,
-            paymentMethod: payment.paymentMethod,
-            createdBy: payment.createdBy,
-            status: 'SUCCEED',
-            transactionId: payment.transactionId
-        }, t);
-
         //Thêm mới transaction
         const typeTransaction = await transactionService.generateTypeTransactionInbound(inbound.storeId);
-        await models.Transaction.create({
+        const newTransaction = await models.Transaction.create({
             code: inbound.code,
             paymentDate: new Date(),
             ballotType: transactionContant.BALLOTTYPE.EXPENSES,
@@ -147,6 +136,17 @@ export async function createPaymentAndTransaction(payment) {
         }, {
             transaction: t
         });
+
+        await createPayment({
+            amount: payment.amount,
+            totalAmount: inbound.totalPrice,
+            supplierId: inbound.supplierId,
+            inbound: inbound.id,
+            paymentMethod: payment.paymentMethod,
+            createdBy: payment.createdBy,
+            status: 'SUCCEED',
+            transactionId: newTransaction.id
+        }, t);
     })
     return {
         success: true
@@ -169,7 +169,8 @@ export async function createInboundPayment(inbound, transaction) {
             supplierId: inbound.supplierId,
             inboundId: inbound.id,
             createdBy: inbound.createdBy,
-            status: 'SUCCEED'
+            status: 'SUCCEED',
+            transactionId: inbound.transactionId
         }, transaction)
     }
 }

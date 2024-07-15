@@ -18,8 +18,7 @@ export async function indexBranchesController(req, res) {
     const { loginUser = {} } = req;
     const result = await indexBranches({
       ...req.query,
-      storeId: loginUser.storeId,
-      ...(loginUser.branchId && { branchId: loginUser.branchId }),
+      storeId: loginUser.storeId
     });
     if (result.success) res.json(respondItemSuccess(result.data));
     else res.json(respondWithError(result.code, result.message, {}));

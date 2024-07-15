@@ -20,6 +20,7 @@ const {
   PAGE_LIMIT,
   userStatus,
 } = require("../../helpers/choices");
+const tripContant = require("../trip/tripContant");
 
 const customerAttributes = [
   "id",
@@ -43,6 +44,8 @@ const customerAttributes = [
   "createdBy",
   "note",
   "isDefault",
+  "lat",
+  "lng",
   [Sequelize.literal(`(SELECT COALESCE(SUM(debtAmount), 0) 
   FROM customer_debts 
   WHERE Customer.id = customer_debts.customerId and customer_debts.debtAmount >= 0)`), 'totalDebt'],
@@ -733,6 +736,44 @@ export async function historyPointService(customerId, query) {
       row.dataValues.type = "Cân bằng điểm";
     }
   }
+  return {
+    success: true,
+    data: {
+      items: rows,
+      totalItem: count || 0
+    },
+  }
+}
+
+const tripCustomerInclude = [
+  {
+    model: models.Trip,
+    as: "trip",
+    include: [
+      {
+        model: models.User,
+        as: "userManager",
+        attributes: ["fullName"]
+      }
+    ]
+  }
+]
+
+export async function historyVisitedService(customerId, query) {
+  const limit = parseInt(query.limit) || 20;
+  const page = parseInt(query.page) || 1;
+  const where = {
+    customerId,
+    status: tripContant.TRIPSTATUS.VISITED
+  }
+
+  const { rows, count } = await models.TripCustomer.findAndCountAll({
+    include: tripCustomerInclude,
+    where,
+    limit,
+    offset: (page - 1) * limit,
+    order: [["id", "DESC"]]
+  })
   return {
     success: true,
     data: {

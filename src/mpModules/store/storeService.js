@@ -28,11 +28,7 @@ const include = [
     as: "businessRegistrationImage",
     attributes: ["id", "path"],
   },
-  {
-    model: models.Image,
-    as: "logo",
-    attributes: ["id", "path"],
-  },
+
   {
     model: models.Province,
     as: "province",
@@ -141,6 +137,7 @@ export async function listStore(params) {
     data: {
       items: rows,
       totalItem: count,
+     
       totalPages: Math.ceil(count / limit),
       currentPage: page
     },

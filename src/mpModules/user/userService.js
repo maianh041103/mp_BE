@@ -20,6 +20,7 @@ const userAttributes = [
   "avatarId",
   "birthday",
   "gender",
+  "address",
   "phone",
   "roleId",
   "position",
@@ -28,7 +29,7 @@ const userAttributes = [
   "status",
 ];
 
-const userIncludes = [
+let userIncludes = [
   {
     model: models.Image,
     as: "avatar",
@@ -66,37 +67,42 @@ const userIncludes = [
     ],
   },
   {
-    model: models.Branch,
-    as: "branch",
-    attributes: [
-      "id",
-      "name",
-      "phone",
-      "code",
-      "zipCode",
-      "provinceId",
-      "districtId",
-      "wardId",
-      "isDefaultBranch",
-      "createdAt",
-    ],
-    include: [
-      {
-        model: models.Province,
-        as: "province",
-        attributes: ["id", "name"],
-      },
-      {
-        model: models.District,
-        as: "district",
-        attributes: ["id", "name"],
-      },
-      {
-        model: models.Ward,
-        as: "ward",
-        attributes: ["id", "name"],
-      },
-    ],
+    model: models.UserBranch,
+    as: "branches",
+    attributes: ["id"],
+    include: [{
+      model: models.Branch,
+      as: "branch",
+      attributes: [
+        "id",
+        "name",
+        "phone",
+        "code",
+        "zipCode",
+        "provinceId",
+        "districtId",
+        "wardId",
+        "isDefaultBranch",
+        "createdAt",
+      ],
+      include: [
+        {
+          model: models.Province,
+          as: "province",
+          attributes: ["id", "name"],
+        },
+        {
+          model: models.District,
+          as: "district",
+          attributes: ["id", "name"],
+        },
+        {
+          model: models.Ward,
+          as: "ward",
+          attributes: ["id", "name"],
+        },
+      ],
+    }]
   },
   {
     model: models.Role,
@@ -148,14 +154,22 @@ export async function indexUsers(filter) {
 
   if (roleId) userWhere.roleId = roleId;
   if (storeId) userWhere.storeId = storeId;
-  if (branchId) userWhere.branchId = branchId;
+  if (branchId) {
+    userWhere.isAdmin = {
+      [Op.or]: {
+        [Op.eq]: 1,
+        [Op.and]: [
+          Sequelize.literal(`SELECT id FROM user_branches WHERE user_branches.userId = User.id AND user_branches.branchId = ${branchId}`)
+        ]
+      }
+    }
+  }
   if (phone) userWhere.phone = phone;
   if (position) userWhere.position = position;
   if (status) userWhere.status = status;
   if (_.isArray(listUser) && listUser.length) {
     userWhere.id = listUser;
   }
-
   const offset = +limit * (+page - 1);
   const query = {
     attributes: userAttributes,
@@ -170,6 +184,7 @@ export async function indexUsers(filter) {
     query.raw = true;
   }
   const { rows, count } = await models.User.findAndCountAll(query);
+
   return {
     success: true,
     data: {
@@ -179,14 +194,13 @@ export async function indexUsers(filter) {
   };
 }
 
-export async function createUser(credentials) {
+export async function createUser(credentials, listBranchId) {
   const {
     username,
     fullName,
     password,
     email,
     storeId,
-    branchId,
     roleId,
     position,
     gender,
@@ -204,13 +218,15 @@ export async function createUser(credentials) {
     };
   }
 
-  const existedBranch = await isExistBranchStore(branchId, storeId);
-  if (!existedBranch) {
-    return {
-      error: true,
-      code: HttpStatusCode.BAD_REQUEST,
-      message: `Branch có id = ${branchId} không tồn tại hoặc không thuộc Store có id = ${storeId}.`,
-    };
+  for (const branchId of listBranchId) {
+    const existedBranch = await isExistBranchStore(branchId, storeId);
+    if (!existedBranch) {
+      return {
+        error: true,
+        code: HttpStatusCode.BAD_REQUEST,
+        message: `Branch có id = ${branchId} không tồn tại hoặc không thuộc Store có id = ${storeId}.`,
+      };
+    }
   }
 
   const existedRole = await isExistRole(roleId);
@@ -254,20 +270,33 @@ export async function createUser(credentials) {
     };
   }
 
-  const newUser = await models.User.create({
-    username,
-    fullName,
-    email,
-    phone,
-    birthday,
-    gender,
-    password: hashPassword(password),
-    position,
-    storeId,
-    branchId,
-    roleId,
-    avatarId,
-    address,
+  let newUser;
+  const t = await models.sequelize.transaction(async (t) => {
+    newUser = await models.User.create({
+      username,
+      fullName,
+      email,
+      phone,
+      birthday,
+      gender,
+      password: hashPassword(password),
+      position,
+      storeId,
+      roleId,
+      avatarId,
+      address,
+    }, {
+      transaction: t
+    });
+
+    for (const id of listBranchId) {
+      await models.UserBranch.create({
+        userId: newUser.id,
+        branchId: id
+      }, {
+        transaction: t
+      });
+    }
   });
 
   return {
@@ -282,7 +311,7 @@ export async function createUser(credentials) {
       address: newUser.address,
       birthday: newUser.birthday,
       storeId: newUser.storeId,
-      branchId: newUser.branchId,
+      listBranchId: listBranchId,
       roleId: newUser.roleId,
     },
   };
@@ -302,11 +331,38 @@ export async function updateUser(id, user, loginUser) {
       message: "User không tồn tại",
     };
   }
-  await models.User.update(user, {
-    where: {
-      id,
-    },
-  });
+  const t = await models.sequelize.transaction(async (t) => {
+    user.password = hashPassword(user.password);
+    await models.User.update(user, {
+      where: {
+        id,
+      },
+      transaction: t
+    });
+
+    await models.UserBranch.destroy({
+      where: {
+        branchId: {
+          [Op.notIn]: user.listBranchId
+        },
+        userId: id
+      },
+      transaction: t
+    })
+    for (const branchId of user.listBranchId) {
+      await models.UserBranch.findOrCreate({
+        where: {
+          userId: id,
+          branchId: branchId
+        },
+        defaults: {
+          userId: id,
+          branchId: branchId
+        },
+        transaction: t
+      });
+    }
+  })
   createUserTracking({
     accountId: user.updatedBy,
     type: accountTypes.USER,
@@ -392,11 +448,21 @@ export async function deleteUserById(id, loginUser) {
     };
   }
 
-  await models.User.destroy({
-    where: {
-      id,
-    },
-  });
+  const t = await models.sequelize.transaction(async (t) => {
+    await models.UserBranch.destroy({
+      where: {
+        userId: id
+      },
+      transaction: t
+    });
+
+    await models.User.destroy({
+      where: {
+        id,
+      },
+    });
+  })
+
 
   createUserTracking({
     accountId: loginUser.id,

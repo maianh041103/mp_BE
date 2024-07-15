@@ -2,9 +2,10 @@ import {addFilterByDate} from "../../helpers/utils";
 import {Op} from "sequelize";
 import {saleReturnAttributes, saleReturnIncludes} from "./attributes";
 import {SaleReturnStatus} from "./saleReturnConstant";
+import moment from "moment/moment";
 const _ = require("lodash");
 export function getFilter(params) {
-    const {
+    let {
         page = 1,
         limit = 10,
         keyword = "",
@@ -18,6 +19,7 @@ export function getFilter(params) {
         status,
         creatorId,
         customerId,
+        dateRange = {},
     } = params;
 
     const query = {
@@ -74,6 +76,21 @@ export function getFilter(params) {
 
     if (customerId) {
         where.customerId = customerId;
+    }
+
+    try {
+        dateRange = JSON.parse(dateRange)
+    } catch (e) {
+        dateRange = {}
+    }
+    const { startDate, endDate } = dateRange
+    if (
+        startDate &&
+        moment(startDate).isValid() &&
+        endDate &&
+        moment(endDate).isValid()
+    ) {
+        where.createdAt = addFilterByDate([startDate, endDate])
     }
 
     query.where = where;

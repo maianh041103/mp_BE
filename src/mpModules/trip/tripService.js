@@ -1,0 +1,823 @@
+const Sequelize = require("sequelize");
+const { Op } = Sequelize;
+const models = require("../../../database/models");
+const { HttpStatusCode } = require("../../helpers/errorCodes");
+const axios = require('axios');
+const tripContant = require("./tripContant");
+const { generateCode } = require("../../helpers/codeGenerator");
+
+const tripAttributes = [
+    "id",
+    "code",
+    "name",
+    "lat",
+    "lng",
+    "time",
+    "createdBy",
+    "userId",
+    "note",
+    "status",
+    "currentAddress",
+    [Sequelize.literal(`(SELECT COUNT(trip_customer.id) FROM trip_customer WHERE tripId = Trip.id
+        AND status = '${tripContant.TRIPSTATUS.VISITED}')`), 'countVisited'],
+    [Sequelize.literal(`(SELECT COUNT(trip_customer.id) FROM trip_customer WHERE tripId = Trip.id
+        AND status <> '${tripContant.TRIPSTATUS.SKIP}')`), 'total'],
+    "createdAt",
+];
+
+let tripIncludes = [
+    {
+        model: models.User,
+        as: "userCreated",
+        attributes: ["id", "fullName"]
+    },
+    {
+        model: models.User,
+        as: "userManager",
+        attributes: ["id", "fullName"]
+    },
+    {
+        model: models.TripCustomer,
+        as: "tripCustomer",
+        attributes: ["id", "customerId", "lat", "lng", "status", "stt", "address"],
+        where: {
+            status: {
+                [Op.ne]: tripContant.TRIPSTATUS.SKIP
+            }
+        },
+        include: [{
+            model: models.Customer,
+            as: "customer",
+            attributes: ["id", "code", "fullName", "phone", "status"]
+        }]
+    },
+    {
+        model: models.TripCustomer,
+        as: "customerCurrent",
+        attributes: ["id", "stt", "status", "customerId", "lat", "lng"]
+    }
+]
+
+const sortMap = async (listPoint) => {
+    let points = listPoint.join("&point=");
+    let API_KEY = tripContant.KEY.API_KEY;
+    points = "point=" + points;
+    const apiUrl = `https://maps.vietmap.vn/api/matrix?api-version=1.1&apikey=${API_KEY}&${points}`;
+    const response = await axios.get(apiUrl);
+    const data = response.data;
+    let res = travel(data);
+    return res;
+}
+
+const travel = (data) => {
+    let X = []; //X[i] là số thứ tự thành phố thứ i đi qua 
+    let d = 0; //Tính khoảng cách đi lại
+    let ans = 999999999; //lưu chi phí đường đi tối ưu
+    let cmin = 999999999; //lưu chi phí 1 quãng đường ngắn nhất
+    X[1] = 1;
+    let c = data.distances; //Mảng giá trị
+    c.unshift([0]);
+    for (let i = 0; i < c.length; i++) {
+        c[i].unshift(0);
+    }
+    for (const row of c) {
+        for (const col of row) {
+            if (col != 0) {
+                cmin = Math.min(cmin, col);
+            }
+        }
+    }
+    let n = c.length; //n thành phố
+    let visited = Array(n).fill(0); //mảng đánh dấu
+    n--;
+    visited[1] = 1;
+    let X_best = []; //Lưu kết quả đi tốt nhất
+
+    const Try = (i) => {
+        for (let j = 1; j <= n; j++) {
+            if (visited[j] == 0) {
+                visited[j] = 1;
+                X[i] = j;
+                d += c[X[i - 1]][X[i]];
+                if (i == n) {
+                    if (ans > d) {
+                        ans = d;
+                        X_best = [...X];
+                    }
+                }
+                else if (d + (n - i) * cmin < ans) {
+                    Try(i + 1);
+                }
+                //backtrack
+                visited[j] = 0;
+                d -= c[X[i - 1]][X[i]];
+            }
+        }
+    }
+    Try(2);
+    return X_best;
+}
+
+module.exports.createTrip = async (params) => {
+    const { name, lat, lng, time, userId, note, listCustomer, createdBy, storeId, status = tripContant.TRIPSTATUS.PENDING } = params;
+    const userExists = await models.User.findOne({
+        where: {
+            storeId: storeId,
+            id: userId
+        }
+    });
+
+    if (!userExists) {
+        return {
+            error: true,
+            message: "Không tìm thấy nhân viên phụ trách",
+            code: HttpStatusCode.BAD_REQUEST
+        }
+    }
+    let newTrip;
+    //Trong transaction sử dụng return chỉ thoát ra khỏi hàm hiện tại trong transaction
+    const t = await models.sequelize.transaction(async (t) => {
+        newTrip = await models.Trip.create({
+            name, lat, lng, time, createdBy, userId, note, storeId, status
+        }, {
+            transaction: t
+        });
+        const code = generateCode("TOUR", newTrip.id);
+        await models.Trip.update({
+            code
+        }, {
+            where: {
+                id: newTrip.id
+            },
+            transaction: t
+        })
+        newTrip.code = code;
+        let listPoint = [];
+        for (const item of listCustomer) {
+            if (!item.lat || !item.lng) {
+                const customer = await models.Customer.findOne({
+                    where: {
+                        id: item.id,
+                        lat: {
+                            [Op.ne]: null
+                        },
+                        lng: {
+                            [Op.ne]: null
+                        },
+                        storeId: storeId
+                    }
+                });
+                if (!customer) {
+                    throw new Error("Không tồn tại khách hàng hoặc địa chỉ không hợp lệ");
+                }
+                listPoint.push(`${customer.lat},${customer.lng}`);
+            } else {
+                listPoint.push(`${item.lat},${item.lng}`);
+            }
+        }
+        if (listCustomer.length > 1) {
+            let res = await sortMap(listPoint);
+            for (let i = 0; i < listCustomer.length; i++) {
+                let lngTmp, latTmp;
+                if (!listCustomer[i].lng || !listCustomer[i].lat) {
+                    const customer = await models.Customer.findOne({
+                        where: {
+                            id: listCustomer[i].id
+                        }
+                    });
+                    lngTmp = customer.lng;
+                    latTmp = customer.lat;
+                } else {
+                    lngTmp = listCustomer[i].lng;
+                    latTmp = listCustomer[i].lat;
+                }
+                const index = res.findIndex(item => item == i + 1);
+                const address = await reverse(lngTmp, latTmp);
+
+                await models.TripCustomer.create({
+                    tripId: newTrip.id,
+                    customerId: listCustomer[i].id,
+                    lat: latTmp,
+                    lng: lngTmp,
+                    status: tripContant.TRIPSTATUS.NOT_VISITED,
+                    stt: index,
+                    address
+                }, {
+                    transaction: t
+                });
+            }
+        } else {
+            let lng, lat;
+            if (!listCustomer[0].lng || !listCustomer[0].lat) {
+                const customer = await models.Customer.findOne({
+                    where: {
+                        id: listCustomer[0].id
+                    }
+                });
+                lng = customer.lng;
+                lat = customer.lat;
+            } else {
+                lng = listCustomer[0].lng;
+                lat = listCustomer[0].lat;
+            }
+            const address = await reverse(lng, lat);
+            await models.TripCustomer.create({
+                tripId: newTrip.id,
+                customerId: listCustomer[0].id,
+                lat: lat,
+                lng: lng,
+                status: tripContant.TRIPSTATUS.NOT_VISITED,
+                stt: 1,
+                address
+            }, {
+                transaction: t
+            });
+        }
+    })
+
+    return {
+        success: true,
+        data: {
+            trip: newTrip
+        },
+    }
+}
+
+const reverse = async (lng, lat) => {
+    let API_KEY = tripContant.KEY.API_KEY;
+    const apiUrl = `https://maps.vietmap.vn/api/reverse/v3?apikey=${API_KEY}&lng=${lng}&lat=${lat}`;
+    const response = await axios.get(apiUrl);
+    const data = response.data;
+    return data[0].display;
+}
+
+module.exports.getListTrip = async (params) => {
+    const { storeId, page = 1, limit = 20, keyword, status } = params;
+    let where = {};
+    if (keyword) {
+        where = {
+            [Op.or]: {
+                name: {
+                    [Op.like]: `%${keyword}%`
+                },
+                code: {
+                    [Op.like]: `%${keyword}%`
+                }
+            }
+        }
+    }
+    where.storeId = storeId;
+    if (status) {
+        where.status = status;
+    }
+
+    const rows = await models.Trip.findAll({
+        attributes: tripAttributes,
+        include: tripIncludes,
+        where,
+        order: [
+            ['createdAt', 'DESC'],
+            [{ model: models.TripCustomer, as: "tripCustomer" }, "stt", "ASC"]
+        ],
+        limit: parseInt(limit),
+        offset: parseInt(parseInt(limit) * (parseInt(page) - 1))
+    });
+    for (let row of rows) {
+        if (row.status != tripContant.TRIPSTATUS.DONE) {
+            if (row.customerCurrent) {
+                const nextCustomer = row.tripCustomer.find(item => {
+                    return item.stt == row.customerCurrent.stt + 1;
+                });
+                row.dataValues.nextCustomer = nextCustomer;
+            }
+            else {
+                row.dataValues.nextCustomer = row.tripCustomer[0];
+            }
+        }
+    }
+    const count = await models.Trip.count({
+        where
+    });
+    return {
+        success: true,
+        data: {
+            items: rows,
+            totalItem: count,
+        },
+
+    }
+}
+
+module.exports.getDetailTrip = async (params) => {
+    const { storeId, id } = params;
+    const trip = await models.Trip.findOne({
+        attributes: tripAttributes,
+        include: tripIncludes,
+        where: {
+            storeId,
+            id
+        },
+        order: [[{ model: models.TripCustomer, as: "tripCustomer" }, "stt", "ASC"]]
+    });
+
+    const listTripCustomer = await models.TripCustomer.findAll({
+        where: {
+            tripId: id,
+            status: {
+                [Op.ne]: tripContant.TRIPSTATUS.SKIP
+            }
+        },
+        order: [["stt", "ASC"]]
+    });
+    let currentIndex;
+    let listPoint = listTripCustomer.map((item, index) => {
+        if (item.id == trip.currentAddress) {
+            currentIndex = index;
+        }
+        return `${item.lat},${item.lng}`;
+    });
+    listPoint.unshift(`${trip.lat},${trip.lng}`);
+    if (!trip.currentAddress) {
+        currentIndex = 0;
+    }
+
+    let result = await getDistance(listPoint, currentIndex);
+    for (let i = 0; i < trip.dataValues.tripCustomer.length; i++) {
+        trip.dataValues.tripCustomer[i].dataValues.duration = result.durations[0][i + 1];
+        trip.dataValues.tripCustomer[i].dataValues.distances = result.distances[0][i + 1];
+    }
+    trip.dataValues.startAddress = await reverse(trip.lng, trip.lat);
+
+    return {
+        success: true,
+        data: trip
+    }
+}
+
+const getDistance = async (listPoint, currentIndex) => {
+    let points = listPoint.join("&point=");
+    let API_KEY = tripContant.KEY.API_KEY;
+    points = "point=" + points;
+    const apiUrl = `https://maps.vietmap.vn/api/matrix?api-version=1.1&apikey=${API_KEY}&${points}&sources=${currentIndex}`;
+    const response = await axios.get(apiUrl);
+    const data = response.data;
+    return data;
+}
+
+module.exports.updateTrip = async (params) => {
+    const { name, lat, lng, time, userId, note, listCustomer, id, storeId } = params;
+    const userExists = await models.User.findOne({
+        where: {
+            storeId: storeId,
+            id: userId
+        }
+    });
+
+    if (!userExists) {
+        return {
+            error: true,
+            message: "Không tìm thấy nhân viên phụ trách",
+            code: HttpStatusCode.BAD_REQUEST
+        }
+    }
+
+    const t = await models.sequelize.transaction(async (t) => {
+        await models.Trip.update({
+            name, lat, lng, time, userId, note
+        }, {
+            where: {
+                id
+            },
+            transaction: t
+        });
+        const listCustomerId = listCustomer.map(item => item.id);
+        await models.TripCustomer.destroy({
+            where: {
+                customerId: {
+                    [Op.notIn]: listCustomerId
+                },
+                tripId: id
+            },
+            transaction: t
+        })
+        for (const item of listCustomer) {
+            const isExists = await models.TripCustomer.findOne({
+                where: {
+                    customerId: item.id,
+                    tripId: id
+                }
+            });
+
+            if (!isExists) {
+                let lat, lng;
+                if (!item.lat || !item.lng) {
+                    const customer = await models.Customer.findOne({
+                        where: {
+                            id: item.id,
+                            lat: {
+                                [Op.ne]: null
+                            },
+                            lng: {
+                                [Op.ne]: null
+                            },
+                            storeId: storeId
+                        }
+                    });
+                    if (!customer) {
+                        throw new Error("Không tồn tại khách hàng hoặc địa chỉ không hợp lệ");
+                    }
+                    lat = customer.lat;
+                    lng = customer.lng;
+                } else {
+                    lat = item.lat;
+                    lng = item.lng;
+                }
+                const address = await reverse(lng, lat);
+                await models.TripCustomer.create({
+                    tripId: id,
+                    customerId: item.id,
+                    lat: lat,
+                    lng: lng,
+                    status: tripContant.TRIPSTATUS.NOT_VISITED,
+                    address
+                }, {
+                    transaction: t
+                });
+            } else {
+                if (item.lng && item.lat) {
+                    const address = await reverse(item.lng, item.lat);
+                    await models.TripCustomer.update({
+                        lng: item.lng,
+                        lat: item.lat,
+                        address: address
+                    }, {
+                        where: {
+                            customerId: item.id,
+                            tripId: id
+                        },
+                        transaction: t
+                    });
+                }
+            }
+        }
+    });
+    await updateIndex(id);
+    return {
+        success: true,
+        data: {
+
+        }
+    }
+}
+
+module.exports.changeStatus = async (params) => {
+    const { tripCustomerId, status, isUpdateAddress, note } = params;
+    const tripCustomer = await models.TripCustomer.findOne({
+        where: {
+            id: tripCustomerId
+        }
+    });
+    const t = await models.sequelize.transaction(async (t) => {
+        if (isUpdateAddress == true) {
+            await models.Trip.update({
+                currentAddress: tripCustomerId
+            }, {
+                where: {
+                    id: tripCustomer.tripId
+                },
+                transaction: t
+            })
+        }
+        //Nếu là quay lại sau => đưa xuống cuối
+        if (status == tripContant.TRIPSTATUS.WAITED) {
+            await models.TripCustomer.decrement({
+                stt: 1
+            }, {
+                where: {
+                    tripId: tripCustomer.tripId,
+                    status: tripContant.TRIPSTATUS.WAITED
+                },
+                transaction: t
+            });
+
+            await models.TripCustomer.update({
+                status: tripContant.TRIPSTATUS.WAITED
+            }, {
+                where: {
+                    id: tripCustomerId
+                },
+                transaction: t
+            });
+        }
+        if (status == tripContant.TRIPSTATUS.VISITED) {
+            await models.TripCustomer.update({
+                status: tripContant.TRIPSTATUS.VISITED,
+                visitedAt: new Date()
+            }, {
+                where: {
+                    id: tripCustomerId
+                },
+                transaction: t
+            });
+        }
+        //Bỏ qua
+        if (status == tripContant.TRIPSTATUS.SKIP) {
+            await models.TripCustomer.update({
+                status: tripContant.TRIPSTATUS.SKIP,
+            }, {
+                where: {
+                    id: tripCustomerId
+                },
+                transaction: t
+            });
+        }
+    });
+    if (status == tripContant.TRIPSTATUS.WAITED || status == tripContant.TRIPSTATUS.VISITED)
+        await updateIndex(tripCustomer.tripId);
+    if (status == tripContant.TRIPSTATUS.WAITED) {
+        let count = await models.TripCustomer.count({
+            where: {
+                status: {
+                    [Op.ne]: tripContant.TRIPSTATUS.SKIP
+                },
+                tripId: tripCustomer.tripId
+            }
+        });
+        await models.TripCustomer.update({
+            stt: count
+        }, {
+            where: {
+                id: tripCustomerId
+            },
+            transaction: t
+        });
+    }
+    if (status == tripContant.TRIPSTATUS.SKIP) {
+        let stt = tripCustomer.stt;
+        await models.TripCustomer.update({
+            stt: null
+        }, {
+            where: {
+                id: tripCustomerId
+            },
+            transaction: t
+        });
+        await models.TripCustomer.decrement({
+            stt: 1
+        }, {
+            where: {
+                tripId: tripCustomer.tripId,
+                stt: {
+                    [Op.gt]: stt
+                }
+            }
+        });
+    }
+    return {
+        success: true,
+        data: null
+    }
+}
+
+const updateIndex = async (tripId) => {
+    const listCustomerVisited = await models.TripCustomer.findAll({
+        where: {
+            tripId,
+            status: tripContant.TRIPSTATUS.VISITED
+        },
+        order: [["visitedAt", "ASC"]]
+    });
+    for (let i = 0; i < listCustomerVisited.length; i++) {
+        if (listCustomerVisited[i].stt != i + 1) {
+            await models.TripCustomer.update({
+                stt: i + 1
+            }, {
+                where: {
+                    id: listCustomerVisited[i].id
+                }
+            })
+        }
+    }
+    let listTripCustomer = await models.TripCustomer.findAll({
+        where: {
+            tripId,
+            status: tripContant.TRIPSTATUS.NOT_VISITED
+        }
+    });
+    const trip = await models.Trip.findOne({
+        where: {
+            id: tripId
+        }
+    });
+    if (trip.currentAddress) {
+        const tripCustomerCurrent = await models.TripCustomer.findOne({
+            where: {
+                id: trip.currentAddress
+            },
+            paranoid: false
+        });
+        listTripCustomer.unshift(tripCustomerCurrent);
+    }
+
+    let listPoint = [];
+    for (const customer of listTripCustomer) {
+        listPoint.push(`${customer.lat},${customer.lng}`);
+    }
+    if (!trip.currentAddress) {
+        listTripCustomer.unshift({ id: -1 })
+        listPoint.unshift(`${trip.lat},${trip.lng}`);
+    }
+    if (listPoint.length > 1) {
+        let res = await sortMap(listPoint);
+        console.log(res);
+        const countVisted = await models.TripCustomer.count({
+            where: {
+                status: tripContant.TRIPSTATUS.VISITED,
+                tripId: tripId
+            }
+        });
+
+        for (let i = 0; i < listTripCustomer.length; i++) {
+            const index = res.findIndex(item => item == i + 1);
+            if (index - 1 + countVisted != listTripCustomer[i].stt) {
+                await models.TripCustomer.update({
+                    stt: index - 1 + countVisted
+                }, {
+                    where: {
+                        id: listTripCustomer[i].id
+                    }
+                })
+            }
+        }
+    }
+    const countNotWaited = await models.TripCustomer.count({
+        where: {
+            tripId: tripId,
+            status: {
+                [Op.or]: [
+                    tripContant.TRIPSTATUS.NOT_VISITED,
+                    tripContant.TRIPSTATUS.VISITED
+                ]
+            }
+        }
+    });
+    const listCustomerWaited = await models.TripCustomer.findAll({
+        where: {
+            tripId: tripId,
+            status: tripContant.TRIPSTATUS.WAITED
+        },
+        order: [["stt", "ASC"]]
+    });
+    for (let i = 0; i < listCustomerWaited.length; i++) {
+        await models.TripCustomer.update({
+            stt: countNotWaited + i + 1
+        }, {
+            where: {
+                tripId: tripId,
+                id: listCustomerWaited[i].id
+            }
+        })
+    }
+    const countNotVisited = await models.TripCustomer.count({
+        where: {
+            tripId: tripId,
+            status: {
+                [Op.or]: [
+                    tripContant.TRIPSTATUS.NOT_VISITED,
+                    tripContant.TRIPSTATUS.WAITED
+                ]
+            }
+        }
+    });
+    if (countNotVisited == 0) {
+        await models.Trip.update({
+            status: tripContant.TRIPSTATUS.DONE
+        }, {
+            where: {
+                id: tripId
+            }
+        });
+    }
+}
+
+module.exports.searchMap = async (params) => {
+    let { keyword } = params;
+    let API_KEY = tripContant.KEY.API_KEY;
+    keyword = encodeURIComponent(keyword);
+    const apiUrl = `https://maps.vietmap.vn/api/search/v3?apikey=${API_KEY}&text=${keyword}`;
+    const response = await axios.get(apiUrl);
+    const data = response.data;
+    return {
+        success: true,
+        data
+    }
+}
+
+module.exports.getPlace = async (params) => {
+    const { refId } = params;
+    let API_KEY = tripContant.KEY.API_KEY;
+    const apiUrl = `https://maps.vietmap.vn/api/place/v3?apikey=${API_KEY}&refid=${refId}`;
+    const response = await axios.get(apiUrl);
+    const data = response.data;
+    return {
+        success: true,
+        data
+    }
+}
+
+module.exports.reverse = async (params) => {
+    const { lat, lng } = params;
+    let API_KEY = tripContant.KEY.API_KEY;
+    const apiUrl = `https://maps.vietmap.vn/api/reverse/v3?apikey=${API_KEY}&lng=${lng}&lat=${lat}`;
+    const response = await axios.get(apiUrl);
+    const address = (response.data)[0].address;
+
+    return {
+        success: true,
+        data: {
+            address
+        }
+    }
+}
+
+module.exports.geofencing = async (params) => {
+    const { radius, lng, lat, storeId, limit = 10, page = 1 } = params;
+    const listCustomer = await models.Customer.findAll({
+        attributes: ["id", "lng", "lat"],
+        where: {
+            storeId,
+            lat: {
+                [Op.ne]: null
+            },
+            lng: {
+                [Op.ne]: null
+            }
+        }
+    });
+    const listCustomerConvert = listCustomer.map(item => {
+        return {
+            id: `${item.id}`,
+            long: item.lng,
+            lat: item.lat
+        }
+    });
+    let API_KEY = tripContant.KEY.API_KEY;
+    const body = {
+        geometryCenters: listCustomerConvert,
+        radius,
+        long: lng,
+        lat
+    }
+    const apiUrl = `https://maps.vietmap.vn/api/geofencing?apikey=${API_KEY}`;
+    const response = await axios.post(apiUrl, body);
+    const data = response.data.data;
+    const listCustomerIdInside = (data.filter(item => item.inside == true))
+        .map(item => item.id);
+
+    const listCustomerInside = await models.Customer.findAll({
+        where: {
+            id: {
+                [Op.in]: listCustomerIdInside
+            }
+        },
+        attributes: ["id", "code", "fullName", "phone", "address", "lat", "lng", "status"],
+        limit: parseInt(limit),
+        offset: (parseInt(page) - 1) * parseInt(limit)
+    });
+
+    const listPoint = listCustomerInside.map(item => `${item.lat},${item.lng}`);
+    listPoint.unshift(`${lat},${lng}`);
+    let distances = (await getDistance(listPoint, 0)).distances[0];
+    const result = listCustomerInside.map((item, index) => {
+        return {
+            ...item.dataValues,
+            distance: distances[index + 1]
+        }
+    })
+    return {
+        success: true,
+        data: result
+    }
+}
+
+module.exports.deleteTrip = async (params) => {
+    const { id } = params;
+    const t = await models.sequelize.transaction(async (t) => {
+        await models.TripCustomer.destroy({
+            where: {
+                tripId: id
+            },
+            transaction: t
+        });
+        await models.Trip.destroy({
+            where: {
+                id
+            },
+            transaction: t
+        });
+    })
+    return {
+        success: true,
+        data: null
+    }
+}

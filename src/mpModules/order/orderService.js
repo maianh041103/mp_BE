@@ -246,8 +246,8 @@ export async function indexOrders(params, loginUser) {
   if (storeId) {
     where.storeId = storeId
   }
-  if (canReturn !== undefined && typeof canReturn === 'boolean') {
-    where.canReturn = canReturn
+  if (canReturn) {
+    where.canReturn = canReturn == 'true' ? 1 : 0
   }
 
   if (branchId) {
@@ -890,7 +890,6 @@ async function handleCreateOrder(order, loginUser) {
       branchId: newOrder.branchId,
       code: code
     }, { transaction: t })
-    await createOrderPayment(newOrder, t)
     for (const orderProduct of productItems) {
       const weight = orderProduct.price / totalItemPrice
       await models.OrderProduct.update(
@@ -907,7 +906,7 @@ async function handleCreateOrder(order, loginUser) {
     const typeTransaction =
       await transactionService.generateTypeTransactionOrder(loginUser.storeId)
     //Tạo transaction
-    await models.Transaction.create(
+    const newTransaction = await models.Transaction.create(
       {
         code: `TTHD${idString.padStart(9, '0')}`,
         paymentDate: new Date(),
@@ -929,8 +928,9 @@ async function handleCreateOrder(order, loginUser) {
         transaction: t
       }
     )
-
     //End tạo transaction
+    newOrder.transactionId = newTransaction.id;
+    await createOrderPayment(newOrder, t)
 
     console.log('Total price ' + newOrder.totalPrice)
     //Tích điểm
@@ -1479,5 +1479,40 @@ export async function deleteOrder(id, loginUser) {
   })
   return {
     success: true
+  }
+}
+
+const discountApplyInclude = [
+  {
+    model: models.Discount,
+    as: "discount",
+    include: [{
+      model: models.DiscountItem,
+      as: "discountItem",
+      attributes: ["id", "orderFrom", "fromQuantity", "maxQuantity", "discountValue", "discountType", "pointType", "isGift", "pointValue",
+        "fixedPrice", "changeType"
+      ],
+      include: [
+        {
+          model: models.ProductDiscountItem,
+          as: "productDiscount",
+          attributes: ["productUnitId", "groupId", "isCondition"],
+        }
+      ]
+    }]
+  }
+]
+
+export async function getOrderDiscountService(params) {
+  const { id } = params;
+  const listDiscountOrder = await models.DiscountApply.findAll({
+    include: discountApplyInclude,
+    where: {
+      orderId: id
+    }
+  });
+  return {
+    success: true,
+    data: listDiscountOrder
   }
 }
