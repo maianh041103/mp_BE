@@ -36,7 +36,7 @@ const inventoryCheckingIncludes = [
             {
                 model: models.ProductUnit,
                 as: "productUnit",
-                attributes: ["code", "id", "unitName", "exchangeValue", "price", "isBaseUnit"],
+                attributes: ["code", "id", "unitName", "exchangeValue", "isBaseUnit"],
                 include: [
                     {
                         model: models.Product,
@@ -319,6 +319,8 @@ module.exports.getAll = async (params) => {
                     return acc + item.realQuantity;
                 }, 0)
             }
+
+            row.dataValues.productUnit.dataValues.price = row.productUnit.exchangeValue * row.productUnit.product.primePrice;
         }
 
     }

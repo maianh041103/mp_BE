@@ -7,8 +7,8 @@ export async function indexInventoryController(req, res) {
     try {
         const { loginUser = {} } = req;
         const { id } = req.params
-        const branchId = req.query.branchId;
-        const result = await indexInventory(id, loginUser.storeId, branchId);
+        const { branchId, productUnitId } = req.query;
+        const result = await indexInventory(id, loginUser.storeId, branchId, productUnitId);
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {

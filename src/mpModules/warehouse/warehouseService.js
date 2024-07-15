@@ -36,11 +36,17 @@ function processQuery(params) {
     }
     query.where = where;
     query.order = [["createdAt", "DESC"]]
+    query.attributes = attributes;
+    query.include = [{
+        model: models.ProductUnit,
+        as: "productUnit",
+        attributes: ["unitName"]
+    }]
     return query
 }
 
 export async function indexController(params) {
-    const {rows, count} = await models.WarehouseCard.findAndCountAll(processQuery(params));
+    const { rows, count } = await models.WarehouseCard.findAndCountAll(processQuery(params));
     return {
         success: true,
         data: {
@@ -51,7 +57,7 @@ export async function indexController(params) {
 }
 
 export async function createWarehouseCard(payload, t) {
-    const newCard = await models.WarehouseCard.create(payload, {transaction: t});
+    const newCard = await models.WarehouseCard.create(payload, { transaction: t });
     if (!newCard.code) {
         newCard.code = generateCode(newCard.id);
         await models.WarehouseCard.update(
