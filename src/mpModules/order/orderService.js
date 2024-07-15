@@ -1005,13 +1005,13 @@ async function handleCreateOrder(order, loginUser) {
                 //Tính tổng các sản phẩm có isDiscount = 0 và trừ đi chiết khấu
                 let totalPriceNotDiscount = 0
                 for (const item of order.products) {
-                  if (!item.isDiscount == true) {
+                  if (item.isDiscount == false) {
                     const productUnit = await models.ProductUnit.findOne({
                       where: {
                         id: item.productUnitId
                       }
                     })
-                    totalPriceNotDiscount += productUnit.price
+                    totalPriceNotDiscount += productUnit.price * item.quantity
                   }
                 }
                 totalPriceNotDiscount -= discountAmount
@@ -1104,10 +1104,7 @@ async function handleCreateOrder(order, loginUser) {
                       await models.OrderProduct.update(
                         {
                           point: Sequelize.literal(
-                            `IFNULL(point, 0) + ${Math.floor(
-                              (item.itemPrice * item.quantity) /
-                              point.convertMoneyBuy
-                            )}`
+                            `IFNULL(point, 0) + ${(Math.floor(item.itemPrice / point.convertMoneyBuy)) * item.quantity}`
                           )
                         },
                         {
@@ -1119,9 +1116,7 @@ async function handleCreateOrder(order, loginUser) {
                           transaction: t
                         }
                       )
-                      pointResult += Math.floor(
-                        (item.itemPrice * item.quantity) / point.convertMoneyBuy
-                      )
+                      pointResult += Math.floor((item.itemPrice / point.convertMoneyBuy)) * item.quantity
                     }
                   }
                 }
