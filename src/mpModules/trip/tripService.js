@@ -5,6 +5,7 @@ const { HttpStatusCode } = require("../../helpers/errorCodes");
 const axios = require('axios');
 const tripContant = require("./tripContant");
 const { generateCode } = require("../../helpers/codeGenerator");
+const { client } = require("../../../redis/redisConnect");
 
 const tripAttributes = [
     "id",
@@ -348,6 +349,11 @@ module.exports.getDetailTrip = async (params) => {
     }
     trip.dataValues.startAddress = await reverse(trip.lng, trip.lat);
 
+    // await client.connect();
+    //await client.set('foo', 'bar');
+    // const value = await client.get('hihi');
+    // console.log(value);
+
     return {
         success: true,
         data: trip
@@ -390,61 +396,41 @@ module.exports.updateTrip = async (params) => {
             },
             transaction: t
         });
-        const listCustomerId = listCustomer.map(item => item.id);
+        const listTripCustomerId = listCustomer.filter(item => item.id != null)
+            .map(item => item.id);
         await models.TripCustomer.destroy({
             where: {
-                customerId: {
-                    [Op.notIn]: listCustomerId
+                id: {
+                    [Op.notIn]: listTripCustomerId
                 },
                 tripId: id
             },
             transaction: t
         })
         for (const item of listCustomer) {
-            const isExists = await models.TripCustomer.findOne({
-                where: {
-                    customerId: item.id,
-                    tripId: id
-                }
-            });
-
-            if (!isExists) {
-                let lat, lng;
-                if (!item.lat || !item.lng) {
-                    const customer = await models.Customer.findOne({
-                        where: {
-                            id: item.id,
-                            lat: {
-                                [Op.ne]: null
-                            },
-                            lng: {
-                                [Op.ne]: null
-                            },
-                            storeId: storeId
-                        }
-                    });
-                    if (!customer) {
-                        throw new Error("Không tồn tại khách hàng hoặc địa chỉ không hợp lệ");
-                    }
-                    lat = customer.lat;
-                    lng = customer.lng;
-                } else {
-                    lat = item.lat;
-                    lng = item.lng;
-                }
-                const address = await reverse(lng, lat);
+            if (!item.id) {
+                const address = await reverse(item.lng, item.lat);
                 await models.TripCustomer.create({
                     tripId: id,
-                    customerId: item.id,
-                    lat: lat,
-                    lng: lng,
+                    customerId: item.customerId,
+                    lat: item.lat,
+                    lng: item.lng,
                     status: tripContant.TRIPSTATUS.NOT_VISITED,
                     address
                 }, {
                     transaction: t
                 });
             } else {
-                if (item.lng && item.lat) {
+                const tripCustomer = await models.TripCustomer.findOne({
+                    where: {
+                        id: item.customerId,
+                        id: item.id
+                    }
+                });
+                if (!tripCustomer) {
+                    throw new Error(`Khách hàng có id = ${item.customerId} không hợp lệ`);
+                }
+                if (tripCustomer.lng != item.lng && tripCustomer.lat != item.lng) {
                     const address = await reverse(item.lng, item.lat);
                     await models.TripCustomer.update({
                         lng: item.lng,
@@ -452,7 +438,7 @@ module.exports.updateTrip = async (params) => {
                         address: address
                     }, {
                         where: {
-                            customerId: item.id,
+                            id: item.id,
                             tripId: id
                         },
                         transaction: t
