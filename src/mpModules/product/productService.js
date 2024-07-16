@@ -289,7 +289,7 @@ export async function createProduct(product, loginUser) {
       const newProductUnit = await models.ProductUnit.create(productUnit, {
         transaction: t
       });
-      if (newProductUnit.isBaseUnit == true && product.inventory && product.isBatchExpireControl) {
+      if (newProductUnit.isBaseUnit == true && product.inventory && product.isBatchExpireControl == 0) {
         await models.InventoryCheckingProduct.create({
           inventoryCheckingId: newInventoryCheking.id,
           productUnitId: newProductUnit.id,
