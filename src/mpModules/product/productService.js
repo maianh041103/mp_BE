@@ -491,6 +491,7 @@ export async function updateProduct(id, product, loginUser) {
         id,
       }, transaction: t
     });
+    console.log("2")
     // upsert product units
     const productUnits = _.get(product, "productUnits", []);
     const updatedProductUnits = [];
@@ -516,15 +517,19 @@ export async function updateProduct(id, product, loginUser) {
           }, transaction: t
         });
       } else {
-        const instance = await models.ProductUnit.create(upsertPayload);
+        console.log(upsertPayload)
+        const instance = await models.ProductUnit.create(upsertPayload, { transaction: t });
+        console.log("2.4.2")
         item.id = instance.id;
         if (!instance.code) {
           const nextValue = await getNextValue(product.storeId, product.type)
           item.code = generateProductCode(product.type, nextValue)
         }
+        console.log("2.5")
         if (!instance.barCode) {
           item.barCode = item.code
         }
+        console.log("2.6")
         await models.ProductUnit.update({ code: item.code, barCode: item.barCode }, { where: { id: item.id }, transaction: t })
       }
       if (item.isBaseUnit) {
@@ -546,7 +551,7 @@ export async function updateProduct(id, product, loginUser) {
       }
       updatedProductUnits.push(item.id);
     }
-
+    console.log("3")
     if (updatedProductUnits.length) {
       await models.ProductUnit.update(
         {
@@ -564,7 +569,6 @@ export async function updateProduct(id, product, loginUser) {
         }
       );
     }
-
   })
 
   createUserTracking({
