@@ -20,9 +20,9 @@ const tripAttributes = [
     "status",
     "currentAddress",
     [Sequelize.literal(`(SELECT COUNT(trip_customer.id) FROM trip_customer WHERE tripId = Trip.id
-        AND status = '${tripContant.TRIPSTATUS.VISITED}')`), 'countVisited'],
+        AND status = '${tripContant.TRIPSTATUS.VISITED} AND trip_customer.deletedAt IS NULL')`), 'countVisited'],
     [Sequelize.literal(`(SELECT COUNT(trip_customer.id) FROM trip_customer WHERE tripId = Trip.id
-        AND status <> '${tripContant.TRIPSTATUS.SKIP}')`), 'total'],
+        AND status <> '${tripContant.TRIPSTATUS.SKIP}' AND trip_customer.deletedAt IS NULL)`), 'total'],
     "createdAt",
 ];
 
