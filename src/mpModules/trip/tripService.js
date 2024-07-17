@@ -90,6 +90,7 @@ const travel = (data) => {
     }
     let n = c.length; //n thành phố
     let visited = Array(n).fill(0); //mảng đánh dấu
+    //n -= 2;
     n--;
     visited[1] = 1;
     let X_best = []; //Lưu kết quả đi tốt nhất
@@ -101,11 +102,18 @@ const travel = (data) => {
                 X[i] = j;
                 d += c[X[i - 1]][X[i]];
                 if (i == n) {
+                    // if (ans > d + c[X[i]][n + 1]) {
+                    //     ans = d + c[X[i]][n + 1];
+                    //     X_best = [...X];
+                    // }
                     if (ans > d) {
                         ans = d;
                         X_best = [...X];
                     }
                 }
+                // else if (d + (n - i + 1) * cmin < ans) {
+                //     Try(i + 1);
+                // }
                 else if (d + (n - i) * cmin < ans) {
                     Try(i + 1);
                 }
@@ -801,5 +809,19 @@ module.exports.deleteTrip = async (params) => {
     return {
         success: true,
         data: null
+    }
+}
+
+module.exports.mapRouting = async (params) => {
+    let { listPoint, vehicle } = params;
+    listPoint = listPoint.map(item => `${item.lat},${item.lng}`);
+    let points = listPoint.join("&point=");
+    let API_KEY = tripContant.KEY.API_KEY;
+    const apiUrl = `https://maps.vietmap.vn/api/route?api-version=1.1&apikey=${API_KEY}&point=${points}&points_encoded=false&vehivle=${vehicle}`;
+    const response = await axios.get(apiUrl);
+    const data = response.data;
+    return {
+        success: true,
+        data
     }
 }
