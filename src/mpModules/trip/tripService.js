@@ -6,6 +6,7 @@ const axios = require('axios');
 const tripContant = require("./tripContant");
 const { generateCode } = require("../../helpers/codeGenerator");
 const { client } = require("../../../redis/redisConnect");
+const config = require("../../../config/default.json");
 
 const tripAttributes = [
     "id",
@@ -13,6 +14,10 @@ const tripAttributes = [
     "name",
     "lat",
     "lng",
+    "latEnd",
+    "lngEnd",
+    "latCurrent",
+    "lngCurrent",
     "time",
     "createdBy",
     "userId",
@@ -51,11 +56,6 @@ let tripIncludes = [
             as: "customer",
             attributes: ["id", "code", "fullName", "phone", "status"]
         }]
-    },
-    {
-        model: models.TripCustomer,
-        as: "customerCurrent",
-        attributes: ["id", "stt", "status", "customerId", "lat", "lng"]
     }
 ]
 
@@ -139,7 +139,9 @@ module.exports.createTrip = async (params) => {
     //Trong transaction sử dụng return chỉ thoát ra khỏi hàm hiện tại trong transaction
     const t = await models.sequelize.transaction(async (t) => {
         newTrip = await models.Trip.create({
-            name, lat, lng, latEnd, lngEnd, time, createdBy, userId, note, storeId, status
+            name, lat, lng, latEnd, lngEnd, time, createdBy, userId, note, storeId, status,
+            latCurrent: lat,
+            lngCurrent: lng
         }, {
             transaction: t
         });
@@ -286,15 +288,19 @@ module.exports.getListTrip = async (params) => {
     });
     for (let row of rows) {
         if (row.status != tripContant.TRIPSTATUS.DONE) {
-            if (row.customerCurrent) {
-                const nextCustomer = row.tripCustomer.find(item => {
-                    return item.stt == row.customerCurrent.stt + 1;
-                });
-                row.dataValues.nextCustomer = nextCustomer;
+            let nextCustomer = await models.TripCustomer.findOne({
+                where: {
+                    tripId: row.id,
+                    status: {
+                        [Op.in]: [tripContant.TRIPSTATUS.NOT_VISITED, tripContant.TRIPSTATUS.WAITED]
+                    }
+                },
+                order: [["stt", "ASC"]]
+            });
+            if (!nextCustomer) {
+                nextCustomer = row.tripCustomer[row.tripCustomer.length - 1];
             }
-            else {
-                row.dataValues.nextCustomer = row.tripCustomer[0];
-            }
+            row.dataValues.nextCustomer = nextCustomer;
         }
     }
     const count = await models.Trip.count({
@@ -349,12 +355,10 @@ module.exports.getDetailTrip = async (params) => {
         trip.dataValues.tripCustomer[i].dataValues.distances = result.distances[0][i + 1];
     }
     trip.dataValues.startAddress = await reverse(trip.lng, trip.lat);
-
-    // await client.connect();
-    //await client.set('foo', 'bar');
-    // const value = await client.get('hihi');
-    // console.log(value);
-
+    trip.dataValues.customerCurrent = {
+        lat: trip.latCurrent,
+        lng: trip.lngCurrent
+    }
     return {
         success: true,
         data: trip
@@ -471,7 +475,16 @@ module.exports.changeStatus = async (params) => {
                     id: tripCustomer.tripId
                 },
                 transaction: t
-            })
+            });
+
+
+            const key = `map_${tripCustomer.tripId}`;
+            await client.set(key, JSON.stringify({
+                id: tripCustomer.tripId,
+                lng: tripCustomer.lng,
+                lat: tripCustomer.lat
+            }));
+            await client.expire(key, config.redis.timeToLive);
         }
         //Nếu là quay lại sau => đưa xuống cuối
         if (status == tripContant.TRIPSTATUS.WAITED) {
@@ -819,5 +832,32 @@ module.exports.mapRouting = async (params) => {
     return {
         success: true,
         data
+    }
+}
+
+module.exports.changeCurrent = async (params) => {
+    const { id, lng, lat } = params;
+    const key = `map_${id}`;
+    await client.set(key, JSON.stringify({ id, lng, lat }));
+    await client.expire(key, config.redis.timeToLive);
+    const value = await client.get(key);
+    return {
+        success: true,
+        data: JSON.parse(value)
+    }
+}
+
+module.exports.updateDb = async (req, res) => {
+    const keys = await client.keys('map*');
+    for (const key of keys) {
+        const value = JSON.parse(await client.get(key));
+        await models.Trip.update({
+            latCurrent: value.lat,
+            lngCurrent: value.lng
+        }, {
+            where: {
+                id: value.id
+            }
+        });
     }
 }

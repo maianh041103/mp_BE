@@ -59,5 +59,10 @@ router.post("/map-routing", authenticate, (req, res, next) => {
     next();
 }, authorize, tripController.mapRouting);
 
+router.patch("/change-current/:id", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, tripController.changeCurrent);
+
 module.exports = router;
 

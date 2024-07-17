@@ -14,4 +14,5 @@ const client = redis.createClient({
     connectTimeout: 10000 // in milliseconds
 });
 client.on('error', err => console.log('Redis Client Error', err));
+client.connect();
 module.exports = { client };

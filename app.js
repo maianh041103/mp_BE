@@ -9,6 +9,9 @@ const path = require("path");
 const rfs = require("rotating-file-stream"); // version 2.x
 const { respondWithError } = require("./src/helpers/response");
 const app = express();
+const cron = require("node-cron");
+const tripService = require("./src/mpModules/trip/tripService");
+
 app.use(logger("dev"));
 var corsOptions = {
   origin: "*",
@@ -25,6 +28,12 @@ const accessLogStream = rfs.createStream("access.log", {
   interval: "1d", // rotate daily
   path: path.join(__dirname, "logs"),
 });
+
+// //Tạo cron
+cron.schedule('*/5 * * * *', () => {
+  tripService.updateDb();
+});
+// //End tạo cron
 
 // setup the logger
 // app.use(morgan('combined', { stream: accessLogStream }));
