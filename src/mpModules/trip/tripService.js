@@ -90,8 +90,7 @@ const travel = (data) => {
     }
     let n = c.length; //n thành phố
     let visited = Array(n).fill(0); //mảng đánh dấu
-    //n -= 2;
-    n--;
+    n -= 2;
     visited[1] = 1;
     let X_best = []; //Lưu kết quả đi tốt nhất
 
@@ -102,19 +101,12 @@ const travel = (data) => {
                 X[i] = j;
                 d += c[X[i - 1]][X[i]];
                 if (i == n) {
-                    // if (ans > d + c[X[i]][n + 1]) {
-                    //     ans = d + c[X[i]][n + 1];
-                    //     X_best = [...X];
-                    // }
-                    if (ans > d) {
-                        ans = d;
+                    if (ans > d + c[X[i]][n + 1]) {
+                        ans = d + c[X[i]][n + 1];
                         X_best = [...X];
                     }
                 }
-                // else if (d + (n - i + 1) * cmin < ans) {
-                //     Try(i + 1);
-                // }
-                else if (d + (n - i) * cmin < ans) {
+                else if (d + (n - i + 1) * cmin < ans) {
                     Try(i + 1);
                 }
                 //backtrack
@@ -128,7 +120,7 @@ const travel = (data) => {
 }
 
 module.exports.createTrip = async (params) => {
-    const { name, lat, lng, time, userId, note, listCustomer, createdBy, storeId, status = tripContant.TRIPSTATUS.PENDING } = params;
+    const { name, lat, lng, time, latEnd, lngEnd, userId, note, listCustomer, createdBy, storeId, status = tripContant.TRIPSTATUS.PENDING } = params;
     const userExists = await models.User.findOne({
         where: {
             storeId: storeId,
@@ -147,7 +139,7 @@ module.exports.createTrip = async (params) => {
     //Trong transaction sử dụng return chỉ thoát ra khỏi hàm hiện tại trong transaction
     const t = await models.sequelize.transaction(async (t) => {
         newTrip = await models.Trip.create({
-            name, lat, lng, time, createdBy, userId, note, storeId, status
+            name, lat, lng, latEnd, lngEnd, time, createdBy, userId, note, storeId, status
         }, {
             transaction: t
         });
@@ -185,6 +177,7 @@ module.exports.createTrip = async (params) => {
             }
         }
         if (listCustomer.length > 1) {
+            listPoint.push(`${latEnd},${lngEnd}`);
             let res = await sortMap(listPoint);
             for (let i = 0; i < listCustomer.length; i++) {
                 let lngTmp, latTmp;
@@ -341,7 +334,7 @@ module.exports.getDetailTrip = async (params) => {
     let currentIndex;
     let listPoint = listTripCustomer.map((item, index) => {
         if (item.id == trip.currentAddress) {
-            currentIndex = index;
+            currentIndex = index + 1;
         }
         return `${item.lat},${item.lng}`;
     });
@@ -372,6 +365,8 @@ const getDistance = async (listPoint, currentIndex) => {
     let points = listPoint.join("&point=");
     let API_KEY = tripContant.KEY.API_KEY;
     points = "point=" + points;
+    console.log(listPoint);
+    console.log(currentIndex);
     const apiUrl = `https://maps.vietmap.vn/api/matrix?api-version=1.1&apikey=${API_KEY}&${points}&sources=${currentIndex}`;
     const response = await axios.get(apiUrl);
     const data = response.data;
@@ -618,6 +613,7 @@ const updateIndex = async (tripId) => {
         listPoint.unshift(`${trip.lat},${trip.lng}`);
     }
     if (listPoint.length > 1) {
+        listPoint.push(`${trip.latEnd},${trip.lngEnd}`);
         let res = await sortMap(listPoint);
         console.log(res);
         const countVisted = await models.TripCustomer.count({
