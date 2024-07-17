@@ -712,7 +712,7 @@ module.exports.reverse = async (params) => {
     let API_KEY = tripContant.KEY.API_KEY;
     const apiUrl = `https://maps.vietmap.vn/api/reverse/v3?apikey=${API_KEY}&lng=${lng}&lat=${lat}`;
     const response = await axios.get(apiUrl);
-    const address = (response.data)[0].address;
+    const address = (response.data)[0].display;
 
     return {
         success: true,
