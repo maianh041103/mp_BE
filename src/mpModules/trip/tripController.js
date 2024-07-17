@@ -145,3 +145,17 @@ module.exports.deleteTrip = async (req, res) => {
         );
     }
 }
+
+
+module.exports.mapRouting = async (req, res) => {
+    try {
+        const body = req.body;
+        const result = await tripService.mapRouting({ ...body });
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}
