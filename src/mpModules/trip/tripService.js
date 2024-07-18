@@ -299,7 +299,7 @@ module.exports.getListTrip = async (params) => {
                 include: [{
                     model: models.Customer,
                     as: "customer",
-                    attributes: ["status", "fullName", "address", "phone", "email"]
+                    attributes: ["status", "fullName", "address", "phone", "email", "code"]
                 }]
             });
             if (!nextCustomer) {
