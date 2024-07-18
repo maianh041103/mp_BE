@@ -488,16 +488,6 @@ module.exports.changeStatus = async (params) => {
         }
         //Nếu là quay lại sau => đưa xuống cuối
         if (status == tripContant.TRIPSTATUS.WAITED) {
-            await models.TripCustomer.decrement({
-                stt: 1
-            }, {
-                where: {
-                    tripId: tripCustomer.tripId,
-                    status: tripContant.TRIPSTATUS.WAITED
-                },
-                transaction: t
-            });
-
             await models.TripCustomer.update({
                 status: tripContant.TRIPSTATUS.WAITED
             }, {
@@ -531,25 +521,17 @@ module.exports.changeStatus = async (params) => {
         }
     });
     if (status == tripContant.TRIPSTATUS.WAITED || status == tripContant.TRIPSTATUS.VISITED)
-        await updateIndex(tripCustomer.tripId);
-    if (status == tripContant.TRIPSTATUS.WAITED) {
-        let count = await models.TripCustomer.count({
-            where: {
-                status: {
-                    [Op.ne]: tripContant.TRIPSTATUS.SKIP
+        if (status == tripContant.TRIPSTATUS.WAITED) {
+            await models.TripCustomer.update({
+                stt: 999999
+            }, {
+                where: {
+                    id: tripCustomerId
                 },
-                tripId: tripCustomer.tripId
-            }
-        });
-        await models.TripCustomer.update({
-            stt: count
-        }, {
-            where: {
-                id: tripCustomerId
-            },
-            transaction: t
-        });
-    }
+                transaction: t
+            });
+        }
+    await updateIndex(tripCustomer.tripId);
     if (status == tripContant.TRIPSTATUS.SKIP) {
         let stt = tripCustomer.stt;
         await models.TripCustomer.update({
