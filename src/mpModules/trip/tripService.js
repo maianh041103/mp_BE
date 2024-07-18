@@ -6,6 +6,7 @@ const axios = require('axios');
 const tripContant = require("./tripContant");
 const { generateCode } = require("../../helpers/codeGenerator");
 const { client } = require("../../../redis/redisConnect");
+const config = require("../../../config/default.json");
 
 const tripAttributes = [
     "id",
@@ -13,6 +14,10 @@ const tripAttributes = [
     "name",
     "lat",
     "lng",
+    "latEnd",
+    "lngEnd",
+    "latCurrent",
+    "lngCurrent",
     "time",
     "createdBy",
     "userId",
@@ -51,11 +56,6 @@ let tripIncludes = [
             as: "customer",
             attributes: ["id", "code", "fullName", "phone", "status"]
         }]
-    },
-    {
-        model: models.TripCustomer,
-        as: "customerCurrent",
-        attributes: ["id", "stt", "status", "customerId", "lat", "lng"]
     }
 ]
 
@@ -90,8 +90,7 @@ const travel = (data) => {
     }
     let n = c.length; //n thành phố
     let visited = Array(n).fill(0); //mảng đánh dấu
-    //n -= 2;
-    n--;
+    n -= 2;
     visited[1] = 1;
     let X_best = []; //Lưu kết quả đi tốt nhất
 
@@ -102,19 +101,12 @@ const travel = (data) => {
                 X[i] = j;
                 d += c[X[i - 1]][X[i]];
                 if (i == n) {
-                    // if (ans > d + c[X[i]][n + 1]) {
-                    //     ans = d + c[X[i]][n + 1];
-                    //     X_best = [...X];
-                    // }
-                    if (ans > d) {
-                        ans = d;
+                    if (ans > d + c[X[i]][n + 1]) {
+                        ans = d + c[X[i]][n + 1];
                         X_best = [...X];
                     }
                 }
-                // else if (d + (n - i + 1) * cmin < ans) {
-                //     Try(i + 1);
-                // }
-                else if (d + (n - i) * cmin < ans) {
+                else if (d + (n - i + 1) * cmin < ans) {
                     Try(i + 1);
                 }
                 //backtrack
@@ -128,7 +120,7 @@ const travel = (data) => {
 }
 
 module.exports.createTrip = async (params) => {
-    const { name, lat, lng, time, userId, note, listCustomer, createdBy, storeId, status = tripContant.TRIPSTATUS.PENDING } = params;
+    const { name, lat, lng, time, latEnd, lngEnd, userId, note, listCustomer, createdBy, storeId, status = tripContant.TRIPSTATUS.PENDING } = params;
     const userExists = await models.User.findOne({
         where: {
             storeId: storeId,
@@ -147,7 +139,9 @@ module.exports.createTrip = async (params) => {
     //Trong transaction sử dụng return chỉ thoát ra khỏi hàm hiện tại trong transaction
     const t = await models.sequelize.transaction(async (t) => {
         newTrip = await models.Trip.create({
-            name, lat, lng, time, createdBy, userId, note, storeId, status
+            name, lat, lng, latEnd, lngEnd, time, createdBy, userId, note, storeId, status,
+            latCurrent: lat,
+            lngCurrent: lng
         }, {
             transaction: t
         });
@@ -185,6 +179,7 @@ module.exports.createTrip = async (params) => {
             }
         }
         if (listCustomer.length > 1) {
+            listPoint.push(`${latEnd},${lngEnd}`);
             let res = await sortMap(listPoint);
             for (let i = 0; i < listCustomer.length; i++) {
                 let lngTmp, latTmp;
@@ -293,15 +288,19 @@ module.exports.getListTrip = async (params) => {
     });
     for (let row of rows) {
         if (row.status != tripContant.TRIPSTATUS.DONE) {
-            if (row.customerCurrent) {
-                const nextCustomer = row.tripCustomer.find(item => {
-                    return item.stt == row.customerCurrent.stt + 1;
-                });
-                row.dataValues.nextCustomer = nextCustomer;
+            let nextCustomer = await models.TripCustomer.findOne({
+                where: {
+                    tripId: row.id,
+                    status: {
+                        [Op.in]: [tripContant.TRIPSTATUS.NOT_VISITED, tripContant.TRIPSTATUS.WAITED]
+                    }
+                },
+                order: [["stt", "ASC"]]
+            });
+            if (!nextCustomer) {
+                nextCustomer = row.tripCustomer[row.tripCustomer.length - 1];
             }
-            else {
-                row.dataValues.nextCustomer = row.tripCustomer[0];
-            }
+            row.dataValues.nextCustomer = nextCustomer;
         }
     }
     const count = await models.Trip.count({
@@ -341,7 +340,7 @@ module.exports.getDetailTrip = async (params) => {
     let currentIndex;
     let listPoint = listTripCustomer.map((item, index) => {
         if (item.id == trip.currentAddress) {
-            currentIndex = index;
+            currentIndex = index + 1;
         }
         return `${item.lat},${item.lng}`;
     });
@@ -356,12 +355,10 @@ module.exports.getDetailTrip = async (params) => {
         trip.dataValues.tripCustomer[i].dataValues.distances = result.distances[0][i + 1];
     }
     trip.dataValues.startAddress = await reverse(trip.lng, trip.lat);
-
-    // await client.connect();
-    //await client.set('foo', 'bar');
-    // const value = await client.get('hihi');
-    // console.log(value);
-
+    trip.dataValues.customerCurrent = {
+        lat: trip.latCurrent,
+        lng: trip.lngCurrent
+    }
     return {
         success: true,
         data: trip
@@ -372,6 +369,8 @@ const getDistance = async (listPoint, currentIndex) => {
     let points = listPoint.join("&point=");
     let API_KEY = tripContant.KEY.API_KEY;
     points = "point=" + points;
+    console.log(listPoint);
+    console.log(currentIndex);
     const apiUrl = `https://maps.vietmap.vn/api/matrix?api-version=1.1&apikey=${API_KEY}&${points}&sources=${currentIndex}`;
     const response = await axios.get(apiUrl);
     const data = response.data;
@@ -476,20 +475,19 @@ module.exports.changeStatus = async (params) => {
                     id: tripCustomer.tripId
                 },
                 transaction: t
-            })
+            });
+
+
+            const key = `map_${tripCustomer.tripId}`;
+            await client.set(key, JSON.stringify({
+                id: tripCustomer.tripId,
+                lng: tripCustomer.lng,
+                lat: tripCustomer.lat
+            }));
+            await client.expire(key, config.redis.timeToLive);
         }
         //Nếu là quay lại sau => đưa xuống cuối
         if (status == tripContant.TRIPSTATUS.WAITED) {
-            await models.TripCustomer.decrement({
-                stt: 1
-            }, {
-                where: {
-                    tripId: tripCustomer.tripId,
-                    status: tripContant.TRIPSTATUS.WAITED
-                },
-                transaction: t
-            });
-
             await models.TripCustomer.update({
                 status: tripContant.TRIPSTATUS.WAITED
             }, {
@@ -523,25 +521,17 @@ module.exports.changeStatus = async (params) => {
         }
     });
     if (status == tripContant.TRIPSTATUS.WAITED || status == tripContant.TRIPSTATUS.VISITED)
-        await updateIndex(tripCustomer.tripId);
-    if (status == tripContant.TRIPSTATUS.WAITED) {
-        let count = await models.TripCustomer.count({
-            where: {
-                status: {
-                    [Op.ne]: tripContant.TRIPSTATUS.SKIP
+        if (status == tripContant.TRIPSTATUS.WAITED) {
+            await models.TripCustomer.update({
+                stt: 999999
+            }, {
+                where: {
+                    id: tripCustomerId
                 },
-                tripId: tripCustomer.tripId
-            }
-        });
-        await models.TripCustomer.update({
-            stt: count
-        }, {
-            where: {
-                id: tripCustomerId
-            },
-            transaction: t
-        });
-    }
+                transaction: t
+            });
+        }
+    await updateIndex(tripCustomer.tripId);
     if (status == tripContant.TRIPSTATUS.SKIP) {
         let stt = tripCustomer.stt;
         await models.TripCustomer.update({
@@ -618,6 +608,7 @@ const updateIndex = async (tripId) => {
         listPoint.unshift(`${trip.lat},${trip.lng}`);
     }
     if (listPoint.length > 1) {
+        listPoint.push(`${trip.latEnd},${trip.lngEnd}`);
         let res = await sortMap(listPoint);
         console.log(res);
         const countVisted = await models.TripCustomer.count({
@@ -823,5 +814,32 @@ module.exports.mapRouting = async (params) => {
     return {
         success: true,
         data
+    }
+}
+
+module.exports.changeCurrent = async (params) => {
+    const { id, lng, lat } = params;
+    const key = `map_${id}`;
+    await client.set(key, JSON.stringify({ id, lng, lat }));
+    await client.expire(key, config.redis.timeToLive);
+    const value = await client.get(key);
+    return {
+        success: true,
+        data: JSON.parse(value)
+    }
+}
+
+module.exports.updateDb = async (req, res) => {
+    const keys = await client.keys('map*');
+    for (const key of keys) {
+        const value = JSON.parse(await client.get(key));
+        await models.Trip.update({
+            latCurrent: value.lat,
+            lngCurrent: value.lng
+        }, {
+            where: {
+                id: value.id
+            }
+        });
     }
 }

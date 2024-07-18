@@ -24,6 +24,22 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(100),
       allowNull: false
     },
+    latEnd: {
+      type: DataTypes.STRING(100),
+      allowNull: false
+    },
+    lngEnd: {
+      type: DataTypes.STRING(100),
+      allowNull: false
+    },
+    latCurrent: {
+      type: DataTypes.STRING(100),
+      allowNull: false
+    },
+    lngCurrent: {
+      type: DataTypes.STRING(100),
+      allowNull: false
+    },
     time: {
       type: DataTypes.DATE,
       allowNull: null
