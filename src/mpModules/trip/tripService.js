@@ -483,7 +483,6 @@ module.exports.changeStatus = async (params) => {
                 transaction: t
             });
 
-
             const key = `map_${tripCustomer.tripId}`;
             await client.set(key, JSON.stringify({
                 id: tripCustomer.tripId,
@@ -491,6 +490,16 @@ module.exports.changeStatus = async (params) => {
                 lat: tripCustomer.lat
             }));
             await client.expire(key, config.redis.timeToLive);
+
+            await models.Trip.update({
+                latCurrent: tripCustomer.lat,
+                lngCurrent: tripCustomer.lng
+            }, {
+                where: {
+                    id: tripCustomer.tripId
+                },
+                transaction: t
+            });
         }
         //Nếu là quay lại sau => đưa xuống cuối
         if (status == tripContant.TRIPSTATUS.WAITED) {
