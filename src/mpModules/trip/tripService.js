@@ -384,7 +384,7 @@ const getDistance = async (listPoint, currentIndex) => {
 }
 
 module.exports.updateTrip = async (params) => {
-    const { name, lat, lng, time, userId, note, listCustomer, id, storeId } = params;
+    const { name, lat, lng, time, userId, note, listCustomer, id, storeId, latEnd, lngEnd } = params;
     const userExists = await models.User.findOne({
         where: {
             storeId: storeId,
@@ -402,7 +402,7 @@ module.exports.updateTrip = async (params) => {
 
     const t = await models.sequelize.transaction(async (t) => {
         await models.Trip.update({
-            name, lat, lng, time, userId, note
+            name, lat, lng, time, userId, note, latEnd, lngEnd
         }, {
             where: {
                 id
