@@ -242,17 +242,24 @@ export async function receiveMove(id, payload, loginUser) {
                 }
             }
         }
+        const amount = (await models.Move.findOne({
+            where: {
+                id: id
+            }
+        })).totalPrice;
         await models.UserLog.create({
             userId: receivedBy,
             code: move.code,
             type: userLogContant.TYPE.RECEIVE,
-            branchId
+            branchId,
+            amount
         })
         await models.UserLog.create({
             userId: receivedBy,
             code: move.code,
             type: userLogContant.TYPE.RECEIVE,
             branchId: move.fromBranchId,
+            amount
         });
     })
     return {
