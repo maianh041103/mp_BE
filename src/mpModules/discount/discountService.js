@@ -1065,26 +1065,31 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
         target: discountContant.discountTarget.ORDER,
         status: discountContant.discountStatus.ACTIVE,
         storeId: loginUser.storeId,
-        [Op.or]: [
-            { isAllBranch: 1 },
+        [Op.and]: [
             {
-                isAllBranch: 0,
-                id: {
-                    [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_branches WHERE branchId = ${branchId} AND discount_branches.discountId = Discount.id)`)
-                }
-            }
-        ],
-        [Op.or]: [
-            { isAllCustomer: 1 },
+                [Op.or]: [
+                    { isAllBranch: 1 },
+                    {
+                        isAllBranch: 0,
+                        id: {
+                            [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_branches WHERE branchId = ${branchId} AND discount_branches.discountId = Discount.id)`)
+                        }
+                    }
+                ]
+            },
             {
-                isAllCustomer: 0,
-                id: {
-                    [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId = ${groupCustomerId} AND discount_customers.discountId = Discount.id)`)
-                }
+                [Op.or]: [
+                    { isAllCustomer: 1 },
+                    {
+                        isAllCustomer: 0,
+                        id: {
+                            [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId = ${groupCustomerId} AND discount_customers.discountId = Discount.id)`)
+                        }
+                    }
+                ]
             }
         ]
     }
-
     let rows = await models.Discount.findAll({
         attributes: discountAttributes,
         include: discountByOrderIncludes,
@@ -1173,22 +1178,28 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
         target: discountContant.discountTarget.PRODUCT,
         status: discountContant.discountStatus.ACTIVE,
         storeId: loginUser.storeId,
-        [Op.or]: [
-            { isAllBranch: 1 },
+        [Op.and]: [
             {
-                isAllBranch: 0,
-                id: {
-                    [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_branches WHERE branchId = ${branchId} AND discount_branches.discountId = Discount.id)`)
-                }
-            }
-        ],
-        [Op.or]: [
-            { isAllCustomer: 1 },
+                [Op.or]: [
+                    { isAllBranch: 1 },
+                    {
+                        isAllBranch: 0,
+                        id: {
+                            [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_branches WHERE branchId = ${branchId} AND discount_branches.discountId = Discount.id)`)
+                        }
+                    }
+                ]
+            },
             {
-                isAllCustomer: 0,
-                id: {
-                    [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId = ${groupCustomerId} AND discount_customers.discountId = Discount.id)`)
-                }
+                [Op.or]: [
+                    { isAllCustomer: 1 },
+                    {
+                        isAllCustomer: 0,
+                        id: {
+                            [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId = ${groupCustomerId} AND discount_customers.discountId = Discount.id)`)
+                        }
+                    }
+                ]
             }
         ]
     }
