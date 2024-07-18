@@ -295,7 +295,12 @@ module.exports.getListTrip = async (params) => {
                         [Op.in]: [tripContant.TRIPSTATUS.NOT_VISITED, tripContant.TRIPSTATUS.WAITED]
                     }
                 },
-                order: [["stt", "ASC"]]
+                order: [["stt", "ASC"]],
+                include: [{
+                    model: models.Customer,
+                    as: "customer",
+                    attributes: ["status", "fullName", "address", "phone", "email"]
+                }]
             });
             if (!nextCustomer) {
                 nextCustomer = row.tripCustomer[row.tripCustomer.length - 1];
@@ -355,6 +360,7 @@ module.exports.getDetailTrip = async (params) => {
         trip.dataValues.tripCustomer[i].dataValues.distances = result.distances[0][i + 1];
     }
     trip.dataValues.startAddress = await reverse(trip.lng, trip.lat);
+    trip.dataValues.endAddress = await reverse(trip.lngEnd, trip.latEnd);
     trip.dataValues.customerCurrent = {
         lat: trip.latCurrent,
         lng: trip.lngCurrent
