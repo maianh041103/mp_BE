@@ -464,6 +464,7 @@ export async function updateProduct(id, product, loginUser) {
       };
     }
   }
+
   await models.sequelize.transaction(async (t) => {
     if (product.inventory) {
       const inventory = await getInventory(product.branchId, id)
@@ -477,11 +478,37 @@ export async function updateProduct(id, product, loginUser) {
             partner: "",
             productId: id,
             branchId: product.branchId,
-            changeQty: product.inventory,
+            changeQty: change,
             remainQty: product.inventory,
             createdAt: new Date(),
             updatedAt: new Date()
-          }, t)
+          }, t);
+          const newInventoryChecking = await models.InventoryChecking.create({
+            userCreateId: loginUser.id,
+            branchId: product.branchId
+          }, {
+            transaction: t
+          });
+          await models.InventoryChecking.update({
+            code: generateCode.generateCode("KK", newInventoryChecking.id)
+          }, {
+            where: {
+              id: newInventoryChecking.id
+            },
+            transaction: t
+          });
+          for (const item of product.productUnits) {
+            if (item.isBaseUnit == true) {
+              await models.InventoryCheckingProduct.create({
+                inventoryCheckingId: newInventoryChecking.id,
+                productUnitId: item.id,
+                realQuantity: product.inventory,
+                difference: change
+              }, {
+                transaction: t
+              })
+            }
+          }
         }
       }
 
@@ -491,7 +518,6 @@ export async function updateProduct(id, product, loginUser) {
         id,
       }, transaction: t
     });
-    console.log("2")
     // upsert product units
     const productUnits = _.get(product, "productUnits", []);
     const updatedProductUnits = [];
@@ -519,17 +545,14 @@ export async function updateProduct(id, product, loginUser) {
       } else {
         console.log(upsertPayload)
         const instance = await models.ProductUnit.create(upsertPayload, { transaction: t });
-        console.log("2.4.2")
         item.id = instance.id;
         if (!instance.code) {
           const nextValue = await getNextValue(product.storeId, product.type)
           item.code = generateProductCode(product.type, nextValue)
         }
-        console.log("2.5")
         if (!instance.barCode) {
           item.barCode = item.code
         }
-        console.log("2.6")
         await models.ProductUnit.update({ code: item.code, barCode: item.barCode }, { where: { id: item.id }, transaction: t })
       }
       if (item.isBaseUnit) {
@@ -551,7 +574,6 @@ export async function updateProduct(id, product, loginUser) {
       }
       updatedProductUnits.push(item.id);
     }
-    console.log("3")
     if (updatedProductUnits.length) {
       await models.ProductUnit.update(
         {
