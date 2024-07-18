@@ -823,7 +823,7 @@ module.exports.mapRouting = async (params) => {
     listPoint = listPoint.map(item => `${item.lat},${item.lng}`);
     let points = listPoint.join("&point=");
     let API_KEY = tripContant.KEY.API_KEY;
-    const apiUrl = `https://maps.vietmap.vn/api/route?api-version=1.1&apikey=${API_KEY}&point=${points}&points_encoded=false&vehivle=${vehicle}`;
+    const apiUrl = `https://maps.vietmap.vn/api/route?api-version=1.1&apikey=${API_KEY}&point=${points}&points_encoded=false&vehicle=${vehicle}`;
     const response = await axios.get(apiUrl);
     const data = response.data;
     return {
