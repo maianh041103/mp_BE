@@ -19,6 +19,7 @@ const attributes = [
   "productId",
   "quantity",
   "expiryDate",
+  "oldQuantity"
 ];
 
 export async function isExistBatch(id) {
