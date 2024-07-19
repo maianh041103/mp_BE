@@ -452,7 +452,10 @@ export async function handleCreateInbound(inbound, loginUser) {
           }
           totalProductQuantity += batch.quantity;
           const _batch = responseReadBatch.data;
-          await models.Batch.increment({ quantity: item.productUnit.exchangeValue * batch.quantity },
+          await models.Batch.increment({
+            quantity: item.productUnit.exchangeValue * batch.quantity,
+            oldQuantity: item.productUnit.exchangeValue * batch.quantity
+          },
             {
               where: { id: _batch.id },
               transaction: t

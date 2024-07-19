@@ -1,4 +1,4 @@
-import {raiseBadRequestError} from "../../helpers/exception";
+import { raiseBadRequestError } from "../../helpers/exception";
 
 const Sequelize = require("sequelize");
 const _ = require("lodash");
@@ -140,7 +140,7 @@ export async function createBatch(payload, loginUser) {
     return responseReadProduct;
   }
 
-  const newBatch = await models.Batch.create({...payload, quantity: 0});
+  const newBatch = await models.Batch.create({ ...payload, quantity: 0, oldQuantity: 0 });
 
   createUserTracking({
     accountId: newBatch.createdBy,
@@ -210,7 +210,7 @@ export async function findAllBatchByProductId(productId, branchId) {
     where: {
       productId: productId,
       branchId: branchId,
-      quantity: {[Op.gt]: 0}
+      quantity: { [Op.gt]: 0 }
     },
     order: [["expiryDate", "ASC"]]
   });
@@ -221,8 +221,8 @@ export async function findAllBatchByListProduct(productIds) {
   const batches = await models.Batch.findAll({
     attributes: ["id", "name", "expiryDate", "quantity", "productId"],
     where: {
-      productId: {[Op.in]: productIds},
-      quantity: {[Op.gt]: 0}
+      productId: { [Op.in]: productIds },
+      quantity: { [Op.gt]: 0 }
     },
     order: [["expiryDate", "ASC"]]
   });
@@ -286,10 +286,11 @@ export async function deleteBatch(id, loginUser) {
 }
 
 export async function getBatch(id) {
-  const batch = await models.Batch.findOne({where: {id: id}
+  const batch = await models.Batch.findOne({
+    where: { id: id }
   })
   if (!batch) {
-   raiseBadRequestError("Không tìm thấy lô sản phẩm")
+    raiseBadRequestError("Không tìm thấy lô sản phẩm")
   }
   return batch
 }
@@ -297,21 +298,23 @@ export async function getBatch(id) {
 export async function addBatchQty(id, quantity, t) {
   await models.Batch.increment({
     quantity: quantity
-  }, {where: {id: id}, transaction: t})
+  }, { where: { id: id }, transaction: t })
 }
 
 export async function getOrCreateBatch(storeId, branchId, productId, name, expiryDate, t) {
-  let batch = await models.Batch.findOne({where: {
-    storeId: storeId,
-    branchId: branchId,
-    productId: productId,
-    name: name,
-    expiryDate: expiryDate
-  }})
+  let batch = await models.Batch.findOne({
+    where: {
+      storeId: storeId,
+      branchId: branchId,
+      productId: productId,
+      name: name,
+      expiryDate: expiryDate
+    }
+  })
   if (!batch) {
     batch = await models.Batch.create({
-      storeId, branchId, productId, name, expiryDate, quantity: 0
-    }, {transaction: t})
+      storeId, branchId, productId, name, expiryDate, quantity: 0, oldQuantity: 0
+    }, { transaction: t })
   }
   return batch
 }
