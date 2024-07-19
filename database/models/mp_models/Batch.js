@@ -43,7 +43,11 @@ module.exports = (sequelize, DataTypes) => {
     updatedBy: {
       allowNull: true,
       type: DataTypes.INTEGER(10).UNSIGNED,
-    }
+    },
+    oldQuantity: {
+      allowNull: false,
+      type: DataTypes.INTEGER(10).UNSIGNED,
+    },
   }, {
     tableName: 'batches',
     timestamps: true,
