@@ -67,6 +67,9 @@ const sortMap = async (listPoint) => {
     const response = await axios.get(apiUrl);
     const data = response.data;
     let res = travel(data);
+    res.shift();
+    res.shift();
+    console.log(res);
     return res;
 }
 
@@ -95,15 +98,18 @@ const travel = (data) => {
     let X_best = []; //Lưu kết quả đi tốt nhất
 
     const Try = (i) => {
-        for (let j = 1; j <= n; j++) {
+        for (let j = 2; j <= n; j++) {
             if (visited[j] == 0) {
                 visited[j] = 1;
                 X[i] = j;
                 d += c[X[i - 1]][X[i]];
                 if (i == n) {
+                    console.log("d + cuoi " + (d + c[X[i]][n + 1]))
                     if (ans > d + c[X[i]][n + 1]) {
                         ans = d + c[X[i]][n + 1];
+                        console.log("CAP NHAT ANS " + ans);
                         X_best = [...X];
+                        console.log(("CAP NHAT X_BEST " + X_best));
                     }
                 }
                 else if (d + (n - i + 1) * cmin < ans) {
@@ -156,6 +162,7 @@ module.exports.createTrip = async (params) => {
         })
         newTrip.code = code;
         let listPoint = [];
+        listPoint.push(`${lat},${lng}`);
         for (const item of listCustomer) {
             if (!item.lat || !item.lng) {
                 const customer = await models.Customer.findOne({
@@ -195,7 +202,7 @@ module.exports.createTrip = async (params) => {
                     lngTmp = listCustomer[i].lng;
                     latTmp = listCustomer[i].lat;
                 }
-                const index = res.findIndex(item => item == i + 1);
+                const index = res.findIndex(item => item == i + 2);
                 const address = await reverse(lngTmp, latTmp);
 
                 await models.TripCustomer.create({
@@ -204,7 +211,7 @@ module.exports.createTrip = async (params) => {
                     lat: latTmp,
                     lng: lngTmp,
                     status: tripContant.TRIPSTATUS.NOT_VISITED,
-                    stt: index,
+                    stt: index + 1,
                     address
                 }, {
                     transaction: t
@@ -535,18 +542,18 @@ module.exports.changeStatus = async (params) => {
             });
         }
     });
-    if (status == tripContant.TRIPSTATUS.WAITED || status == tripContant.TRIPSTATUS.VISITED)
+    if (status == tripContant.TRIPSTATUS.WAITED || status == tripContant.TRIPSTATUS.VISITED) {
         if (status == tripContant.TRIPSTATUS.WAITED) {
             await models.TripCustomer.update({
                 stt: 999999
             }, {
                 where: {
                     id: tripCustomerId
-                },
-                transaction: t
+                }
             });
         }
-    await updateIndex(tripCustomer.tripId);
+        await updateIndex(tripCustomer.tripId);
+    }
     if (status == tripContant.TRIPSTATUS.SKIP) {
         let stt = tripCustomer.stt;
         await models.TripCustomer.update({
@@ -604,6 +611,12 @@ const updateIndex = async (tripId) => {
             id: tripId
         }
     });
+
+    let listPoint = [];
+    for (const customer of listTripCustomer) {
+        listPoint.push(`${customer.lat},${customer.lng}`);
+    }
+
     if (trip.currentAddress) {
         const tripCustomerCurrent = await models.TripCustomer.findOne({
             where: {
@@ -611,21 +624,16 @@ const updateIndex = async (tripId) => {
             },
             paranoid: false
         });
-        listTripCustomer.unshift(tripCustomerCurrent);
+        listPoint.unshift(`${tripCustomerCurrent.lat},${tripCustomerCurrent.lng}`);
     }
 
-    let listPoint = [];
-    for (const customer of listTripCustomer) {
-        listPoint.push(`${customer.lat},${customer.lng}`);
-    }
     if (!trip.currentAddress) {
-        listTripCustomer.unshift({ id: -1 })
         listPoint.unshift(`${trip.lat},${trip.lng}`);
     }
     if (listPoint.length > 1) {
         listPoint.push(`${trip.latEnd},${trip.lngEnd}`);
+        console.log(listPoint);
         let res = await sortMap(listPoint);
-        console.log(res);
         const countVisted = await models.TripCustomer.count({
             where: {
                 status: tripContant.TRIPSTATUS.VISITED,
@@ -634,10 +642,10 @@ const updateIndex = async (tripId) => {
         });
 
         for (let i = 0; i < listTripCustomer.length; i++) {
-            const index = res.findIndex(item => item == i + 1);
-            if (index - 1 + countVisted != listTripCustomer[i].stt) {
+            const index = res.findIndex(item => item == i + 2);
+            if (index + 1 + countVisted != listTripCustomer[i].stt) {
                 await models.TripCustomer.update({
-                    stt: index - 1 + countVisted
+                    stt: index + 1 + countVisted
                 }, {
                     where: {
                         id: listTripCustomer[i].id
