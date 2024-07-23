@@ -1,7 +1,9 @@
 import { readDefaultCustomer } from "./customerService";
 import { indexOrderDebt } from "./CustomerDebtService";
 
+const uploadFile = require('../../helpers/upload')
 const _ = require("lodash");
+const xlsx = require('xlsx');
 const moment = require("moment");
 const {
   respondWithError,
@@ -18,7 +20,8 @@ const {
   updateCustomerStatus,
   indexPaymentCustomer,
   historyPointService,
-  historyVisitedService
+  historyVisitedService,
+  uploadFileCreateCustomer
 } = require("./customerService");
 const { hashPassword } = require("../auth/authService");
 const { formatMobileToSave } = require("../../helpers/utils");
@@ -111,8 +114,8 @@ export async function createController(req, res) {
       createdBy: loginUser.id,
       createdAt: new Date(),
       note: _.get(req.body, "note", ""),
-      lat: _.get(req.body, "lat", ""),
-      lng: _.get(req.body, "lng", "")
+      lat: _.get(req.body, "lat", "").trim(),
+      lng: _.get(req.body, "lng", "").trim()
     };
     const result = await createCustomer(customer, loginUser);
     if (result.success) res.json(respondItemSuccess(result.data));
@@ -260,4 +263,33 @@ export async function historyVisited(req, res) {
     );
   }
 }
+
+export async function createCustomerByUploadController(req, res) {
+  try {
+    const { loginUser = {} } = req;
+
+    await uploadFile(req, res);
+
+    if (req.file === undefined) {
+      return res.status(400).send({ message: 'Please upload a file!' });
+    }
+    // Đường dẫn tạm thời của tệp Excel đã tải lên
+    const excelFilePath = req.file.path;
+
+    // Đọc dữ liệu từ tệp Excel
+    const workbook = xlsx.readFile(excelFilePath);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = xlsx.utils.sheet_to_json(worksheet);
+
+    const result = await uploadFileCreateCustomer(data,loginUser);
+    if (result.success) res.json(respondItemSuccess());
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
 

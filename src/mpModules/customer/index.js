@@ -10,7 +10,8 @@ const {
   readController,
   updateStatus, getTotalDebtController, getDefaultCustomer,
   readPaymentCustomerController, historyPoint,
-  historyVisited
+  historyVisited,
+  createCustomerByUploadController
 } = require("./customerController");
 const {
   updateValidator,
@@ -184,5 +185,16 @@ router.get("/:id/history-visited", authenticate,
     req.apiRole = "order_read";
     next();
   }, authorize, historyVisited);
+
+router.post(
+  '/upload',
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = ['customer_update', 'customer_read', 'customer_create']
+    next()
+  },
+  authorize,
+  createCustomerByUploadController
+)
 
 module.exports = router;

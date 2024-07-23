@@ -9,13 +9,19 @@ const {
   updateDoctor,
   createDoctor,
   deleteDoctor,
+  uploadFileCreateDoctor
 } = require("./doctorService");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
+
+const fs = require('fs')
+const uploadFile = require('../../helpers/upload');
+const xlsx = require('xlsx');
+
 
 export async function indexDoctorsController(req, res) {
   try {
     const { loginUser = {} } = req;
-    const result = await indexDoctors({...req.query, storeId: loginUser.storeId});
+    const result = await indexDoctors({ ...req.query, storeId: loginUser.storeId });
     if (result.success) res.json(respondItemSuccess(result.data));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
@@ -107,5 +113,33 @@ export async function deleteDoctorController(req, res) {
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
     res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
+  }
+}
+
+export async function createDoctorByUploadController(req, res) {
+  try {
+    const { loginUser = {} } = req
+
+    await uploadFile(req, res)
+
+    if (req.file == undefined) {
+      return res.status(400).send({ message: 'Please upload a file!' })
+    }
+
+    // Đường dẫn tạm thời của tệp Excel đã tải lên
+    const excelFilePath = req.file.path
+
+    // Đọc dữ liệu từ tệp Excel
+    const workbook = xlsx.readFile(excelFilePath)
+    const sheetName = workbook.SheetNames[0]
+    const worksheet = workbook.Sheets[sheetName]
+    const data = xlsx.utils.sheet_to_json(worksheet)
+    const result = await uploadFileCreateDoctor(data,loginUser);
+    if (result.success) res.json(respondItemSuccess());
+    else res.json(respondWithError(result.code, result.message, {}));
+  } catch (error) {
+    res.json(
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    )
   }
 }

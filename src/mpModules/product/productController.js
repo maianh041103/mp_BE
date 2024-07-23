@@ -1,6 +1,9 @@
 import { detailMaster } from "./productMasterService";
 
+import path from "path";
+const uploadFile = require("../../helpers/upload");
 const _ = require("lodash");
+const xlsx = require("xlsx");
 const {
   respondItemSuccess,
   respondWithError,
@@ -15,6 +18,7 @@ const {
   updateproductStatuses,
   deleteManyProducts,
   updateEndDateManyProducts,
+  uploadFileService
 } = require("./productService");
 const {
   indexProductPriceSettings,
@@ -320,5 +324,57 @@ export async function updatePriceSettingController(req, res) {
     res.json(
       respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
     );
+  }
+}
+
+export async function createUploadController(req, res) {
+  try {
+    const { loginUser = {} } = req;
+    // Upload file
+    await uploadFile(req, res);
+    // Check if file is uploaded
+    if (req.file === undefined) {
+      return res.status(400).send({ message: "Please upload a file!" });
+    }
+    const excelFilePath = req.file.path;
+    const workbook = xlsx.readFile(excelFilePath);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = xlsx.utils.sheet_to_json(worksheet);
+    const branchId = req.query.branchId;
+    const result = await uploadFileService(
+        loginUser,data,branchId
+    );
+    if (result.success) res.json(respondItemSuccess());
+    else res.json(respondWithError(result.code, result.message, {}));
+
+
+  } catch (error) {
+    console.error("Error in createUploadController:", error);
+    return res.json(
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
+export async function downloadController(req, res) {
+  try {
+    const rootDir = path.resolve(__dirname, "..", "..", "..");
+    const fileName = "Danhsachsanpham.xlsx";
+    const filePath = path.join(rootDir, "files", fileName);
+    console.log(filePath);
+    res.download(filePath, fileName, (err) => {
+      if (err) {
+        res.status(500).send({
+          message: "Could not download the file. " + err,
+        });
+      }
+    });
+  } catch (error) {
+    console.error("Error processing row:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
