@@ -119,7 +119,7 @@ export async function createPaymentAndTransaction(payment) {
         }, { where: { id: inbound.id } })
 
         //Thêm mới transaction
-        const typeTransaction = await transactionService.generateTypeTransactionInbound(inbound.storeId);
+        const typeTransaction = await transactionService.generateTypeTransactionInbound(inbound.storeId, t);
         const newTransaction = await models.Transaction.create({
             code: inbound.code,
             paymentDate: new Date(),

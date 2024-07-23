@@ -574,7 +574,7 @@ module.exports.generateTypeTransactionSaleReturn = async (storeId) => {
     return findTypeTransaction.id;
 }
 
-module.exports.generateTypeTransactionInbound = async (storeId) => {
+module.exports.generateTypeTransactionInbound = async (storeId, t) => {
     let findTypeTransaction = await models.TypeTransaction.findOne({
         where: {
             name: {
@@ -589,7 +589,7 @@ module.exports.generateTypeTransactionInbound = async (storeId) => {
             description: transactionContant.TYPENAME.INBOUND,
             ballotType: transactionContant.BALLOTTYPE.EXPENSES,
             storeId
-        });
+        }, {transaction: t});
     }
     return findTypeTransaction.id;
 }
