@@ -1,7 +1,9 @@
 import { readDefaultCustomer } from "./customerService";
 import { indexOrderDebt } from "./CustomerDebtService";
 
+const uploadFile = require('../../helpers/upload')
 const _ = require("lodash");
+const xlsx = require('xlsx');
 const moment = require("moment");
 const {
   respondWithError,
@@ -111,8 +113,8 @@ export async function createController(req, res) {
       createdBy: loginUser.id,
       createdAt: new Date(),
       note: _.get(req.body, "note", ""),
-      lat: _.get(req.body, "lat", ""),
-      lng: _.get(req.body, "lng", "")
+      lat: _.get(req.body, "lat", "").trim(),
+      lng: _.get(req.body, "lng", "").trim()
     };
     const result = await createCustomer(customer, loginUser);
     if (result.success) res.json(respondItemSuccess(result.data));
@@ -260,4 +262,70 @@ export async function historyVisited(req, res) {
     );
   }
 }
+
+export async function createCustomerByUploadController(req, res) {
+  try {
+    const { loginUser = {} } = req;
+
+    await uploadFile(req, res);
+
+    if (req.file === undefined) {
+      return res.status(400).send({ message: 'Please upload a file!' });
+    }
+    // Đường dẫn tạm thời của tệp Excel đã tải lên
+    const excelFilePath = req.file.path;
+
+    // Đọc dữ liệu từ tệp Excel
+    const workbook = xlsx.readFile(excelFilePath);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = xlsx.utils.sheet_to_json(worksheet);
+
+    const results = await Promise.all(
+      data.map(async item => {
+        const customer = {
+          fullName: _.get(item, 'fullName', ''),
+          birthday: _.get(item, 'birthday', moment().format('YYYY-MM-DD')),
+          gender: _.get(item, 'gender', ''),
+          phone: formatMobileToSave(_.get(item, 'phone', '')),
+          email: _.get(item, 'email', ''),
+          taxCode: _.get(item, 'taxCode', null),
+          address: _.get(item, 'address', ''),
+          position: _.get(item, 'position', null),
+          avatarId: _.get(item, 'avatarId', null),
+          groupCustomerId: _.get(item, 'groupCustomerId', null),
+          status: _.get(item, 'status', customerStatus.ACTIVE),
+          wardId: _.get(item, 'wardId', null),
+          districtId: _.get(item, 'districtId', null),
+          provinceId: _.get(item, 'provinceId', null),
+          password: hashPassword(_.get(item, 'password', '')),
+          storeId: loginUser.storeId,
+          createdBy: loginUser.id,
+          createdAt: new Date(),
+          note: _.get(item, 'note', '')
+        };
+        return await createCustomer(customer, loginUser);
+      })
+    );
+    const successResults = results.filter(result => result.success);
+    const errorResults = results.filter(result => !result.success);
+
+    if (successResults.length > 0) {
+      res.json(respondItemSuccess(successResults.map(result => result.data)));
+    } else {
+      res.json(
+        respondWithError(
+          HttpStatusCode.BAD_REQUEST,
+          'Failed to create customers',
+          errorResults
+        )
+      );
+    }
+  } catch (error) {
+    res.json(
+      respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
+  }
+}
+
 
