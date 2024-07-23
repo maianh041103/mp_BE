@@ -20,7 +20,8 @@ const {
   updateCustomerStatus,
   indexPaymentCustomer,
   historyPointService,
-  historyVisitedService
+  historyVisitedService,
+  uploadFileCreateCustomer
 } = require("./customerService");
 const { hashPassword } = require("../auth/authService");
 const { formatMobileToSave } = require("../../helpers/utils");
@@ -281,46 +282,9 @@ export async function createCustomerByUploadController(req, res) {
     const worksheet = workbook.Sheets[sheetName];
     const data = xlsx.utils.sheet_to_json(worksheet);
 
-    const results = await Promise.all(
-      data.map(async item => {
-        const customer = {
-          fullName: _.get(item, 'fullName', ''),
-          birthday: _.get(item, 'birthday', moment().format('YYYY-MM-DD')),
-          gender: _.get(item, 'gender', ''),
-          phone: formatMobileToSave(_.get(item, 'phone', '')),
-          email: _.get(item, 'email', ''),
-          taxCode: _.get(item, 'taxCode', null),
-          address: _.get(item, 'address', ''),
-          position: _.get(item, 'position', null),
-          avatarId: _.get(item, 'avatarId', null),
-          groupCustomerId: _.get(item, 'groupCustomerId', null),
-          status: _.get(item, 'status', customerStatus.ACTIVE),
-          wardId: _.get(item, 'wardId', null),
-          districtId: _.get(item, 'districtId', null),
-          provinceId: _.get(item, 'provinceId', null),
-          password: hashPassword(_.get(item, 'password', '')),
-          storeId: loginUser.storeId,
-          createdBy: loginUser.id,
-          createdAt: new Date(),
-          note: _.get(item, 'note', '')
-        };
-        return await createCustomer(customer, loginUser);
-      })
-    );
-    const successResults = results.filter(result => result.success);
-    const errorResults = results.filter(result => !result.success);
-
-    if (successResults.length > 0) {
-      res.json(respondItemSuccess(successResults.map(result => result.data)));
-    } else {
-      res.json(
-        respondWithError(
-          HttpStatusCode.BAD_REQUEST,
-          'Failed to create customers',
-          errorResults
-        )
-      );
-    }
+    const result = await uploadFileCreateCustomer(data,loginUser);
+    if (result.success) res.json(respondItemSuccess());
+    else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
     res.json(
       respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)

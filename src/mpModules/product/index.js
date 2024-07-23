@@ -6,13 +6,15 @@ const {
   indexMasterInboundProductController,
   readController,
   createController,
-  updateController, 
+  updateController,
   deleteController,
   updateStatus,
   deleteProducts,
   indexPriceSettingController,
   updatePriceSettingController,
   updateEndDateProducts,
+  createUploadController,
+  downloadController
 } = require("./productController");
 const {
   createValidator,
@@ -21,8 +23,8 @@ const {
   updateProductPriceSettingValidator,
 } = require("./productValidator");
 const express = require("express");
-const {getNextValue} = require("./productCodeService");
-const {indexInventoryController} = require("./productInventoryController");
+const { getNextValue } = require("./productCodeService");
+const { indexInventoryController } = require("./productInventoryController");
 
 const router = express.Router();
 
@@ -63,16 +65,16 @@ router.get(
 );
 
 router.get(
-    "/warehouse/remain",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = [
-            "product_read"
-        ];
-        next();
-    },
-    authorize,
-    indexMasterSaleProductController
+  "/warehouse/remain",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = [
+      "product_read"
+    ];
+    next();
+  },
+  authorize,
+  indexMasterSaleProductController
 );
 
 router.get(
@@ -152,14 +154,14 @@ router.get(
 );
 
 router.delete(
-    "/:id",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = "product_delete";
-        next();
-    },
-    authorize,
-    deleteController
+  "/:id",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = "product_delete";
+    next();
+  },
+  authorize,
+  deleteController
 );
 
 router.delete(
@@ -214,5 +216,34 @@ router.patch(
   authorize,
   updateProductPriceSettingValidator,
   updatePriceSettingController
+);
+
+router.post(
+  "/upload",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = "product_create";
+    next();
+  },
+  authorize,
+  createUploadController
+
+);
+router.get(
+  "/file_product/download",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = [
+      "product_read",
+      "order_create",
+      "order_update",
+      "sales_report_read",
+      "discount_read",
+      "promotion_read",
+    ];
+    next();
+  },
+  authorize,
+  downloadController
 );
 module.exports = router;
