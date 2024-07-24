@@ -14,7 +14,8 @@ const {
   updatePriceSettingController,
   updateEndDateProducts,
   createUploadController,
-  downloadController
+    exportProductController,
+    exportProductExampleController
 } = require("./productController");
 const {
   createValidator,
@@ -230,20 +231,19 @@ router.post(
 
 );
 router.get(
-  "/file_product/download",
-  authenticate,
-  (req, res, next) => {
-    req.apiRole = [
-      "product_read",
-      "order_create",
-      "order_update",
-      "sales_report_read",
-      "discount_read",
-      "promotion_read",
-    ];
-    next();
-  },
-  authorize,
-  downloadController
+    "/export/excel",authenticate,
+    (req,res,next)=>{
+        req.apiRole = "product_read";
+        next();
+    },
+    authorize,
+    exportProductController
 );
+router.get("/export/example",authenticate,
+    (req,res,next)=>{
+    req.apiRole = "product_read";
+    next();
+    },
+    authorize,
+    exportProductExampleController)
 module.exports = router;

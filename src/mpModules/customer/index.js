@@ -11,7 +11,9 @@ const {
   updateStatus, getTotalDebtController, getDefaultCustomer,
   readPaymentCustomerController, historyPoint,
   historyVisited,
-  createCustomerByUploadController
+  createCustomerByUploadController,
+    exportCustomerController,
+    exportCustomerExampleController
 } = require("./customerController");
 const {
   updateValidator,
@@ -195,6 +197,16 @@ router.post(
   },
   authorize,
   createCustomerByUploadController
-)
+);
+
+router.get("/export/excel", authenticate,(req, res, next) => {
+    req.apiRole = ["customer_read"];
+    next();
+},authorize,exportCustomerController);
+
+router.get("/export/example",authenticate,(req,res,next)=>{
+    req.apiRole = ["customer_read"];
+    next();
+},authorize,exportCustomerExampleController)
 
 module.exports = router;

@@ -1,6 +1,9 @@
 import { detailMaster } from "./productMasterService";
 
 import path from "path";
+import ExcelJS from "exceljs";
+import {indexDoctors} from "../doctor/doctorService";
+import fs from "fs";
 const uploadFile = require("../../helpers/upload");
 const _ = require("lodash");
 const xlsx = require("xlsx");
@@ -357,24 +360,126 @@ export async function createUploadController(req, res) {
   }
 }
 
-export async function downloadController(req, res) {
+export async function exportProductController(req, res) {
   try {
-    const rootDir = path.resolve(__dirname, "..", "..", "..");
-    const fileName = "Danhsachsanpham.xlsx";
-    const filePath = path.join(rootDir, "files", fileName);
-    console.log(filePath);
-    res.download(filePath, fileName, (err) => {
+    const {loginUser = {}} = req;
+    const storeId = loginUser.storeId;
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = loginUser.name;
+    const worksheet = workbook.addWorksheet(`Danh sách sản phẩm`);
+    let header = [
+      {header: "Loại sản phẩm", key: "type", width: 15},
+      {header: "Mã hàng", key: "code", width: 15},
+      {header: "Mã vạch", key: "barCode", width: 20},
+      {header: "Mã thuốc", key: "drugCode", width: 15},
+      {header: "Tên sản phẩm", key: "name", width: 25},
+      {header: "Tên viết tắt", key: "shortName", width: 15},
+      {header: "Nhóm sản phẩm", key: "groupProductName", width: 15},
+      {header: "Vị trí", key: "positionName", width: 15},
+      {header: "Đường dùng", key: "dosageName", width: 15},
+      {header: "Giá vốn", key: "primePrice", width: 15},
+      {header: "Giá bán", key: "price", width: 15},
+      {header: "Trọng lượng", key: "weight", width: 15},
+      {header: "Quy cách đóng gói", key: "packingSpecification", width: 30},
+      {header: "Hãng sản xuất", key: "manufactureName", width: 30},
+      {header: "Nước sản xuẩt", key: "country", width: 15},
+      {header: "Tồn kho", key: "inventory", width: 15},
+      {header: "Điểm", key: "point", width: 15},
+      {header: "Có lô không", key: "isBatchExpireControl", width: 15},
+      {header: "Cảnh báo ngày hết hạn", key: "expiryPeriod", width: 15},
+      {header: "Bán trực tiếp", key: "isDirectSale", width: 15},
+      {header: "Đơn vị cơ bản", key: "baseUnit", width: 15},
+      {header: "Tích điểm không", key: "isLoyaltyPoint", width: 15},
+      {header: "Tồn kho nhỏ nhất", key: "minInventory", width: 15},
+      {header: "Tồn kho lớn nhất", key: "maxInventory", width: 15},
+      {header: "Mô tả", key: "description", width: 45},
+      {header: "Mẫu ghi chú", key: "note", width: 45},
+      {header: "Trạng thái", key: "status", width: 15},
+    ];
+    for(let i = 1;i <= 30; i++){
+      header.push(
+        {header: `Đơn vị ${i}`, key: `unitName${i}`, width: 15},
+        {header: `Quy đổi ${i}`, key: `exchangeValue${i}`, width: 15},
+        {header: `Giá bán ${i}`, key: `price${i}`, width: 15},
+        {header: `Mã hàng ${i}`, key: `code${i}`, width: 15},
+        {header: `Điểm ${i}`, key: `point${i}`, width: 15}
+      );
+    }
+    worksheet.columns = header;
+    const result = await indexProducts({storeId, ...req.query});
+    result.data.items.forEach(item => {
+      let row = {
+        type: item.type,
+        code: item.code,
+        barCode: item.barCode,
+        drugCode: item.drugCode,
+        name:item.name,
+        shortName: item.shortName,
+        groupProductName:item?.groupProduct?.name,
+        positionName: item?.productPosition?.name,
+        dosageName: item?.productDosage?.name,
+        primePrice: item?.primePrice,
+        price: item?.price,
+        weight: item?.weight,
+        packingSpecification: item?.packingSpecification,
+        manufactureName: item?.productManufacture?.name,
+        country: item?.country?.name,
+        inventory: item?.inventory,
+        point: item?.point,
+        isBatchExpireControl: item?.isBatchExpireControl === false ? item.isBatchExpireControl = 0 : item.isBatchExpireControl = 1,
+        expiryPeriod: item?.expiryPeriod,
+        isDirectSale: item?.isDirectSale === false ? item.isDirectSale = 0 : item.isDirectSale = 1,
+        baseUnit: item?.baseUnit,
+        isLoyaltyPoint: item?.isLoyaltyPoint === false ? item.isLoyaltyPoint = 0 : item.isLoyaltyPoint = 1,
+        minInventory: item?.minInventory,
+        maxInventory: item?.maxInventory,
+        description: item?.description,
+        note: item?.note,
+        status: item?.status
+      }
+      const listProductUnit = item?.productUnit?.filter(tmp=>tmp.isBaseUnit === false);
+      for(let i = 0;i<listProductUnit.length;i++){
+        row[`unitName${i + 1}`] = listProductUnit[i].unitName;
+        row[`exchangeValue${i + 1}`] = listProductUnit[i].exchangeValue;
+        row[`price${i+1}`] = listProductUnit[i].price;
+        row[`code${i+1}`] = listProductUnit[i].code;
+        row[`point${i+1}`] = listProductUnit[i].point;
+      }
+      worksheet.addRow(row);
+    });
+    const filePath = path.join(__dirname, `product_export.xlsx`);
+    await workbook.xlsx.writeFile(filePath);
+
+    // Sử dụng res.download để gửi file và xóa file sau khi gửi
+    res.download(filePath, `product_export.xlsx`, (err) => {
       if (err) {
-        res.status(500).send({
-          message: "Could not download the file. " + err,
-        });
+        console.error('Error downloading file:', err);
+        res.status(500).send('Error downloading file');
+      } else {
+        console.log('File sent successfully');
+        fs.unlinkSync(filePath); // Xóa file sau khi gửi
       }
     });
   } catch (error) {
-    console.error("Error processing row:", error);
-    return {
-      success: false,
-      error: error.message,
-    };
+    res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
+  }
+}
+
+export async function exportProductExampleController(req,res){
+  try {
+    const tmp = path.resolve(__dirname, '../../../')
+    const filePath = path.join(tmp, `excel\\product.xlsx`);
+    // Sử dụng res.download để gửi file và xóa file sau khi gửi
+    res.download(filePath, `productExample.xlsx`, (err) => {
+      if (err) {
+        console.error('Error downloading file:', err);
+        res.status(500).send('Error downloading file');
+      } else {
+        console.log('File sent successfully');
+        fs.unlinkSync(filePath); // Xóa file sau khi gửi
+      }
+    });
+  } catch (error) {
+    res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
   }
 }
