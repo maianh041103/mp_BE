@@ -377,7 +377,6 @@ export async function exportCustomerExampleController(req,res){
                 res.status(500).send('Error downloading file');
             } else {
                 console.log('File sent successfully');
-                fs.unlinkSync(filePath); // Xóa file sau khi gửi
             }
         });
     } catch (error) {
