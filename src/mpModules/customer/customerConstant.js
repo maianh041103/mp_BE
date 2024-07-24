@@ -27,4 +27,5 @@ export const customerType = {
 export const customerStatus = {
   ACTIVE: "active",
   INACTIVE: "inactive",
+  DRAFT: "draft"
 };

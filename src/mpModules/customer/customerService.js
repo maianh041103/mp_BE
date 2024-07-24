@@ -72,17 +72,17 @@ const customerIncludes = [
     {
         model: models.Province,
         as: "province",
-        attributes: ["id", "name"],
+        attributes: ["id", "name", "name2"],
     },
     {
         model: models.District,
         as: "district",
-        attributes: ["id", "name"],
+        attributes: ["id", "name", "name2"],
     },
     {
         model: models.Ward,
         as: "ward",
-        attributes: ["id", "name"],
+        attributes: ["id", "name", "name2"],
     },
     {
         model: models.User,
@@ -286,7 +286,7 @@ export async function indexCustomers(filter) {
         offset: +limit * (+page - 1),
         order: [["isDefault", "DESC"], ["id", "DESC"]]
     };
-    console.log(query)
+
     const [rows, count] = await Promise.all([
         models.Customer.findAll(query),
         models.Customer.count(query)
@@ -844,10 +844,12 @@ export async function uploadFileCreateCustomer(data, loginUser) {
                 },
                 transaction: t
             });
-            if (customer.status === 1) {
-                customer.status = customerStatus.ACTIVE;
-            } else {
+            if (customer.status === 0) {
                 customer.status = customerStatus.INACTIVE;
+            } else if(customer.status === 2) {
+                customer.status = customerStatus.DRAFT;
+            }else{
+                customer.status = customerStatus.ACTIVE;
             }
             province = await models.Province.findOne({
                 where: {

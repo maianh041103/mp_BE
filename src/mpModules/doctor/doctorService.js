@@ -10,6 +10,10 @@ const {HttpStatusCode} = require("../../helpers/errorCodes");
 const {createUserTracking} = require("../behavior/behaviorService");
 const {isExistStore} = require("../store/storeService");
 const {randomString} = require("../../helpers/utils");
+const ExcelJS = require('exceljs');
+const fs = require('fs');
+const path = require('path');
+
 
 const attributes = ["id", "name", "phone", "code", "email", "gender", "specialistId", "levelId", "workPlaceId", "provinceId", "districtId", "wardId", "storeId", "address", "note", "status", "createdAt",];
 
@@ -33,11 +37,11 @@ const include = [{
 }, {
     model: models.WorkPlace, as: "workPlace", attributes: ["id", "name"],
 }, {
-    model: models.Province, as: "province", attributes: ["id", "name"],
+    model: models.Province, as: "province", attributes: ["id", "name", "name2"],
 }, {
-    model: models.District, as: "district", attributes: ["id", "name"],
+    model: models.District, as: "district", attributes: ["id", "name", "name2"],
 }, {
-    model: models.Ward, as: "ward", attributes: ["id", "name"],
+    model: models.Ward, as: "ward", attributes: ["id", "name", "name2"],
 },];
 
 function processQuery(params) {
@@ -398,6 +402,56 @@ export async function uploadFileCreateDoctor(data, loginUser) {
     })
     return {
         success: true, data: null
+    }
+}
+
+export async function exportDoctorService(res, query) {
+    const {storeId, loginUser} = query;
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = loginUser.name;
+    const worksheet = workbook.addWorksheet(`Danh sách bác sĩ store ${storeId}`);
+    worksheet.columns = [
+        {header: "Họ tên", key: "name", width: 15},
+        {header: "Số điện thoại", key: "phone", width: 15},
+        {header: "Mã bác sĩ", key: "code", width: 25},
+        {header: "Giới tính", key: "gender", width: 10},
+        {header: "Store", key: "store", width: 10},
+    ];
+    const listDoctor = await models.Doctor.findAll({
+        where: {
+            storeId: storeId,
+        }
+    });
+    listDoctor.forEach(item => {
+        worksheet.addRow({
+            name: item.name,
+            phone: item.phone,
+            code: item.code,
+            gender: item.gender,
+            store: item.store
+        });
+    });
+    const filePath = path.join(__dirname, `doctor_store_${storeId}.xlsx`);
+    await workbook.xlsx.writeFile(filePath);
+
+    console.log(filePath);
+    // Set up the response headers
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=" + `doctor_store_${storeId}.xlsx`);
+
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+
+    fileStream.on('error', (err) => {
+        console.log(`Lỗi trong quá trình tải file ${err}`);
+    });
+
+    fileStream.on("success",()=>{
+        console.log("Success!");
+    })
+    return {
+        success: true,
+        data: null
     }
 }
 
