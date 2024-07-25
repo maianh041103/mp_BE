@@ -745,7 +745,9 @@ module.exports.reverse = async (params) => {
 }
 
 module.exports.geofencing = async (params) => {
-    const { radius, lng, lat, storeId, limit = 10, page = 1 } = params;
+    const { radius, storeId, limit = 10, page = 1 } = params;
+    const lng = (params.lng).trim();
+    const lat = (params.lat).trim();
     const listCustomer = await models.Customer.findAll({
         attributes: ["id", "lng", "lat"],
         where: {
@@ -761,8 +763,8 @@ module.exports.geofencing = async (params) => {
     const listCustomerConvert = listCustomer.map(item => {
         return {
             id: `${item.id}`,
-            long: item.lng,
-            lat: item.lat
+            long: (item.lng).toString().trim(),
+            lat: (item.lat).toString().trim()
         }
     });
     let API_KEY = tripContant.KEY.API_KEY;
@@ -770,7 +772,7 @@ module.exports.geofencing = async (params) => {
         geometryCenters: listCustomerConvert,
         radius,
         long: lng,
-        lat
+        lat:lat
     }
     const apiUrl = `https://maps.vietmap.vn/api/geofencing?apikey=${API_KEY}`;
     const response = await axios.post(apiUrl, body);
@@ -789,7 +791,7 @@ module.exports.geofencing = async (params) => {
         offset: (parseInt(page) - 1) * parseInt(limit)
     });
 
-    const listPoint = listCustomerInside.map(item => `${item.lat},${item.lng}`);
+    const listPoint = listCustomerInside.map(item => `${(item.lat).trim()},${(item.lng).trim()}`);
     listPoint.unshift(`${lat},${lng}`);
     let distances = (await getDistance(listPoint, 0)).distances[0];
     const result = listCustomerInside.map((item, index) => {
