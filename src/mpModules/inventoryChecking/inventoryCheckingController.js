@@ -39,7 +39,7 @@ module.exports.detail = async (req, res) => {
     try {
         const id = req.params.id;
         const branchId = req.query.branchId;
-        const result = await inventoryCheckingService.detail({ id, branchId });
+        const result = await inventoryCheckingService.detail({ id, branchId, ...req.query });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {
