@@ -18,7 +18,8 @@ const { isExistStore } = require("../store/storeService");
 const { userPositions } = require("../user/userConstant.js");
 const otpGenerate = require("../../helpers/otpGenerate.js");
 const nodemailer = require("nodemailer");
-const config = require("../../../config/default.json");
+const config = require("config");
+const configEmail = config.get("email");
 const { email } = require("./email.js");
 
 const userIncludes = [
@@ -451,7 +452,7 @@ export async function updateUserProfile(userId, payload) {
 }
 
 const transporter = nodemailer.createTransport(
-  config.email
+    configEmail
 );
 
 
