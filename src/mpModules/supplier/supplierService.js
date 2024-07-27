@@ -134,6 +134,9 @@ function processQuery(params) {
   const where = {};
   if (keyword) {
     where[Op.or] = {
+      code: {
+        [Op.like]: `%${keyword.trim()}%`,
+      },
       name: {
         [Op.like]: `%${keyword.trim()}%`,
       },
