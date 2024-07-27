@@ -369,7 +369,7 @@ export async function exportCustomerController(req, res) {
 export async function exportCustomerExampleController(req,res){
     try {
         const tmp = path.resolve(__dirname, '../../../')
-        const filePath = path.join(tmp, `excel\\customer.xlsx`);
+        const filePath = path.join(tmp, 'excel', 'customer.xlsx');
         // Sử dụng res.download để gửi file và xóa file sau khi gửi
         res.download(filePath, `customerExample.xlsx`, (err) => {
             if (err) {
