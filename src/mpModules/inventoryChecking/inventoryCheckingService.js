@@ -13,8 +13,9 @@ const inventoryCheckingAttributes = [
     "note",
     "branchId",
     "createdAt"
-]
+];
 
+//Không được sửa thứ tự trong include, nếu sửa thêm vào cuối
 const inventoryCheckingIncludes = [
     {
         model: models.InventoryCheckingProduct,
@@ -24,7 +25,7 @@ const inventoryCheckingIncludes = [
             {
                 model: models.InventoryCheckingBatch,
                 as: "inventoryCheckingBatch",
-                attributes: ["id", "batchId", "realQuantity", "difference"],
+                attributes: ["id", "batchId", "realQuantity", "difference", "isChange"],
                 include: [
                     {
                         model: models.Batch,
@@ -178,13 +179,25 @@ module.exports.create = async (params) => {
                             inventoryCheckingProductId: newInventoryCheckingProduct.id,
                             realQuantity: 0,
                             batchId: item.id,
-                            difference: -batch.quantity
+                            difference: -batch.quantity,
+                            isChange:true,
+                        }, {
+                            transaction: t
+                        });
+                    }else{
+                        await models.InventoryCheckingBatch.create({
+                            inventoryCheckingProductId: newInventoryCheckingProduct.id,
+                            realQuantity: 0,
+                            batchId: item.id,
+                            difference: 0,
+                            isChange:false,
                         }, {
                             transaction: t
                         });
                     }
                 }
                 await models.Batch.update({
+                    oldQuantity:Sequelize.col('quantity'),
                     quantity: 0
                 }, {
                     where: {
@@ -219,23 +232,35 @@ module.exports.create = async (params) => {
 
                     if (oldQuantity != realQuantityBaseUnit) {
                         await models.Batch.update({
-                            quantity: realQuantityBaseUnit
+                            quantity: realQuantityBaseUnit,
+                            oldQuantity:oldQuantity
                         }, {
                             where: {
                                 id: batch.id
                             },
                             transaction: t
                         });
-                    }
 
-                    await models.InventoryCheckingBatch.create({
-                        inventoryCheckingProductId: newInventoryCheckingProduct.id,
-                        realQuantity: row.realQuantity,
-                        batchId: row.batchId,
-                        difference: (realQuantityBaseUnit - oldQuantity) / (productUnitExists.exchangeValue || 1)
-                    }, {
-                        transaction: t
-                    });
+                        await models.InventoryCheckingBatch.create({
+                            inventoryCheckingProductId: newInventoryCheckingProduct.id,
+                            realQuantity: row.realQuantity,
+                            batchId: row.batchId,
+                            difference: (realQuantityBaseUnit - oldQuantity) / (productUnitExists.exchangeValue || 1),
+                            isChange: true
+                        }, {
+                            transaction: t
+                        });
+                    }else{
+                        await models.InventoryCheckingBatch.create({
+                            inventoryCheckingProductId: newInventoryCheckingProduct.id,
+                            realQuantity: row.realQuantity,
+                            batchId: row.batchId,
+                            difference: 0,
+                            isChange: false
+                        }, {
+                            transaction: t
+                        });
+                    }
                 }
             }
             else {
@@ -358,7 +383,12 @@ module.exports.getAll = async (params) => {
 }
 
 module.exports.detail = async (params) => {
-    const { branchId, id } = params;
+    const { branchId, id, isChange } = params;
+    if(isChange){
+        inventoryCheckingIncludes[0].include[0].where = {
+            isChange : isChange
+        }
+    }
     const inventoryChecking = await models.InventoryChecking.findOne({
         attributes: inventoryCheckingAttributes,
         include: inventoryCheckingIncludes,

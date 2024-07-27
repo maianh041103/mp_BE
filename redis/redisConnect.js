@@ -1,14 +1,15 @@
 'use strict';
 
 const redis = require("redis");
-const config = require("../config/default.json");
+const config = require("config");
+const redisConfig = config.get('redis') || {};
 
 const client = redis.createClient({
-    username: config.redis.username,
-    password: config.redis.password,
+    username: redisConfig.username,
+    password: redisConfig.password,
     socket: {
-        host: config.redis.host,
-        port: config.redis.port,
+        host: redisConfig.host,
+        port: redisConfig.port,
         tls: false,
     },
     connectTimeout: 10000 // in milliseconds

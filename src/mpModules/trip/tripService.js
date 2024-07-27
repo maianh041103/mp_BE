@@ -7,6 +7,7 @@ const tripContant = require("./tripContant");
 const { generateCode } = require("../../helpers/codeGenerator");
 const { client } = require("../../../redis/redisConnect");
 const config = require("../../../config/default.json");
+const {checkDouble} = require("../../helpers/utils");
 
 const tripAttributes = [
     "id",
@@ -746,8 +747,8 @@ module.exports.reverse = async (params) => {
 
 module.exports.geofencing = async (params) => {
     const { radius, storeId, limit = 10, page = 1 } = params;
-    const lng = (params.lng).trim();
-    const lat = (params.lat).trim();
+    const lng = (params.lng).toString().trim();
+    const lat = (params.lat).toString().trim();
     const listCustomer = await models.Customer.findAll({
         attributes: ["id", "lng", "lat"],
         where: {
@@ -766,7 +767,7 @@ module.exports.geofencing = async (params) => {
             long: (item.lng).toString().trim(),
             lat: (item.lat).toString().trim()
         }
-    });
+    }).filter(item => checkDouble(item.lat) && checkDouble(item.long));
     let API_KEY = tripContant.KEY.API_KEY;
     const body = {
         geometryCenters: listCustomerConvert,

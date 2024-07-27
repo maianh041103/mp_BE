@@ -337,3 +337,15 @@ export function getReportType(days) {
   }
   return 'year'
 }
+
+export function checkDouble(number) {
+  if (number === null || number === undefined || number === "") {
+    return false;
+  }
+  try {
+    parseFloat(number)
+  } catch (e) {
+    return false;
+  }
+  return true;
+}
