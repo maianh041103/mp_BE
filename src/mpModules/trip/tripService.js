@@ -775,7 +775,6 @@ module.exports.geofencing = async (params) => {
         long: lng,
         lat:lat
     }
-    console.log(body);
     const apiUrl = `https://maps.vietmap.vn/api/geofencing?apikey=${API_KEY}`;
     const response = await axios.post(apiUrl, body);
     const data = response.data.data;
