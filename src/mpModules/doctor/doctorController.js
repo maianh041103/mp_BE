@@ -228,8 +228,9 @@ export async function exportDoctorController(req, res) {
 
 export async function exportDoctorExampleController(req,res){
     try {
-        const tmp = path.resolve(__dirname, '../../../')
-        const filePath = path.join(tmp, `excel\\doctor.xlsx`);
+        const tmp = path.resolve(__dirname, '../../../');
+        const filePath = path.join(tmp, 'excel', 'doctor.xlsx');
+        console.log(filePath);
         // Sử dụng res.download để gửi file và xóa file sau khi gửi
         res.download(filePath, `doctorExample.xlsx`, (err) => {
             if (err) {
