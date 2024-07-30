@@ -29,7 +29,7 @@ module.exports = (sequelize, Sequelize) => {
             allowNull: false
         },
         amount: {
-            type: Sequelize.INTEGER(11),
+            type: Sequelize.BIGINT,
             allowNull: true
         },
         branchId: {

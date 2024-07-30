@@ -45,12 +45,12 @@ module.exports = (sequelize, DataTypes) => {
       },
       totalPrice: {
         allowNull: false,
-        type: DataTypes.INTEGER(10).UNSIGNED,
+        type: DataTypes.BIGINT.UNSIGNED,
         defaultValue: 0,
       },
       cashOfCustomer: {
         allowNull: true,
-        type: DataTypes.INTEGER(10).UNSIGNED,
+        type: DataTypes.BIGINT.UNSIGNED,
         defaultValue: 0,
       },
       refund: {
