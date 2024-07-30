@@ -6,13 +6,16 @@ const {
   indexMasterInboundProductController,
   readController,
   createController,
-  updateController, 
+  updateController,
   deleteController,
   updateStatus,
   deleteProducts,
   indexPriceSettingController,
   updatePriceSettingController,
   updateEndDateProducts,
+  createUploadController,
+    exportProductController,
+    exportProductExampleController
 } = require("./productController");
 const {
   createValidator,
@@ -21,8 +24,8 @@ const {
   updateProductPriceSettingValidator,
 } = require("./productValidator");
 const express = require("express");
-const {getNextValue} = require("./productCodeService");
-const {indexInventoryController} = require("./productInventoryController");
+const { getNextValue } = require("./productCodeService");
+const { indexInventoryController } = require("./productInventoryController");
 
 const router = express.Router();
 
@@ -63,16 +66,16 @@ router.get(
 );
 
 router.get(
-    "/warehouse/remain",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = [
-            "product_read"
-        ];
-        next();
-    },
-    authorize,
-    indexMasterSaleProductController
+  "/warehouse/remain",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = [
+      "product_read"
+    ];
+    next();
+  },
+  authorize,
+  indexMasterSaleProductController
 );
 
 router.get(
@@ -152,14 +155,14 @@ router.get(
 );
 
 router.delete(
-    "/:id",
-    authenticate,
-    (req, res, next) => {
-        req.apiRole = "product_delete";
-        next();
-    },
-    authorize,
-    deleteController
+  "/:id",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = "product_delete";
+    next();
+  },
+  authorize,
+  deleteController
 );
 
 router.delete(
@@ -215,4 +218,32 @@ router.patch(
   updateProductPriceSettingValidator,
   updatePriceSettingController
 );
+
+router.post(
+  "/upload",
+  authenticate,
+  (req, res, next) => {
+    req.apiRole = "product_create";
+    next();
+  },
+  authorize,
+  createUploadController
+
+);
+router.get(
+    "/export/excel",authenticate,
+    (req,res,next)=>{
+        req.apiRole = "product_read";
+        next();
+    },
+    authorize,
+    exportProductController
+);
+router.get("/export/example",authenticate,
+    (req,res,next)=>{
+    req.apiRole = "product_read";
+    next();
+    },
+    authorize,
+    exportProductExampleController)
 module.exports = router;

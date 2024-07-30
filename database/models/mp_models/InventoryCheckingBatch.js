@@ -23,6 +23,10 @@ module.exports = (sequelize, DataTypes) => {
         difference: {
             allowNull: true,
             type: Sequelize.INTEGER(11)
+        },
+        isChange: {
+            allowNull: true,
+            type: Sequelize.BOOLEAN
         }
     }, {
         tableName: 'inventories_checking_batch',

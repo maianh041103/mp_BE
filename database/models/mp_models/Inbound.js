@@ -37,25 +37,25 @@ module.exports = (sequelize, DataTypes) => {
       // Tổng tiền
       totalPrice: {
         allowNull: false,
-        type: DataTypes.INTEGER(10).UNSIGNED,
+        type: DataTypes.BIGINT.UNSIGNED,
         defaultValue: 0,
       },
       // Giảm giá
       discount: {
         allowNull: true,
-        type: DataTypes.INTEGER(10).UNSIGNED,
+        type: DataTypes.INTEGER(20).UNSIGNED,
         defaultValue: 0,
       },
       // Đã trả
       paid: {
         allowNull: true,
-        type: DataTypes.INTEGER(10).UNSIGNED,
+        type: DataTypes.BIGINT.UNSIGNED,
         defaultValue: 0,
       },
       // Công nợ
       debt: {
         allowNull: true,
-        type: DataTypes.INTEGER(10).UNSIGNED,
+        type: DataTypes.BIGINT.UNSIGNED,
         defaultValue: 0,
       },
       paymentType: {

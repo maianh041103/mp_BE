@@ -1,5 +1,6 @@
 "use strict";
 const Sequelize = require("sequelize");
+const pointContant = require("../../../src/mpModules/point/pointContant");
 module.exports = (sequelize, DataTypes) => {
     const PointCustomer = sequelize.define(
         "PointCustomer",
@@ -18,6 +19,10 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false,
             },
+            type: {
+                type: DataTypes.ENUM(pointContant.typePoint.ORDER, pointContant.typePoint.PRODUCT),
+                allowNull: true
+            }
         },
         {
             tableName: "point_customers",

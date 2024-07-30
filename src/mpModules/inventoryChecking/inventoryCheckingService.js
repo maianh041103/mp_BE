@@ -13,8 +13,9 @@ const inventoryCheckingAttributes = [
     "note",
     "branchId",
     "createdAt"
-]
+];
 
+//Không được sửa thứ tự trong include, nếu sửa thêm vào cuối
 const inventoryCheckingIncludes = [
     {
         model: models.InventoryCheckingProduct,
@@ -24,7 +25,7 @@ const inventoryCheckingIncludes = [
             {
                 model: models.InventoryCheckingBatch,
                 as: "inventoryCheckingBatch",
-                attributes: ["id", "batchId", "realQuantity", "difference"],
+                attributes: ["id", "batchId", "realQuantity", "difference", "isChange"],
                 include: [
                     {
                         model: models.Batch,
@@ -36,7 +37,7 @@ const inventoryCheckingIncludes = [
             {
                 model: models.ProductUnit,
                 as: "productUnit",
-                attributes: ["code", "id", "unitName", "exchangeValue", "price", "isBaseUnit"],
+                attributes: ["code", "id", "unitName", "exchangeValue", "isBaseUnit"],
                 include: [
                     {
                         model: models.Product,
@@ -146,11 +147,74 @@ module.exports.create = async (params) => {
                 transaction: t
             });
 
+            const inventory = await models.Inventory.findOne({
+                where: {
+                    productId: product.id,
+                    branchId
+                }
+            })
+
             //Tính quantity base unit
+            let totalRealQuantityBaseUnit = 0;
             if (inventoryCheckingBatch && inventoryCheckingBatch.length > 0) {
+                //Cập nhật các lô hàng còn lại về 0 
+                let listBatchId = inventoryCheckingBatch.map(item => item.batchId);
+                const listBatchReset0 = await models.Batch.findAll({
+                    where: {
+                        branchId,
+                        productId: product.id,
+                        id: {
+                            [Op.notIn]: listBatchId
+                        }
+                    }
+                });
+                for (const item of listBatchReset0) {
+                    const batch = await models.Batch.findOne({
+                        where: {
+                            id: item.id
+                        }
+                    });
+                    if (batch.quantity != 0) {
+                        await models.InventoryCheckingBatch.create({
+                            inventoryCheckingProductId: newInventoryCheckingProduct.id,
+                            realQuantity: 0,
+                            batchId: item.id,
+                            difference: -batch.quantity,
+                            isChange:true,
+                        }, {
+                            transaction: t
+                        });
+                    }else{
+                        await models.InventoryCheckingBatch.create({
+                            inventoryCheckingProductId: newInventoryCheckingProduct.id,
+                            realQuantity: 0,
+                            batchId: item.id,
+                            difference: 0,
+                            isChange:false,
+                        }, {
+                            transaction: t
+                        });
+                    }
+                }
+                await models.Batch.update({
+                    oldQuantity:Sequelize.col('quantity'),
+                    quantity: 0
+                }, {
+                    where: {
+                        branchId,
+                        productId: product.id,
+                        id: {
+                            [Op.notIn]: listBatchId
+                        }
+                    },
+                    transaction: t
+                });
+                //End cập nhật các lô hàng còn lại về 0
+
                 for (const row of inventoryCheckingBatch) {
                     let oldQuantity = 0;
                     const realQuantityBaseUnit = row.realQuantity * (productUnitExists.exchangeValue || 1);
+                    totalRealQuantityBaseUnit += realQuantityBaseUnit;
                     const batch = await models.Batch.findOne({
                         where: {
                             id: row.batchId,
@@ -165,19 +229,11 @@ module.exports.create = async (params) => {
                         }
                     }
                     oldQuantity = batch.quantity;
-                    if (realQuantityBaseUnit != batch.quantity) {
-                        await models.Inventory.increment({
-                            quantity: (realQuantityBaseUnit - batch.quantity)
-                        }, {
-                            where: {
-                                productId: product.id,
-                                branchId
-                            },
-                            transaction: t
-                        })
 
+                    if (oldQuantity != realQuantityBaseUnit) {
                         await models.Batch.update({
-                            quantity: realQuantityBaseUnit
+                            quantity: realQuantityBaseUnit,
+                            oldQuantity:oldQuantity
                         }, {
                             where: {
                                 id: batch.id
@@ -185,39 +241,31 @@ module.exports.create = async (params) => {
                             transaction: t
                         });
 
-                        await models.WarehouseCard.create({
-                            code: code,
-                            type: warehouseStatus.ADJUSTMENT,
-                            partner: "",
-                            productId: product.id,
-                            branchId: branchId,
-                            changeQty: realQuantityBaseUnit - oldQuantity,
-                            remainQty: realQuantityBaseUnit,
-                            createdAt: new Date(),
-                            updatedAt: new Date()
+                        await models.InventoryCheckingBatch.create({
+                            inventoryCheckingProductId: newInventoryCheckingProduct.id,
+                            realQuantity: row.realQuantity,
+                            batchId: row.batchId,
+                            difference: (realQuantityBaseUnit - oldQuantity) / (productUnitExists.exchangeValue || 1),
+                            isChange: true
+                        }, {
+                            transaction: t
+                        });
+                    }else{
+                        await models.InventoryCheckingBatch.create({
+                            inventoryCheckingProductId: newInventoryCheckingProduct.id,
+                            realQuantity: row.realQuantity,
+                            batchId: row.batchId,
+                            difference: 0,
+                            isChange: false
                         }, {
                             transaction: t
                         });
                     }
-                    await models.InventoryCheckingBatch.create({
-                        inventoryCheckingProductId: newInventoryCheckingProduct.id,
-                        realQuantity: row.realQuantity,
-                        batchId: row.batchId,
-                        difference: (realQuantityBaseUnit - oldQuantity) / (productUnitExists.exchangeValue || 1)
-                    }, {
-                        transaction: t
-                    });
                 }
             }
             else {
                 const realQuantityBaseUnit = realQuantity * (productUnitExists.exchangeValue || 1);
-                const inventory = await models.Inventory.findOne({
-                    where: {
-                        productId: product.id,
-                        branchId
-                    }
-                })
-
+                totalRealQuantityBaseUnit += realQuantityBaseUnit;
                 let oldQuantity = inventory.quantity;
                 await models.InventoryCheckingProduct.update({
                     realQuantity: realQuantity,
@@ -227,32 +275,33 @@ module.exports.create = async (params) => {
                         id: newInventoryCheckingProduct.id
                     },
                     transaction: t
-                })
-                if (realQuantityBaseUnit != inventory.quantity) {
-                    await models.Inventory.update({
-                        quantity: realQuantityBaseUnit,
-                    }, {
-                        where: {
-                            productId: product.id,
-                            branchId
-                        },
-                        transaction: t
-                    })
+                });
+            }
 
-                    await models.WarehouseCard.create({
-                        code: code,
-                        type: warehouseStatus.ADJUSTMENT,
-                        partner: "",
+            if (totalRealQuantityBaseUnit != inventory.quantity) {
+                await models.Inventory.update({
+                    quantity: totalRealQuantityBaseUnit,
+                }, {
+                    where: {
                         productId: product.id,
-                        branchId: branchId,
-                        changeQty: realQuantityBaseUnit - oldQuantity,
-                        remainQty: realQuantityBaseUnit,
-                        createdAt: new Date(),
-                        updatedAt: new Date()
-                    }, {
-                        transaction: t
-                    })
-                }
+                        branchId
+                    },
+                    transaction: t
+                })
+
+                await models.WarehouseCard.create({
+                    code: code,
+                    type: warehouseStatus.ADJUSTMENT,
+                    partner: "",
+                    productId: product.id,
+                    branchId: branchId,
+                    changeQty: totalRealQuantityBaseUnit - inventory.quantity,
+                    remainQty: totalRealQuantityBaseUnit,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                }, {
+                    transaction: t
+                })
             }
         }
     });
@@ -319,6 +368,8 @@ module.exports.getAll = async (params) => {
                     return acc + item.realQuantity;
                 }, 0)
             }
+
+            row.dataValues.productUnit.dataValues.price = row.productUnit.exchangeValue * row.productUnit.product.primePrice;
         }
 
     }
@@ -332,7 +383,12 @@ module.exports.getAll = async (params) => {
 }
 
 module.exports.detail = async (params) => {
-    const { branchId, id } = params;
+    const { branchId, id, isChange } = params;
+    if(isChange){
+        inventoryCheckingIncludes[0].include[0].where = {
+            isChange : isChange
+        }
+    }
     const inventoryChecking = await models.InventoryChecking.findOne({
         attributes: inventoryCheckingAttributes,
         include: inventoryCheckingIncludes,

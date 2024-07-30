@@ -52,7 +52,17 @@ router.post("/geofencing", authenticate, (req, res, next) => {
 router.delete("/:id", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-}, authorize, tripController.deleteTrip)
+}, authorize, tripController.deleteTrip);
+
+router.post("/map-routing", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, tripController.mapRouting);
+
+router.patch("/change-current/:id", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, tripController.changeCurrent);
 
 module.exports = router;
 
