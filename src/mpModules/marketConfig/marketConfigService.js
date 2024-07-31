@@ -54,6 +54,10 @@ const marketProductInclude = [
         model: models.MarketProductBatch,
         as: "batches",
         attributes: ["id", "batchId", "quantity", "quantitySold"]
+    },
+    {
+        model:models.Image,
+        as:"imageCenter"
     }
 ]
 
@@ -72,7 +76,8 @@ module.exports.createProductService = async (result) => {
         storeId,
         batches,
         agencys,
-        branchId
+        branchId,
+        thumbnail
     } = result;
     const product = await models.Product.findOne({
         where: {
@@ -112,7 +117,7 @@ module.exports.createProductService = async (result) => {
         const imageString = images.join("/");
         newMarketProduct = await models.MarketProduct.create({
             productId, quantity, marketType, price, discountPrice, status, description, isDefaultPrice, storeId,branchId,
-            images: imageString, createdBy: id, updatedBy: id
+            thumbnail,images: imageString, createdBy: id, updatedBy: id
         }, {
             transaction: t
         });
@@ -235,6 +240,10 @@ module.exports.getAllProductService = async (result) => {
             model: models.MarketProductBatch,
             as: "batches",
             attributes: ["id", "batchId", "quantity", "quantitySold"]
+        },
+        {
+            model:models.Image,
+            as:"imageCenter"
         }
     ]
 
@@ -360,7 +369,8 @@ module.exports.changeProductService = async (result) => {
         batches,
         agencys,
         loginUser,
-        branchId
+        branchId,
+        thumbnail
     } = result;
     const marketProductExists = await models.MarketProduct.findOne({
         where: {
@@ -539,7 +549,7 @@ module.exports.changeProductService = async (result) => {
         }
         await models.MarketProduct.update({
             productId, marketType, price, discountPrice, status, description, isDefaultPrice,
-            images, updatedBy: loginUser.id, quantity: totalQuantity,branchId
+            images, updatedBy: loginUser.id, quantity: totalQuantity,branchId,thumbnail
         }, {
             where: {
                 id

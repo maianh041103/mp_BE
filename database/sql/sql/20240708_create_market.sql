@@ -109,7 +109,7 @@ CREATE TABLE market_product_agency(
     groupAgencyId int unsigned null,
     constraint market_product_agency_2
     foreign key(groupAgencyId) references group_agency(id),
-    agencyId int null,
+    agencyId int unsigned null,
     constraint market_product_agency_3
     foreign key(agencyId) references request_agency(id),
     price int unsigned not null default 0,
