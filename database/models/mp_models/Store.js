@@ -123,11 +123,11 @@ module.exports = (sequelize, Sequelize) => {
       targetKey: 'id',
     });
 
-    Store.hasMany(models.User, {
-      as: 'users',
-      foreignKey: 'storeId',
-      targetKey: 'id'
-    });
-  }
+    Store.hasMany(models.MarketProduct,{
+      as:"marketProduct",
+      foreignKey:"storeId",
+      sourceKey:"id"
+    })
+  };
   return Store;
 };
