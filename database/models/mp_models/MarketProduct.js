@@ -64,6 +64,10 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: true,
                 type: DataTypes.STRING
             },
+            thumbnail:{
+                allowNull:true,
+                type:DataTypes.INTEGER(10).UNSIGNED
+            },
             isDefaultPrice: {
                 allowNull: true,
                 type: DataTypes.BOOLEAN,
@@ -138,6 +142,12 @@ module.exports = (sequelize, DataTypes) => {
             as:"branch",
             sourceKey:"id",
             foreignKey: "branchId"
+        });
+
+        MarketProduct.belongsTo(models.Image,{
+            as:"imageCenter",
+            sourceKey:"id",
+            foreignKey:"thumbnail"
         })
     };
     return MarketProduct;
