@@ -121,18 +121,14 @@ export async function indexStores(params) {
   };
 }
 export async function listStore(params) {
-  console.log(params.page);
   let page = parseInt(params.page, 10) || 1;
   let limit = parseInt(params.limit, 10) || 10;
-
-console.log(page);
   const offset = (page - 1) * limit;
-
   // Thực hiện truy vấn với phân trang
   const { count, rows } = await models.Store.findAndCountAll({
     offset,
-    limit,
     include:StoreInclude,
+    limit,
     order: [['createdAt', 'DESC']]
   });
 
@@ -141,12 +137,13 @@ console.log(page);
     data: {
       items: rows,
       totalItem: count,
-      include:StoreInclude,
+     
       totalPages: Math.ceil(count / limit),
       currentPage: page
     },
   };
 }
+
 const StoreInclude = [
   {
     model: models.Ward,
@@ -163,7 +160,19 @@ const StoreInclude = [
     as: "district",
     attributes: ["name"],
   },
+  {
+    model: models.Image,
+    as: "businessRegistrationImage",
+    attributes: ["id", "path"],
+  },
+  {
+    model: models.User,
+    as: "users",
+    attributes: ["id", "username", "email", "phone", "position"],
+  }
 ];
+
+
 export async function createStore(payload) {
   const newStore = await models.Store.create(payload);
   await insertNewCode(newStore.id);
