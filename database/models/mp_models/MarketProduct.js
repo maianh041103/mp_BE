@@ -14,6 +14,10 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.INTEGER(10).UNSIGNED,
                 allowNull: false
             },
+            productUnitId:{
+                type:DataTypes.INTEGER(10).UNSIGNED,
+                allowNull: false
+            },
             marketType: {
                 type: DataTypes.ENUM(marketConfigContant.MARKET_TYPE.COMMON,
                     marketConfigContant.MARKET_TYPE.PRIVATE),
@@ -148,6 +152,12 @@ module.exports = (sequelize, DataTypes) => {
             as:"imageCenter",
             sourceKey:"id",
             foreignKey:"thumbnail"
+        });
+
+        MarketProduct.belongsTo(models.ProductUnit,{
+            as:"productUnit",
+            soureKey:"id",
+            foreignKey:"productUnitId"
         })
     };
     return MarketProduct;

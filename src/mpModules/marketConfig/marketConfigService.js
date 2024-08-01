@@ -58,6 +58,11 @@ const marketProductInclude = [
     {
         model:models.Image,
         as:"imageCenter"
+    },
+    {
+        model:models.ProductUnit,
+        as:"productUnit",
+        attributes: ["id","unitName","exchangeValue"]
     }
 ]
 
@@ -77,8 +82,16 @@ module.exports.createProductService = async (result) => {
         batches,
         agencys,
         branchId,
-        thumbnail
+        thumbnail,
+        productUnitId
     } = result;
+    if(!productUnitId){
+        return{
+            error:true,
+            message:"Vui lòng nhập đơn vị",
+            code:HttpStatusCode.BAD_REQUEST
+        }
+    }
     const product = await models.Product.findOne({
         where: {
             id: productId,
@@ -90,6 +103,19 @@ module.exports.createProductService = async (result) => {
             error: true,
             code: HttpStatusCode.BAD_REQUEST,
             message: "Sản phẩm không tồn tại"
+        }
+    }
+    const productUnitExists = await models.ProductUnit.findOne({
+        where:{
+            id:productUnitId,
+            productId
+        }
+    });
+    if(!productUnitExists){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:"Không tìm thấy đơn vị của sản phẩm"
         }
     }
     if(!branchId){
@@ -116,7 +142,7 @@ module.exports.createProductService = async (result) => {
     const t = await models.sequelize.transaction(async (t) => {
         const imageString = images.join("/");
         newMarketProduct = await models.MarketProduct.create({
-            productId, quantity, marketType, price, discountPrice, status, description, isDefaultPrice, storeId,branchId,
+            productId,productUnitId, quantity, marketType, price, discountPrice, status, description, isDefaultPrice, storeId,branchId,
             thumbnail,images: imageString, createdBy: id, updatedBy: id
         }, {
             transaction: t
@@ -244,6 +270,11 @@ module.exports.getAllProductService = async (result) => {
         {
             model:models.Image,
             as:"imageCenter"
+        },
+        {
+            model:models.ProductUnit,
+            as:"productUnit",
+            attributes: ["id","unitName","exchangeValue"]
         }
     ]
 
@@ -370,7 +401,8 @@ module.exports.changeProductService = async (result) => {
         agencys,
         loginUser,
         branchId,
-        thumbnail
+        thumbnail,
+        productUnitId = 0
     } = result;
     const marketProductExists = await models.MarketProduct.findOne({
         where: {
@@ -412,6 +444,19 @@ module.exports.changeProductService = async (result) => {
             error: true,
             code: HttpStatusCode.BAD_REQUEST,
             message: "Sản phẩm không tồn tại"
+        }
+    }
+    const productUnitExists = await models.ProductUnit.findOne({
+        where:{
+            id:productUnitId,
+            productId
+        }
+    });
+    if(!productUnitExists){
+        return{
+            error:true,
+            message:"Đơn vị của sản phẩm không đúng",
+            code:HttpStatusCode.BAD_REQUEST
         }
     }
     const t = await models.sequelize.transaction(async (t) => {
@@ -548,7 +593,7 @@ module.exports.changeProductService = async (result) => {
             }
         }
         await models.MarketProduct.update({
-            productId, marketType, price, discountPrice, status, description, isDefaultPrice,
+            productId,productUnitId, marketType, price, discountPrice, status, description, isDefaultPrice,
             images, updatedBy: loginUser.id, quantity: totalQuantity,branchId,thumbnail
         }, {
             where: {
