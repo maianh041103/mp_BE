@@ -1342,17 +1342,18 @@ module.exports.createConfig = async (data, loginUser) => {
 }
 
 module.exports.detailConfig = async (loginUser) => {
-    const discountConfig = await models.DiscountConfig.findOne({
+    let discountConfig = await models.DiscountConfig.findOne({
         where: {
             storeId: loginUser.storeId
         }
     });
     if (!discountConfig) {
-        return {
-            error: true,
-            code: HttpStatusCode.NOT_FOUND,
-            message: "Cấu hình khuyến mãi không tồn tại",
-        };
+        discountConfig = await models.DiscountConfig.create({
+            isMergeDiscount:false,
+            isApplyOrder:false,
+            isAutoApply:false,
+            storeId:loginUser.storeId
+        })
     }
 
     return {
