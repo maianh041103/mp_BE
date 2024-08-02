@@ -211,7 +211,7 @@ export async function createProduct(product, loginUser) {
         if (checkCode) {
             return {
                 error: true,
-                message: "Mã code là duy nhat",
+                message: "Mã code là duy nhất",
                 code: HttpStatusCode.BAD_REQUEST
             }
         }
@@ -224,7 +224,7 @@ export async function createProduct(product, loginUser) {
         if (checkBarCode) {
             return {
                 error: true,
-                message: "Mã vach là duy nhat",
+                message: "Mã vạch là duy nhất",
                 code: HttpStatusCode.BAD_REQUEST
             }
         }

@@ -174,6 +174,21 @@ const StoreInclude = [
 
 
 export async function createStore(payload) {
+  console.log(payload)
+  if(payload.phone){
+    const existsPhoneStore = await models.Store.findOne({
+      where:{
+        phone:payload.phone
+      }
+    });
+    if(existsPhoneStore){
+      return{
+        error:true,
+        message:`Số điện thoại ${payload.phone} đã tồn tại`,
+        code:HttpStatusCode.BAD_REQUEST
+      }
+    }
+  }
   const newStore = await models.Store.create(payload);
   await insertNewCode(newStore.id);
   const createBranchInput = {
