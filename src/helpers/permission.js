@@ -158,6 +158,10 @@ export const modelPermissions = [
   {
     name: "market_order",
     text: "Duyệt đơn hàng"
+  },
+  {
+    name: "market_confirm",
+    text: "Xác nhận đơn hàng"
   }
 ];
 
