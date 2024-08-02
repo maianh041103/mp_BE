@@ -11,15 +11,17 @@ module.exports = (sequelize, DataTypes) => {
                 autoIncrement: true,
                 allowNull: false,
             },
-            imageId:{
-                type:DataTypes.INTEGER(10).UNSIGNED,
-                allowNull: false
+            imageBannerId:{
+                type:DataTypes.STRING,
+                allowNull: true
             },
-            position:{
-                type:DataTypes.ENUM(marketContant.MARKET_IMAGE.LIST,
-                    marketContant.MARKET_IMAGE.TOP,
-                    marketContant.MARKET_IMAGE.BOTTOM),
-                allowNull: false
+            imageTopId:{
+                type:DataTypes.STRING,
+                allowNull: true
+            },
+            imageBottomId:{
+                type:DataTypes.STRING,
+                allowNull: true
             },
             storeId:{
               type:DataTypes.INTEGER(10).UNSIGNED,
@@ -50,12 +52,6 @@ module.exports = (sequelize, DataTypes) => {
             as: "store",
             foreignKey: "storeId",
             targetKey: "id",
-        });
-
-        MarketImage.belongsTo(models.Image, {
-            as: "image",
-            foreignKey: "imageId",
-            targetKey: "id"
         });
     };
     return MarketImage;
