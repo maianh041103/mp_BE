@@ -189,7 +189,46 @@ export async function createProduct(product, loginUser) {
             };
         }
     }
-
+    if (product.productUnits) {
+        let cntCode = {};
+        let cntBarCode = {};
+        cntCode[product.code] = 1;
+        cntBarCode[product.barCode] = 1;
+        for (const item of product.productUnits) {
+            if (item.code) {
+                cntCode[item.code] = (cntCode[item.code] || 0) + 1;
+            }
+            if(item.barCode){
+                cntBarCode[item.barCode] = (cntBarCode[item.barCode] || 0) + 1;
+            }
+        }
+        let checkCode = false;
+        for(const item in cntCode){
+            if(cntCode[item] > 1){
+                checkCode = true;
+            }
+        }
+        if (checkCode) {
+            return {
+                error: true,
+                message: "Mã code là duy nhat",
+                code: HttpStatusCode.BAD_REQUEST
+            }
+        }
+        let checkBarCode = false;
+        for(const item in cntBarCode){
+            if(cntBarCode[item] > 1){
+                checkBarCode = true;
+            }
+        }
+        if (checkBarCode) {
+            return {
+                error: true,
+                message: "Mã vach là duy nhat",
+                code: HttpStatusCode.BAD_REQUEST
+            }
+        }
+    }
     if (product.barCode) {
         product.barCode = removeDiacritics(product.barCode);
         const checkUniqueBarCode = await checkUniqueValue("Product", {
@@ -1077,7 +1116,7 @@ export async function findProduct(keyword, page, limit) {
     })
 }
 
-export async function uploadFileService(loginUser, data,branchId) {
+export async function uploadFileService(loginUser, data, branchId) {
     for (let index = 0; index < data.length; index++) {
         const item = data[index];
         try {
@@ -1113,9 +1152,9 @@ export async function uploadFileService(loginUser, data,branchId) {
             });
             let result = {
                 type: parseInt(_.get(item, 'Loại sản phẩm', 2).toString().trim()),
-                code:_.get(item, 'Mã hàng', '').toString().trim(),
+                code: _.get(item, 'Mã hàng', '').toString().trim(),
                 barCode: _.get(item, 'Mã vạch', '').toString().trim(),
-                drugCode:_.get(item, 'Mã thuốc', '').toString().trim(),
+                drugCode: _.get(item, 'Mã thuốc', '').toString().trim(),
                 name: _.get(item, 'Tên sản phẩm', null) ? _.get(item, 'Tên sản phẩm', null).toString().trim() : null,
                 shortName: _.get(item, 'Tên viết tắt', '').toString().trim(),
                 groupProductName: _.get(item, 'Nhóm sản phẩm', null) ? _.get(item, 'Nhóm sản phẩm', null).toString().trim() : null,
@@ -1144,11 +1183,11 @@ export async function uploadFileService(loginUser, data,branchId) {
             let newProduct;
             let product;
             await models.sequelize.transaction(async (t) => {
-                let groupProduct = {},manufacture = {},country = {},dosage = {},position = {};
-                if(result.groupProductName) {
+                let groupProduct = {}, manufacture = {}, country = {}, dosage = {}, position = {};
+                if (result.groupProductName) {
                     [groupProduct] = await models.GroupProduct.findOrCreate({
                         where: {
-                            name: {[Op.like]:`%${result.groupProductName}`},
+                            name: {[Op.like]: `%${result.groupProductName}`},
                             storeId: loginUser.storeId
                         },
                         defaults: {
@@ -1158,7 +1197,7 @@ export async function uploadFileService(loginUser, data,branchId) {
                         transaction: t
                     });
                 }
-                if(result.manufactureName) {
+                if (result.manufactureName) {
                     [manufacture] = await models.Manufacture.findOrCreate({
                         where: {
                             name: {
@@ -1173,17 +1212,17 @@ export async function uploadFileService(loginUser, data,branchId) {
                         transaction: t
                     });
                 }
-                if(result.countryName) {
+                if (result.countryName) {
                     country = await models.CountryProduce.findOne({
                         where: {
-                            name:{[Op.like]: `%${result.countryName}%`}
+                            name: {[Op.like]: `%${result.countryName}%`}
                         }
                     });
                 }
-                if(result.dosageName) {
+                if (result.dosageName) {
                     [dosage] = await models.Dosage.findOrCreate({
                         where: {
-                            name:{[Op.like]: `%${result.dosageName}%`},
+                            name: {[Op.like]: `%${result.dosageName}%`},
                             storeId: loginUser.storeId
                         },
                         defaults: {
@@ -1194,10 +1233,10 @@ export async function uploadFileService(loginUser, data,branchId) {
                         transaction: t
                     });
                 }
-                if(result.positionName) {
+                if (result.positionName) {
                     [position] = await models.Position.findOrCreate({
                         where: {
-                            name:{[Op.like]: `%${result.positionName}%`},
+                            name: {[Op.like]: `%${result.positionName}%`},
                             storeId: loginUser.storeId
                         },
                         defaults: {
