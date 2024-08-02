@@ -247,6 +247,19 @@ export async function createAccount(credentials) {
   }
 
   const phone = formatMobileToSave(credentials.phone);
+  const existsPhoneUser = await models.User.findOne({
+    where:{
+      phone
+    }
+  });
+
+  if(existsPhoneUser){
+    return{
+      error:true,
+      message:`Số điện thoại ${phone} đã tồn tại`,
+      code: HttpStatusCode.BAD_REQUEST
+    }
+  }
   const user = await models.User.findOne({
     where: {
       phone,
