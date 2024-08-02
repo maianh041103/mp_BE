@@ -984,49 +984,78 @@ module.exports.deleteGroupAgencyService = async (result) => {
 }
 
 module.exports.createMarketImageService = async(result)=>{
-    const {storeId,imageId,position} = result;
-    const imageExists = await models.Image.findOne({
+    let {storeId,imageBannerId = [],imageTopId = [],imageBottomId = []} = result;
+    imageBannerId = imageBannerId.join("/");
+    imageBottomId = imageBottomId.join("/");
+    imageTopId = imageTopId.join("/");
+    const marketExists = await models.MarketImage.findOne({
         where:{
-            id:imageId
+            storeId
         }
     });
-    if (!imageExists) {
-        return{
-            error:true,
-            code:HttpStatusCode.BAD_REQUEST,
-            message:`Không tìm thấu ảnh có id = ${imageId}`
-        }
+    let id;
+    if(!marketExists){
+        const newMarketImage = await models.MarketImage.create({
+            storeId,
+            imageBottomId,
+            imageBannerId,
+            imageTopId
+        });
+        id = newMarketImage.id;
+    }else{
+        id = marketExists.id;
+        await models.MarketImage.update({
+            imageBottomId,
+            imageBannerId,
+            imageTopId
+        },{
+            where:{
+                storeId
+            }
+        });
     }
-    const newMarketImage = await models.MarketImage.create({
-        storeId,
-        imageId,
-        position
-    });
     return{
         success:true,
         data:{
-            id:newMarketImage.id
+            id
         }
     }
 }
 
 module.exports.getAllMarketImageService = async (query)=>{
-    console.log("OOKKK");
-    const {position,storeId} = query;
-    let where = {
-        storeId
-    };
-    if(position){
-        where.position = position;
+    const {storeId} = query;
+    let listImage = await models.MarketImage.findOne({
+        where:{
+            storeId
+        }
+    });
+    if(!listImage){
+        return{
+            error:true,
+            message:"Không tìm thấy ảnh",
+            code:HttpStatusCode.BAD_REQUEST
+        }
     }
-    const listImage = await models.MarketImage.findAll({
-        where,
-        include:[
-            {
-                model:models.Image,
-                as:"image"
+    listImage.dataValues.imageBanner = await models.Image.findAll({
+        where:{
+            id:{
+                [Op.in]:listImage.imageBannerId.split("/")
             }
-        ]
+        }
+    });
+    listImage.dataValues.imageTop = await models.Image.findAll({
+        where:{
+            id:{
+                [Op.in]:listImage.imageTopId.split("/")
+            }
+        }
+    });
+    listImage.dataValues.imageBottom = await models.Image.findAll({
+        where:{
+            id:{
+                [Op.in]:listImage.imageBottomId.split("/")
+            }
+        }
     });
     return{
         success:true,

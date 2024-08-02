@@ -18,9 +18,3 @@ module.exports.AGENCY_STATUS = {
     ACTIVE: "active",
     CANCEL: "cancel"
 }
-
-module.exports.MARKET_IMAGE = {
-    TOP: "top",
-    BOTTOM: "bottom",
-    LIST: "list"
-}
