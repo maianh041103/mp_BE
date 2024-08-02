@@ -239,7 +239,9 @@ export async function indexCreate(saleReturn, loginUser) {
             {
               canReturn: false
             },
-            { where: { id: saleReturn.orderId } }
+            { where: { id: saleReturn.orderId },
+              transaction: t
+            }
           )
         }
       }
