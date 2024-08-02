@@ -6,7 +6,7 @@ const { HttpStatusCode } = require("../../helpers/errorCodes");
 
 const schema = Joi.object().keys({
   name: Joi.string().max(255).required(),
-  description: Joi.string().max(255).allow(null).allow(""),
+  description: Joi.string().max(3000).allow(null).allow(""),
   branchId: Joi.number().integer().min(0).allow(null).allow(""),
 });
 
