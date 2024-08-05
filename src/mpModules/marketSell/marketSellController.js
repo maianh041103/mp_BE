@@ -219,14 +219,50 @@ module.exports.createMarketOrder = async (req,res)=>{
 }
 
 //[GET] mp/api/market/sell/market-order/:id
-module.exports.getMarketOrder = async (req,res)=>{
+module.exports.getDetailMarketOrder = async (req,res)=>{
     try {
         const { loginUser = {} } = req;
         const {id} = req.params;
-        const result = await marketSellService.getMarketOrderService(
+        const result = await marketSellService.getDetailMarketOrderService(
             {
                 storeId: loginUser.storeId,
                 id
+            }
+        );
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (e) {
+        res.json(respondWithClientError(e))
+    }
+}
+
+//[GET] mp/api/market/sell/market-order
+module.exports.getAllMarketOrder = async (req,res)=>{
+    try {
+        const { loginUser = {} } = req;
+        const result = await marketSellService.getAllMarketOrderService(
+            {
+                storeId: loginUser.storeId,
+                ...req.query
+            }
+        );
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (e) {
+        res.json(respondWithClientError(e))
+    }
+}
+
+//[PATCH] mp/api/market/sell/market-order/:id
+module.exports.changeStatusMarketOrder = async (req,res)=>{
+    try {
+        const { loginUser = {} } = req;
+        const {id} = req.params;
+        const result = await marketSellService.changeStatusMarketOrderService(
+            {
+                storeId: loginUser.storeId,
+                id,
+                ...req.body
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
