@@ -21,7 +21,8 @@ const {
   updateproductStatuses,
   deleteManyProducts,
   updateEndDateManyProducts,
-  uploadFileService
+  uploadFileService,
+  uploadFileKiotVietService
 } = require("./productService");
 const {
   indexProductPriceSettings,

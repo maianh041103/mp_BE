@@ -26,6 +26,7 @@ const {
     checkUniqueValue,
     formatEndDateTime,
     removeDiacritics,
+    formatExcelDate
 } = require("../../helpers/utils");
 const {
     productStatuses,
@@ -1459,62 +1460,61 @@ export async function uploadFileService(loginUser, data, branchId) {
 }
 
 export async function uploadFileKiotVietService(loginUser, data, branchId) {
-    for (let index = 0; index < data.length; index++) {
-        const item = data[index];
-        try {
-            let listInventory = [];
-            _.forEach(item, (value, key) => {
-                if (_.startsWith(key, 'Lô')) {
-                    const index = key.split(' ')[1];
-                    if (!isNaN(index)) {
-                        if (item[`Lô ${index}`]) {
-                            listInventory.push({
-                                [`name`]:item[`Lô ${index}`],
-                                [`quantity`]: item[`Tồn ${index}`],
-                                [`expiryDate`]: item[`Hạn sử dụng ${index}`]
-                            });
-                        }
-                    }
+    try {
+        const t = await models.sequelize.transaction(async (t) => {
+            for (let index = 0; index < data.length; index++) {
+                const item = data[index];
+                let result = {
+                    type: parseInt(_.get(item, 'Loại hàng', 'Hàng hóa').toString().trim()),
+                    code: _.get(item, 'Mã hàng', '').toString().trim(),
+                    barCode: _.get(item, 'Mã vạch', '').toString().trim(),
+                    drugCode: _.get(item, 'Mã thuốc', '').toString().trim(),
+                    name: _.get(item, 'Tên hàng', null) ? _.get(item, 'Tên hàng', null).toString().trim() : null,
+                    shortName: _.get(item, 'Tên viết tắt', '').toString().trim(),
+                    groupProductName: _.get(item, 'Nhóm hàng(3 Cấp)', null) ? _.get(item, 'Nhóm hàng(3 Cấp)', null).toString().trim() : null,
+                    positionName: _.get(item, 'Vị trí', null) ? _.get(item, 'Vị trí', null).toString().trim() : null,
+                    dosageName: _.get(item, 'Đường dùng', null) ? _.get(item, 'Đường dùng', null).toString().trim() : null,
+                    primePrice: _.get(item, 'Giá vốn', 0),
+                    price: _.get(item, 'Giá bán', 0),
+                    weight: _.get(item, 'Trọng lượng', 0),
+                    packingSpecification: _.get(item, 'Quy cách đóng gói', null) ? _.get(item, 'Quy cách đóng gói', null).toString().trim() : null,
+                    manufactureName: _.get(item, 'Hãng sản xuất', null) ? _.get(item, 'Hãng sản xuất', null).toString().trim() : null,
+                    countryName: _.get(item, 'Nước sản xuất', null) ? _.get(item, 'Nước sản xuất', null).toString().trim() : null,
+                    inventory: _.get(item, 'Tồn kho', 0),
+                    isBatchExpireControl: _.get(item, 'Quản lý lô-hạn sử dụng', 0),
+                    expiryPeriod: _.get(item, 'Cảnh báo ngày hết hạn', null) ? _.get(item, 'Cảnh báo ngày hết hạn', null).toString().trim() : null,
+                    isDirectSale: _.get(item, 'Được bán trực tiếp', true),
+                    isLoyaltyPoint: _.get(item, 'Tích điểm', true),
+                    minInventory: _.get(item, 'Tồn nhỏ nhất', 0),
+                    maxInventory: _.get(item, 'Tồn lớn nhất', 999),
+                    description: _.get(item, 'Mô tả', null) ? _.get(item, 'Mô tả', null).toString().trim() : null,
+                    note: _.get(item, 'Ghi chú', null) ? _.get(item, 'Ghi chú', null).toString().trim() : null,
+                    unit: _.get(item, 'ĐVT', '').toString().trim(),
+                    exchangeValue: _.get(item, 'Quy đổi', null).toString().trim(),
+                    image: _.get(item, 'Hình ảnh (url1,url2...)', '').toString().trim(),
+                    status: _.get(item, 'Đang kinh doanh', 1).toString().trim(),
+                    codeBaseUnit: _.get(item, 'Mã ĐVT Cơ bản', '').toString().trim()
                 }
-            });
 
-            let result = {
-                type: parseInt(_.get(item, 'Loại hàng', 'Hàng hóa').toString().trim()),
-                code: _.get(item, 'Mã hàng', '').toString().trim(),
-                barCode: _.get(item, 'Mã vạch', '').toString().trim(),
-                drugCode: _.get(item, 'Mã thuốc', '').toString().trim(),
-                name: _.get(item, 'Tên hàng', null) ? _.get(item, 'Tên hàng', null).toString().trim() : null,
-                shortName: _.get(item, 'Tên viết tắt', '').toString().trim(),
-                groupProductName: _.get(item, 'Nhóm hàng(3 Cấp)', null) ? _.get(item, 'Nhóm hàng(3 Cấp)', null).toString().trim() : null,
-                positionName: _.get(item, 'Vị trí', null) ? _.get(item, 'Vị trí', null).toString().trim() : null,
-                dosageName: _.get(item, 'Đường dùng', null) ? _.get(item, 'Đường dùng', null).toString().trim() : null,
-                primePrice: _.get(item, 'Giá vốn', 0),
-                price: _.get(item, 'Giá bán', 0),
-                weight: _.get(item, 'Trọng lượng', 0),
-                packingSpecification: _.get(item, 'Quy cách đóng gói', null) ? _.get(item, 'Quy cách đóng gói', null).toString().trim() : null,
-                manufactureName: _.get(item, 'Hãng sản xuất', null) ? _.get(item, 'Hãng sản xuất', null).toString().trim() : null,
-                countryName: _.get(item, 'Nước sản xuất', null) ? _.get(item, 'Nước sản xuất', null).toString().trim() : null,
-                inventory: _.get(item, 'Tồn kho', 0),
-                isBatchExpireControl: _.get(item, 'Quản lý lô-hạn sử dụng', 0),
-                expiryPeriod: _.get(item, 'Cảnh báo ngày hết hạn', null) ? _.get(item, 'Cảnh báo ngày hết hạn', null).toString().trim() : null,
-                isDirectSale: _.get(item, 'Được bán trực tiếp', true),
-                isLoyaltyPoint: _.get(item, 'Tích điểm', true),
-                minInventory: _.get(item, 'Tồn nhỏ nhất', 0),
-                maxInventory: _.get(item, 'Tồn lớn nhất', 999),
-                description: _.get(item, 'Mô tả', null) ? _.get(item, 'Mô tả', null).toString().trim() : null,
-                note: _.get(item, 'Ghi chú', null) ? _.get(item, 'Ghi chú', null).toString().trim() : null,
-                unit: _.get(item,'ĐVT','').toString().trim(),
-                baseUnit: _.get(item,'Mã ĐVT Cơ bản','').toString().trim(),
-                exchangeValue: _.get(item, 'Quy đổi', null).toString().trim(),
-                image: _.get(item,'Hình ảnh (url1,url2...)','').toString().trim(),
-                status: _.get(item,'Đang kinh doanh',1).toString().trim(),
-                codeBaseUnit: _.get(item,'Mã ĐVT Cơ bản','').toString().trim(),
-                listInventory
-            }
-
-            let newProduct;
-            let product;
-            await models.sequelize.transaction(async (t) => {
+                let listInventory = [];
+                if (result.codeBaseUnit === "") {
+                    _.forEach(item, (value, key) => {
+                        if (_.startsWith(key, 'Lô')) {
+                            const index = key.split(' ')[1];
+                            if (!isNaN(index)) {
+                                if (item[`Lô ${index}`]) {
+                                    listInventory.push({
+                                        [`name`]: item[`Lô ${index}`],
+                                        [`quantity`]: item[`Tồn ${index}`],
+                                        [`expiryDate`]: item[`Hạn sử dụng ${index}`]
+                                    });
+                                }
+                            }
+                        }
+                    });
+                }
+                let newProduct;
+                let product;
                 let groupProduct = {}, manufacture = {}, country = {}, dosage = {}, position = {};
                 if (result.groupProductName) {
                     [groupProduct] = await models.GroupProduct.findOrCreate({
@@ -1579,7 +1579,7 @@ export async function uploadFileKiotVietService(loginUser, data, branchId) {
                         transaction: t
                     })
                 }
-                if(codeBaseUnit === '') {
+                if (result.codeBaseUnit === '') {
                     product = {
                         name: result.name,
                         slug: result.slug || "",
@@ -1602,7 +1602,7 @@ export async function uploadFileKiotVietService(loginUser, data, branchId) {
                         description: result.description,
                         note: result.note,
                         status: productStatuses.ACTIVE,
-                        //imageId: _.get(req.body, "imageId", null),
+                        imageUrl: result.image,
                         type: result.type,
                         storeId: loginUser.storeId,
                         branchId: branchId,
@@ -1612,8 +1612,7 @@ export async function uploadFileKiotVietService(loginUser, data, branchId) {
                         isBatchExpireControl: result.isBatchExpireControl,
                         expiryPeriod: result.expiryPeriod,
                         inventory: result.inventory,
-                        baseUnit: result.baseUnit,
-                        productUnits: result.listUnit,
+                        baseUnit: result.unit,
                         createdBy: loginUser.id,
                         createdAt: new Date(),
                     };
@@ -1623,7 +1622,9 @@ export async function uploadFileKiotVietService(loginUser, data, branchId) {
                             branchId: product.branchId,
                             storeId: product.storeId,
                         });
-                        throw new Error(`Mã hàng ${product.code} đã tồn tại.`)
+                        if (!checkUniqueCode) {
+                            throw new Error(`Mã hàng ${product.code} đã tồn tại.`)
+                        }
                     }
                     if (product.barCode) {
                         product.barCode = removeDiacritics(product.barCode);
@@ -1685,64 +1686,102 @@ export async function uploadFileKiotVietService(loginUser, data, branchId) {
                     }
 
                     // add product units
-                    const productUnits = _.get(product, "productUnits", []).map((item) => ({
+                    const productUnit = {
                         productId: newProduct.id,
-                        unitName: item.unitName,
-                        exchangeValue: item.exchangeValue,
-                        price: item.price,
-                        isDirectSale: item.isDirectSale || false,
-                        isBaseUnit: item.isBaseUnit || false,
-                        quantity: item.quantity || 0,
-                        code: item.code || item.code,
-                        barCode: item.barCode || "",
-                        point: item.point || 0,
+                        unitName: result.unit,
+                        exchangeValue: result.exchangeValue,
+                        price: result.price,
+                        isDirectSale: result.isDirectSale || false,
+                        isBaseUnit: true,
+                        quantity: result.quantity || 0,
+                        code: product.code,
+                        barCode: product.barCode || "",
+                        point: result.point || 0,
                         storeId: product.storeId,
                         createdBy: loginUser.id,
-                    }));
-                    for (const productUnit of productUnits) {
-                        if (productUnit.isBaseUnit) {
-                            productUnit.code = product.code
-                            productUnit.barCode = product.barCode
-                        } else {
-                            if (!productUnit.code) {
-                                const nextValue = await getNextValue(product.storeId, product.type)
-                                productUnit.code = generateProductCode(product.type, nextValue)
-                                if (!productUnit.barCode) {
-                                    productUnit.barCode = productUnit.code
-                                }
-                            }
-                        }
-                    }
-                    for (const productUnit of productUnits) {
-                        const newProductUnit = await models.ProductUnit.create(productUnit, {
+                    };
+
+                    const newProductUnit = await models.ProductUnit.create(productUnit, {
+                        transaction: t
+                    });
+                    if (newProductUnit.isBaseUnit == true && product.inventory && product.isBatchExpireControl == 0) {
+                        await models.InventoryCheckingProduct.create({
+                            inventoryCheckingId: newInventoryCheking.id,
+                            productUnitId: newProductUnit.id,
+                            realQuantity: product.inventory,
+                            difference: product.inventory
+                        }, {
                             transaction: t
-                        });
-                        if (newProductUnit.isBaseUnit == true && product.inventory && product.isBatchExpireControl == 0) {
-                            await models.InventoryCheckingProduct.create({
-                                inventoryCheckingId: newInventoryCheking.id,
-                                productUnitId: newProductUnit.id,
-                                realQuantity: product.inventory,
-                                difference: product.inventory
+                        })
+                    }
+
+                    //Thêm batches
+                    if (result.isBatchExpireControl) {
+                        for (const batch of listInventory) {
+                            const newBatch = await models.Batch.create({
+                                storeId: loginUser.storeId,
+                                branchId: parseInt(branchId),
+                                productId: newProduct.id,
+                                name: batch.name,
+                                expiryDate: formatExcelDate(batch.expiryDate),
+                                quantity: batch.quantity,
+                                oldQuantity: batch.quantity,
+                                createdBy: loginUser.id,
+                                updatedBy: loginUser.id
                             }, {
                                 transaction: t
-                            })
+                            });
                         }
                     }
+
+                    createUserTracking({
+                        accountId: loginUser.id,
+                        type: accountTypes.USER,
+                        objectId: newProduct.id,
+                        action: logActions.product_create.value,
+                        data: product,
+                    });
+                } else {
+                    const newProduct = await models.Product.findOne({
+                        where: {
+                            code: result.codeBaseUnit,
+                            storeId: loginUser.storeId
+                        },
+                        transaction: t
+                    });
+                    const productUnit = {
+                        productId: newProduct.id,
+                        unitName: result.unit,
+                        exchangeValue: result.exchangeValue,
+                        price: result.price,
+                        isDirectSale: result.isDirectSale || false,
+                        isBaseUnit: true,
+                        quantity: result.quantity || 0,
+                        code: result.code,
+                        barCode: result.barCode || "",
+                        point: result.point || 0,
+                        storeId: loginUser.storeId,
+                        createdBy: loginUser.id,
+                    };
+
+                    if (!result.code) {
+                        const nextValue = await getNextValue(result.storeId, result.type)
+                        result.code = generateProductCode(result.type, nextValue)
+                        if (!result.barCode) {
+                            result.barCode = result.code
+                        }
+                    }
+                    await models.ProductUnit.create(productUnit, {
+                        transaction: t
+                    });
                 }
-            });
-            createUserTracking({
-                accountId: loginUser.id,
-                type: accountTypes.USER,
-                objectId: newProduct.id,
-                action: logActions.product_create.value,
-                data: product,
-            });
-        } catch (error) {
-            return {
-                error: true,
-                code: HttpStatusCode.BAD_REQUEST,
-                message: `Lỗi ${error}`
             }
+        });
+    } catch (error) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Lỗi ${error}`
         }
     }
     return {

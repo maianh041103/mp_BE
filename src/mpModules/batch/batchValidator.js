@@ -10,6 +10,7 @@ const schema = Joi.object().keys({
   name: Joi.string().max(512).required(),
   expiryDate: Joi.date().format('YYYY-MM-DD').required(),
   quantity: Joi.number().integer().min(1).required(),
+  oldQuantity: Joi.number().integer().min(1).required(),
 });
 
 export async function createValidator(req, res, next) {
