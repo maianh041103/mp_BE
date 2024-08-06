@@ -377,7 +377,7 @@ export async function indexCreate(saleReturn, loginUser) {
 
     await models.PointHistory.create({
       customerId: saleReturn.customerId,
-      point: pointDecrement,
+      point: pointDecrement * (-1),
       saleReturnId: newSaleReturn.id,
       code: code
     },

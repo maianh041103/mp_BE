@@ -15,7 +15,7 @@ const sequelize = models.sequelize
 const {checkUniqueValue, randomString} = require("../../helpers/utils");
 const {customerStatus} = require("./customerConstant");
 const {HttpStatusCode} = require("../../helpers/errorCodes");
-const {addFilterByDate} = require("../../helpers/utils");
+const {addFilterByDate,formatExcelDate} = require("../../helpers/utils");
 const {
     accountTypes,
     logActions,
@@ -783,14 +783,6 @@ export async function historyVisitedService(customerId, query) {
     }
 }
 
-function formatExcelDate(excelDate) {
-    const date = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
 export async function uploadFileCreateCustomer(data, loginUser) {
     await models.sequelize.transaction(async (t) => {
         for (const item of data) {
@@ -918,5 +910,166 @@ export async function uploadFileCreateCustomer(data, loginUser) {
     return{
         success:true,
         data:null
+    }
+}
+
+export async function uploadFileCreateCustomerService(data, loginUser) {
+    try {
+        await models.sequelize.transaction(async (t) => {
+            for (const item of data) {
+                const customer = {
+                    fullName: _.get(item, 'Tên khách hàng', '').toString().trim(),
+                    code: _.get(item, 'Mã khách hàng', '').toString().trim(),
+                    birthday: _.get(item, 'Ngày sinh','').toString().trim(),
+                    gender: _.get(item, 'Giới tính', 'Nam').toString().trim(),
+                    phone: formatMobileToSave(_.get(item, 'Điện thoại', '').toString().trim()),
+                    email: _.get(item, 'Email', '').toString().trim(),
+                    taxCode: _.get(item, 'Mã thuế', '').toString().trim(),
+                    address: _.get(item, 'Địa chỉ', '').toString().trim(),
+                    groupCustomerName: _.get(item, 'Nhóm khách hàng', '').toString().trim(),
+                    status: parseInt(_.get(item, 'Trạng thái', 1).toString().trim()),
+                    wardName: _.get(item, 'Phường/Xã', '').toString().trim(),
+                    districtAndProvinceName: _.get(item, 'Khu vực giao hàng', '').toString().trim(),
+                    type: _.get(item, 'Loại khách', 'Cá nhân').toString().trim(),
+                    company: _.get(item,'Công ty','').toString().trim(),
+                    point:parseInt(_.get(item, 'Điểm hiện tại', 0)),
+                    debt:parseInt(_.get(item, 'Nợ cần thu hiện tại', 0)),
+                    facebook:_.get(item,'Facebook','').toString().trim(),
+                    storeId: loginUser.storeId,
+                    createdBy: loginUser.id,
+                    createdAt: new Date(),
+                    note: _.get(item, 'Ghi chú', '').toString().trim()
+                };
+
+                if (customer.gender === 'Nam') {
+                    customer.gender = 'male';
+                }
+                else {
+                    customer.gender = 'female';
+                }
+                if(customer.type === 'Cá nhân'){
+                    customer.type = 1;
+                }else{
+                    customer.type = 2;
+                }
+                if(customer.birthday){
+                    customer.birthday = formatExcelDate(customer.birthday);
+                }else{
+                    delete customer.birthday;
+                }
+                let groupCustomer = {}, ward, district, province;
+                let listCustomerName = customer.groupCustomerName.split("|");
+                if (listCustomerName.length > 0) {
+                    [groupCustomer] = await models.GroupCustomer.findOrCreate({
+                        where: {
+                            name: {
+                                [Op.like]: `%${listCustomerName[0]}%`
+                            },
+                            storeId: customer.storeId
+                        },
+                        defaults: {
+                            name: listCustomerName[0],
+                            storeId: customer.storeId,
+                            createdBy: loginUser.id
+                        },
+                        transaction: t
+                    });
+                }
+                if (customer.status === 0) {
+                    customer.status = customerStatus.INACTIVE;
+                } else if(customer.status === 2) {
+                    customer.status = customerStatus.DRAFT;
+                }else{
+                    customer.status = customerStatus.ACTIVE;
+                }
+                let [provinceName,districtName] = customer.districtAndProvinceName.split("-");
+                province = await models.Province.findOne({
+                    where: {
+                        [Op.or]:{
+                            name2: {
+                                [Op.like]: `%${provinceName.trim()}%`
+                            },
+                            name:{
+                                [Op.like]: `%${provinceName.trim()}%`
+                            }
+                        }
+                    }, attributes: ["id"]
+                });
+                if (province) {
+                    district = await models.District.findOne({
+                        where: {
+                            [Op.or]:{
+                                name2: {
+                                    [Op.like]: `%${districtName.trim()}%`
+                                },
+                                name:{
+                                    [Op.like]: `%${provinceName.trim()}%`
+                                }
+                            }, provinceId: province.id,
+                        }, attributes: ["id"]
+                    });
+                    if (district) {
+                        ward = await models.Ward.findOne({
+                            where: {
+                                [Op.or]:{
+                                    name2: {
+                                        [Op.like]: `%${customer.wardName.trim()}%`
+                                    },
+                                    name:{
+                                        [Op.like]: `%${customer.wardName.trim()}%`
+                                    }
+                                }, districtId: district.id,
+                            }, attributes: ["id"]
+                        });
+                    }
+                }
+                const payload = {
+                    ...customer,
+                    groupCustomerId: groupCustomer.id,
+                    wardId: ward? ward.id:null,
+                    districtId: district? district.id:null,
+                    provinceId: province? province.id : null
+                }
+
+                const checkPhone = await checkUniqueValue("Customer", {
+                    phone: payload.phone,
+                    storeId: loginUser.storeId,
+                });
+                if (!checkPhone) {
+                    throw new Error(`Số điện thoại ${payload.phone} đã được đăng ký`);
+                }
+
+                const newCustomer = await models.Customer.create(payload, {
+                    transaction: t
+                });
+                if (!payload.code) {
+                    payload.code = `${generateCustomerCode(newCustomer.id)}`;
+                    await models.Customer.update(
+                        {code: payload.code},
+                        {
+                            where: {id: newCustomer.id},
+                            transaction: t
+                        }
+                    );
+                }
+                createUserTracking({
+                    accountId: loginUser.id,
+                    type: accountTypes.USER,
+                    objectId: newCustomer.id,
+                    action: logActions.customer_create.value,
+                    data: payload,
+                });
+            }
+        });
+        return{
+            success:true,
+            data:null
+        }
+    }catch(e){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:`${e}`
+        }
     }
 }

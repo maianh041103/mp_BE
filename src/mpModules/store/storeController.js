@@ -28,7 +28,6 @@ export async function indexStoresController(req, res) {
 }
 export async function ListStoresController( req,res) {
   try {
-
     const result = await listStore({...req.query});
     if (result.success) res.json(respondItemSuccess(result.data));
     else res.json(respondWithError(result.code, result.message, {}));

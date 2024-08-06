@@ -560,7 +560,7 @@ export async function handleCreateInbound(inbound, loginUser) {
     }, { transaction: t })
 
     //Create transaction
-    const typeTransaction = await transactionService.generateTypeTransactionInbound(loginUser.storeId);
+    const typeTransaction = await transactionService.generateTypeTransactionInbound(loginUser.storeId, t);
     const newTransaction = await models.Transaction.create({
       code: generateInboundCode(newInbound.id),
       paymentDate: new Date(),

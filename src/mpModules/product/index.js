@@ -15,7 +15,8 @@ const {
   updateEndDateProducts,
   createUploadController,
     exportProductController,
-    exportProductExampleController
+    exportProductExampleController,
+    createUploadKiotvietController
 } = require("./productController");
 const {
   createValidator,
@@ -228,8 +229,8 @@ router.post(
   },
   authorize,
   createUploadController
-
 );
+
 router.get(
     "/export/excel",authenticate,
     (req,res,next)=>{
@@ -239,11 +240,25 @@ router.get(
     authorize,
     exportProductController
 );
+
 router.get("/export/example",authenticate,
     (req,res,next)=>{
     req.apiRole = "product_read";
     next();
     },
     authorize,
-    exportProductExampleController)
+    exportProductExampleController
+);
+
+router.post(
+    "/upload/kiotviet",
+    authenticate,
+    (req, res, next) => {
+        req.apiRole = "product_create";
+        next();
+    },
+    authorize,
+    createUploadKiotvietController
+);
+
 module.exports = router;

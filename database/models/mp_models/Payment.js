@@ -13,11 +13,11 @@ module.exports = (sequelize, DataTypes) => {
     },
     amount: {
       allowNull: false,
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
     },
     totalAmount: {
       allowNull: false,
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
     },
     customerId: {
       allowNull: true,

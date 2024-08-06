@@ -18,7 +18,8 @@ const { isExistStore } = require("../store/storeService");
 const { userPositions } = require("../user/userConstant.js");
 const otpGenerate = require("../../helpers/otpGenerate.js");
 const nodemailer = require("nodemailer");
-const config = require("../../../config/default.json");
+const config = require("config");
+const configEmail = config.get("email");
 const { email } = require("./email.js");
 
 const userIncludes = [
@@ -246,6 +247,19 @@ export async function createAccount(credentials) {
   }
 
   const phone = formatMobileToSave(credentials.phone);
+  const existsPhoneUser = await models.User.findOne({
+    where:{
+      phone
+    }
+  });
+
+  if(existsPhoneUser){
+    return{
+      error:true,
+      message:`Số điện thoại ${phone} đã tồn tại`,
+      code: HttpStatusCode.BAD_REQUEST
+    }
+  }
   const user = await models.User.findOne({
     where: {
       phone,
@@ -451,7 +465,7 @@ export async function updateUserProfile(userId, payload) {
 }
 
 const transporter = nodemailer.createTransport(
-  config.email
+    configEmail
 );
 
 

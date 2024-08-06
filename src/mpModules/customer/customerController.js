@@ -25,7 +25,8 @@ const {
     indexPaymentCustomer,
     historyPointService,
     historyVisitedService,
-    uploadFileCreateCustomer
+    uploadFileCreateCustomer,
+    uploadFileCreateCustomerService
 } = require("./customerService");
 const {hashPassword} = require("../auth/authService");
 const {formatMobileToSave} = require("../../helpers/utils");
@@ -369,7 +370,7 @@ export async function exportCustomerController(req, res) {
 export async function exportCustomerExampleController(req,res){
     try {
         const tmp = path.resolve(__dirname, '../../../')
-        const filePath = path.join(tmp, `excel\\customer.xlsx`);
+        const filePath = path.join(tmp, 'excel', 'customer.xlsx');
         // Sử dụng res.download để gửi file và xóa file sau khi gửi
         res.download(filePath, `customerExample.xlsx`, (err) => {
             if (err) {
@@ -384,4 +385,30 @@ export async function exportCustomerExampleController(req,res){
     }
 }
 
+export async function createCustomerByUploadKiotvietController(req, res) {
+    try {
+        const {loginUser = {}} = req;
 
+        await uploadFile(req, res);
+
+        if (req.file === undefined) {
+            return res.status(400).send({message: 'Please upload a file!'});
+        }
+        // Đường dẫn tạm thời của tệp Excel đã tải lên
+        const excelFilePath = req.file.path;
+
+        // Đọc dữ liệu từ tệp Excel
+        const workbook = xlsx.readFile(excelFilePath);
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const data = xlsx.utils.sheet_to_json(worksheet);
+
+        const result = await uploadFileCreateCustomerService(data, loginUser);
+        if (result.success) res.json(respondItemSuccess());
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}

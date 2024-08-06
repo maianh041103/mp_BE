@@ -21,7 +21,8 @@ const {
   updateproductStatuses,
   deleteManyProducts,
   updateEndDateManyProducts,
-  uploadFileService
+  uploadFileService,
+  uploadFileKiotVietService
 } = require("./productService");
 const {
   indexProductPriceSettings,
@@ -480,5 +481,35 @@ export async function exportProductExampleController(req,res){
     });
   } catch (error) {
     res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
+  }
+}
+
+export async function createUploadKiotvietController(req, res) {
+  try {
+    const { loginUser = {} } = req;
+    // Upload file
+    await uploadFile(req, res);
+    // Check if file is uploaded
+    if (req.file === undefined) {
+      return res.status(400).send({ message: "Please upload a file!" });
+    }
+    const excelFilePath = req.file.path;
+    const workbook = xlsx.readFile(excelFilePath);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const data = xlsx.utils.sheet_to_json(worksheet);
+    const branchId = req.query.branchId;
+    const result = await uploadFileKiotVietService(
+        loginUser,data,branchId
+    );
+    if (result.success) res.json(respondItemSuccess());
+    else res.json(respondWithError(result.code, result.message, {}));
+
+
+  } catch (error) {
+    console.error("Error in createUploadController:", error);
+    return res.json(
+        respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+    );
   }
 }

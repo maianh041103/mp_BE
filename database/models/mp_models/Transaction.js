@@ -32,7 +32,7 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: false
             },
             value: {
-                type: DataTypes.INTEGER(11).UNSIGNED,
+                type: DataTypes.BIGINT.UNSIGNED,
                 allowNull: false
             },
             //Tài khoản tạo (tài khoản đăng nhập)
