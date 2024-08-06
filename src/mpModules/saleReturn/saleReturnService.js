@@ -366,24 +366,32 @@ export async function indexCreate(saleReturn, loginUser) {
     }
 
     //Trừ điểm tích lũy
-    await models.Customer.decrement({
-      point: pointDecrement
-    }, {
-      where: {
-        id: saleReturn.customerId
-      },
-      transaction: t
-    })
-
-    await models.PointHistory.create({
-      customerId: saleReturn.customerId,
-      point: pointDecrement * (-1),
-      saleReturnId: newSaleReturn.id,
-      code: code
-    },
-      {
+    const pointExists = await models.Point.findOne({
+      where:{
+        storeId:loginUser.storeId,
+        status:"active"
+      }
+    });
+    if(pointExists) {
+      await models.Customer.decrement({
+        point: pointDecrement
+      }, {
+        where: {
+          id: saleReturn.customerId
+        },
         transaction: t
       });
+
+      await models.PointHistory.create({
+            customerId: saleReturn.customerId,
+            point: pointDecrement * (-1),
+            saleReturnId: newSaleReturn.id,
+            code: code
+          },
+          {
+            transaction: t
+          });
+    }
     //End trừ điểm tích lũy
   })
   const refresh = await indexDetail(newSaleReturn.id, loginUser)
