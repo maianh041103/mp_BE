@@ -20,6 +20,10 @@ const requestAgencyInclude = [
                 model: models.User,
                 as: "userUpdated",
                 attributes: ["id", "fullName"],
+            },
+            {
+                model:models.Store,
+                as:"store"
             }
         ],
     }

@@ -19,6 +19,10 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: false,
                 type: DataTypes.INTEGER(10).UNSIGNED,
             },
+            toBranchId:{
+                allowNull:false,
+                type:DataTypes.INTEGER(10).UNSIGNED,
+            },
             addressId:{
                 allowNull:false,
                 type: DataTypes.INTEGER(10).UNSIGNED,
@@ -27,14 +31,20 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull:true,
                 type: DataTypes.STRING,
             },
+            phone:{
+                allowNull:true,
+                type: DataTypes.STRING,
+            },
             status:{
                 allowNull: false,
-                type:DataTypes.ENUM(marketSellContant.STATUS_ORDER.DONE,
+                type:DataTypes.ENUM(
+                    marketSellContant.STATUS_ORDER.DONE,
                     marketSellContant.STATUS_ORDER.SEND,
                     marketSellContant.STATUS_ORDER.CANCEL,
                     marketSellContant.STATUS_ORDER.PENDING,
                     marketSellContant.STATUS_ORDER.PROCESSING,
-                    ),
+                    marketSellContant.STATUS_ORDER.CLOSED
+                ),
                 defaultValues: marketSellContant.STATUS_ORDER.PENDING,
             },
             createdAt: {
@@ -68,6 +78,21 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: "addressId",
             targetKey: "id"
         });
+        MarketOrder.hasMany(models.MarketOrderProduct,{
+            as:"products",
+            foreignKey:"marketOrderId",
+            sourceKey:"id"
+        });
+        MarketOrder.belongsTo(models.Branch,{
+            as:"toBranch",
+            foreignKey:"toBranchId",
+            targetKey:"id"
+        });
+        MarketOrder.hasMany(models.HistoryPurchase,{
+            as:"historyPurchase",
+            foreignKey:"marketOrderId",
+            sourceKey:"id"
+        })
     };
     return MarketOrder;
 };
