@@ -55,5 +55,5 @@ module.exports = (sequelize, DataTypes) => {
             targetKey: "id"
         });
     };
-    return HistoryPurchase;
+    return HistoryPurchase
 };

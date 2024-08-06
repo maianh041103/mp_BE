@@ -78,4 +78,14 @@ router.patch("/market-order/:id",authenticate,(req,res,next)=>{
     req.apiRole = [];
     next();
 },authorize,controller.changeStatusMarketOrder);
+
+router.get("/market-order",authenticate,(req,res,next)=>{
+    req.apiRole = [];
+    next();
+},authorize,controller.getAllMarketOrder);
+
+router.patch("/market-order/:id",authenticate,(req,res,next)=>{
+    req.apiRole = [];
+    next();
+},authorize,controller.changeStatusMarketOrder);
 module.exports = router;

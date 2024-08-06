@@ -9,5 +9,5 @@ module.exports.STATUS_ORDER = {
 
 module.exports.MARKET_ORDER_TYPE = {
     BUY:"buy",
-    SELL:"sell",
+    SELL:"sell"
 }

@@ -32,8 +32,8 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.STRING,
             },
             phone:{
-              allowNull:true,
-              type: DataTypes.STRING,
+                allowNull:true,
+                type: DataTypes.STRING,
             },
             status:{
                 allowNull: false,
@@ -44,7 +44,7 @@ module.exports = (sequelize, DataTypes) => {
                     marketSellContant.STATUS_ORDER.PENDING,
                     marketSellContant.STATUS_ORDER.PROCESSING,
                     marketSellContant.STATUS_ORDER.CLOSED
-                    ),
+                ),
                 defaultValues: marketSellContant.STATUS_ORDER.PENDING,
             },
             createdAt: {
@@ -88,6 +88,11 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey:"toBranchId",
             targetKey:"id"
         });
+        MarketOrder.hasMany(models.HistoryPurchase,{
+            as:"historyPurchase",
+            foreignKey:"marketOrderId",
+            sourceKey:"id"
+        })
     };
     return MarketOrder;
 };

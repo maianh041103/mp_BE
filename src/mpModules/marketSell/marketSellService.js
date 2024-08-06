@@ -141,6 +141,11 @@ const marketOrderInclude = [
         model: models.Branch,
         as: "toBranch",
         attributes: ["id", "name", "phone", "address1", "address2"]
+    },
+    {
+        model:models.HistoryPurchase,
+        as:"historyPurchase",
+        attributes: ["id","status","time","note"]
     }
 ];
 
@@ -714,7 +719,7 @@ module.exports.createMarketOrderService = async (result) => {
                 address: addressExists.address,
                 status: marketSellContant.STATUS_ORDER.PENDING,
                 phone: addressExists.phone,
-                toBranchId
+                toBranchId:toBranchId
             }, {
                 transaction: t
             });
@@ -843,7 +848,7 @@ module.exports.getAllMarketOrderService = async (result) => {
 
 module.exports.changeStatusMarketOrderService = async (result) => {
     try {
-        const {id, status, note, products} = result;
+        let {id, status, note, products} = result;
         const marketOrderExists = await models.MarketOrder.findOne({
             where: {
                 id,
@@ -921,6 +926,49 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                         }
                     )
                 }
+                if(status === marketSellContant.STATUS_ORDER.SEND) {
+                    for(const item of products){
+                        for(const batch of item.batches){
+                            await models.MarketOrderBatch.create({
+                                marketOrderId:id,
+                                marketProductId:item.marketProductId,
+                                batchId: batch.batchId,
+                                quantity:batch.quantity
+                            },{
+                                transaction:t
+                            });
+                        }
+                    }
+                }
+                else{
+                    const listMarketOrderBatch = await models.MarketOrderBatch.findAll({
+                        where:{
+                            marketOrderId:id
+                        }
+                    });
+                    //Tao products
+                    products = [];
+                    for(const item of listMarketOrderBatch) {
+                        const index = products.findIndex(product => product.marketProductId === item.marketProductId);
+                        if(index === -1){
+                            products.push({
+                                marketProductId:item.marketProductId,
+                                batches:[
+                                    {
+                                        batchId:item.batchId,
+                                        quantity:item.quantity
+                                    }
+                                ]
+                            })
+                        }else{
+                            products[index].batches.push({
+                                batchId:item.batchId,
+                                quantity:item.quantity
+                            })
+                        }
+                    }
+                }
+
                 if (products) {
                     for (const item of products) {
                         const {marketProductId, batches} = item;
