@@ -349,3 +349,11 @@ export function checkDouble(number) {
   }
   return true;
 }
+
+export function formatExcelDate(excelDate) {
+  const date = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}

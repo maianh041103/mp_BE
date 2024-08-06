@@ -13,7 +13,8 @@ const {
   historyVisited,
   createCustomerByUploadController,
     exportCustomerController,
-    exportCustomerExampleController
+    exportCustomerExampleController,
+    createCustomerByUploadKiotvietController
 } = require("./customerController");
 const {
   updateValidator,
@@ -207,6 +208,17 @@ router.get("/export/excel", authenticate,(req, res, next) => {
 router.get("/export/example",authenticate,(req,res,next)=>{
     req.apiRole = ["customer_read"];
     next();
-},authorize,exportCustomerExampleController)
+},authorize,exportCustomerExampleController);
+
+router.post(
+    '/upload/kiotviet',
+    authenticate,
+    (req, res, next) => {
+        req.apiRole = ['customer_update', 'customer_read', 'customer_create']
+        next()
+    },
+    authorize,
+    createCustomerByUploadKiotvietController
+);
 
 module.exports = router;
