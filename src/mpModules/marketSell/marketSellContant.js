@@ -3,5 +3,11 @@ module.exports.STATUS_ORDER = {
     PROCESSING:"processing",
     SEND:"send",
     DONE:"done",
-    CANCEL:"cancel"
+    CANCEL:"cancel",
+    CLOSED:"closed"
+}
+
+module.exports.MARKET_ORDER_TYPE = {
+    BUY:"buy",
+    SELL:"sell",
 }

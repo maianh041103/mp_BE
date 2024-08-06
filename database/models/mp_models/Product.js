@@ -46,6 +46,10 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         type: DataTypes.INTEGER(11).UNSIGNED,
       },
+        imageUrl:{
+          allowNull: true,
+            type: DataTypes.STRING,
+        },
       // Đường dùng
       dosageId: {
         allowNull: true,

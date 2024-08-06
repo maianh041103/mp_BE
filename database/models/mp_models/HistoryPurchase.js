@@ -22,13 +22,18 @@ module.exports = (sequelize, DataTypes) => {
                     marketSellContant.STATUS_ORDER.PROCESSING,
                     marketSellContant.STATUS_ORDER.SEND,
                     marketSellContant.STATUS_ORDER.CANCEL,
-                    marketSellContant.STATUS_ORDER.PENDING
+                    marketSellContant.STATUS_ORDER.PENDING,
+                    marketSellContant.STATUS_ORDER.CLOSED,
                 )
             },
             time:{
                 allowNull:true,
                 type: DataTypes.DATE,
                 defaultValue: Sequelize.NOW
+            },
+            note:{
+                allowNull:true,
+                type:DataTypes.TEXT
             }
         },
         {

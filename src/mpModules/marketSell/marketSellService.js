@@ -6,6 +6,8 @@ const {getImages} = require("../../helpers/getImages");
 const marketConfigContant = require("../marketConfig/marketConfigContant")
 const marketSellContant = require("./marketSellContant");
 const {generateCode} = require("../../helpers/codeGenerator");
+const {createWarehouseCard} = require("../warehouse/warehouseService");
+const {warehouseStatus} = require("../warehouse/constant");
 
 const marketProductInclude = [
     {
@@ -49,8 +51,13 @@ const marketProductInclude = [
         model: models.Branch,
         as: "branch",
         attributes: ["id", "name", "phone"]
+    },
+    {
+        model: models.ProductUnit,
+        as: "productUnit",
+        attributes: ["id", "unitName", "exchangeValue"]
     }
-]
+];
 const marketAddressInclude = [
     {
         model: models.Ward,
@@ -84,32 +91,59 @@ const storeInclude = [
         model: models.Image,
         as: "logo"
     }
-]
+];
 const cartInclude = [
     {
-        model:models.MarketProduct,
+        model: models.MarketProduct,
         as: "marketProduct",
-        attributes: ["id", "productId","images"],
-        include:[{
-            model:models.Product,
-            as:"product",
-            attributes:["id","name"]
+        attributes: ["id", "productId", "images"],
+        include: [{
+            model: models.Product,
+            as: "product",
+            attributes: ["id", "name"]
+        }, {
+            model: models.ProductUnit,
+            as: "productUnit",
+            attributes: ["id", "exchangeValue", "unitName"]
         }]
     }
-]
+];
 const marketOrderInclude = [
     {
-        model:models.MarketOrderProduct,
-        as:"marketOrderProduct",
-        include:[
+        model: models.MarketOrderProduct,
+        as: "products",
+        include: [
             {
-                model:models.MarketProduct,
-                as:"marketProduct"
+                model: models.MarketProduct,
+                as: "marketProduct",
+                attributes: ["id"],
+                include: [
+                    {
+                        model: models.Product,
+                        as: "product",
+                        attributes: ["id", "name"]
+                    },
+                    {
+                        model: models.ProductUnit,
+                        as: "productUnit",
+                        attributes: ["id", "unitName", "exchangeValue"]
+                    }
+                ]
             }
         ]
     },
+    {
+        model: models.Branch,
+        as: "branch",
+        attributes: ["id", "name", "phone", "address1", "address2"]
+    },
+    {
+        model: models.Branch,
+        as: "toBranch",
+        attributes: ["id", "name", "phone", "address1", "address2"]
+    }
+];
 
-]
 module.exports.createAddressService = async (result) => {
     try {
         let {phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress, branchId} = result;
@@ -377,6 +411,11 @@ module.exports.getDetailProductService = async (result) => {
                             [Op.like]: marketProduct.product.name
                         }
                     }
+                },
+                {
+                    model: models.ProductUnit,
+                    as: "productUnit",
+                    attributes: ["id", "exchangeValue", "unitName"]
                 }
             ]
         });
@@ -465,11 +504,14 @@ module.exports.addProductToCartService = async (result) => {
             price = marketProductExists.price;
         }
         const productInCart = await models.Cart.findOne({
-            where:{
-                branchId,marketProductId
+            where: {
+                branchId, marketProductId
             }
         });
-        let totalQuantity = productInCart.quantity + quantity;
+        let totalQuantity;
+        if (productInCart) {
+            totalQuantity = productInCart.quantity + quantity;
+        }
         if (totalQuantity > marketProductExists.quantity - marketProductExists.quantitySold) {
             return {
                 error: true,
@@ -478,7 +520,7 @@ module.exports.addProductToCartService = async (result) => {
             }
         }
         let resultId;
-        if(!productInCart) {
+        if (!productInCart) {
             let newProductInCart = await models.Cart.create({
                 branchId,
                 marketProductId,
@@ -486,20 +528,20 @@ module.exports.addProductToCartService = async (result) => {
                 price
             });
             resultId = newProductInCart.id;
-        }else{
+        } else {
             resultId = productInCart.id;
             await models.Cart.update({
-                quantity:totalQuantity
-            },{
-                where:{
-                    branchId,marketProductId
+                quantity: totalQuantity
+            }, {
+                where: {
+                    branchId, marketProductId
                 }
             });
         }
         return {
             success: true,
             data: {
-                id:resultId
+                id: resultId
             }
         }
     } catch (e) {
@@ -512,7 +554,7 @@ module.exports.addProductToCartService = async (result) => {
 
 }
 
-module.exports.getProductInCartService = async (result)=>{
+module.exports.getProductInCartService = async (result) => {
     try {
         const {branchId, storeId, limit = 20, page = 1} = result;
         if (!branchId) {
@@ -523,15 +565,15 @@ module.exports.getProductInCartService = async (result)=>{
             }
         }
         const branchExists = await models.Branch.findOne({
-            where:{
-                id:branchId,storeId
+            where: {
+                id: branchId, storeId
             }
         });
-        if(!branchExists){
-            return{
-                error:true,
-                code:HttpStatusCode.BAD_REQUEST,
-                message:`Không tồn tại chi nhánh có id = ${branchId} trong cửa hàng có id = ${storeId}`
+        if (!branchExists) {
+            return {
+                error: true,
+                code: HttpStatusCode.BAD_REQUEST,
+                message: `Không tồn tại chi nhánh có id = ${branchId} trong cửa hàng có id = ${storeId}`
             }
         }
         let where = {
@@ -539,21 +581,21 @@ module.exports.getProductInCartService = async (result)=>{
         };
         const listProductInCart = await models.Cart.findAll({
             where,
-            include:cartInclude
+            include: cartInclude
         });
-        for(let item of listProductInCart){
+        for (let item of listProductInCart) {
             let images = (item?.marketProduct?.images || "").split("/");
-            if(images.length > 0){
+            if (images.length > 0) {
                 item.dataValues.image = (await models.Image.findOne({
-                    where:{
-                        id:images[0]
+                    where: {
+                        id: images[0]
                     }
                 }));
             }
         }
-        return{
+        return {
             success: true,
-            data:{
+            data: {
                 item: listProductInCart
             }
         }
@@ -566,41 +608,40 @@ module.exports.getProductInCartService = async (result)=>{
     }
 }
 
-module.exports.updateQuantityProductInCartService = async (result)=>{
+module.exports.updateQuantityProductInCartService = async (result) => {
     try {
-        const {id,storeId,quantity} = result;
+        const {id, storeId, quantity} = result;
         const cartExists = await models.Cart.findOne({
-            where:{
+            where: {
                 id
             }
         });
-        if(!cartExists){
-            return{
-                error:true,
-                code:HttpStatusCode.BAD_REQUEST,
+        if (!cartExists) {
+            return {
+                error: true,
+                code: HttpStatusCode.BAD_REQUEST,
                 message: `Không tồn tai sản phẩm trong giỏ hàng`
             }
         }
         const marketProduct = await models.MarketProduct.findOne({
-            where:{
-                id:cartExists.marketProductId
+            where: {
+                id: cartExists.marketProductId
             }
         });
-        if(quantity > marketProduct.quantity - marketProduct.quantitySold){
-            return{
-                error:true,
-                code:HttpStatusCode.BAD_REQUEST,
-                message:"Số lượng thêm vào giỏ hàng không được lớn hơn số lượng bán"
+        if (quantity > marketProduct.quantity - marketProduct.quantitySold) {
+            return {
+                error: true,
+                code: HttpStatusCode.BAD_REQUEST,
+                message: "Số lượng thêm vào giỏ hàng không được lớn hơn số lượng bán"
             }
         }
-        if(quantity === 0){
+        if (quantity === 0) {
             await models.Cart.destroy({
-                where:{
+                where: {
                     id
                 }
             })
-        }
-        else {
+        } else {
             await models.Cart.update({
                 quantity
             }, {
@@ -609,126 +650,329 @@ module.exports.updateQuantityProductInCartService = async (result)=>{
                 }
             });
         }
-        return{
-            success:true,
-            data:null
+        return {
+            success: true,
+            data: null
         }
-    }catch(e){
-        return{
-            error:true,
-            code:HttpStatusCode.BAD_REQUEST,
+    } catch (e) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
             message: `Lỗi ${e}`
         }
     }
 }
 
-module.exports.deleteProductInCartService = async (result)=>{
-    try{
+module.exports.deleteProductInCartService = async (result) => {
+    try {
         const {id} = result;
         const productInCartExists = await models.Cart.findOne({
-            where:{
+            where: {
                 id
             }
         });
-        if(!productInCartExists){
-            return{
-                error:true,
-                code:HttpStatusCode.BAD_REQUEST,
-                message:`Không tồn tại sản phẩm trong giỏ hàng`
+        if (!productInCartExists) {
+            return {
+                error: true,
+                code: HttpStatusCode.BAD_REQUEST,
+                message: `Không tồn tại sản phẩm trong giỏ hàng`
             }
         }
         await models.Cart.destroy({
-            where:{
+            where: {
                 id
             }
         });
-        return{
-            success:true,
-            data:null
+        return {
+            success: true,
+            data: null
         }
-    }catch(e){
+    } catch (e) {
 
     }
 }
 
-module.exports.createMarketOrderService = async (result)=>{
-    try{
-        const {branchId, addressId, listProduct} = result;
+module.exports.createMarketOrderService = async (result) => {
+    try {
+        const {branchId, addressId, listProduct, toBranchId} = result;
         const addressExists = await models.Address.findOne({
-            where:{
-                id:addressId
+            where: {
+                id: addressId
             }
         });
-        if(!addressExists){
-            return{
-                error:true,
-                message:`Không tồn tại địa chỉ giao hàng có id = ${addressId}`,
-                code:HttpStatusCode.BAD_REQUEST
+        if (!addressExists) {
+            return {
+                error: true,
+                message: `Không tồn tại địa chỉ giao hàng có id = ${addressId}`,
+                code: HttpStatusCode.BAD_REQUEST
             }
         }
-        let newMarketOrder;
-        const t = await models.sequelize.transaction(async (t)=>{
-            newMarketOrder = await models.MarketOrder.create({
-                branchId,addressId,
+        let newMarketOrderBuy;
+        const t = await models.sequelize.transaction(async (t) => {
+            newMarketOrderBuy = await models.MarketOrder.create({
+                branchId, addressId,
                 address: addressExists.address,
-                status:marketSellContant.STATUS_ORDER.PENDING
-            },{
-                transaction:t
+                status: marketSellContant.STATUS_ORDER.PENDING,
+                phone: addressExists.phone,
+                toBranchId
+            }, {
+                transaction: t
             });
-            const code = generateCode("DH",newMarketOrder.id);
+            const code = generateCode("MK", newMarketOrderBuy.id);
             await models.MarketOrder.update({
                 code
-            },{
-                where:{
-                    id:newMarketOrder.id
+            }, {
+                where: {
+                    id: newMarketOrderBuy.id
                 },
-                transaction:t
+                transaction: t
             });
-            for(const item of listProduct){
-                const marketProductExists = await models.MarketProduct.findOne({
-                    where:{
-                        id:item.marketProductId
+
+            for (const item of listProduct) {
+                let marketProductExists = await models.MarketProduct.findOne({
+                    where: {
+                        id: item.marketProductId,
                     }
                 });
-                if(!marketProductExists){
+                if (!marketProductExists) {
                     throw new Error(`Không tồn tại sản phẩm trên chợ`);
                 }
                 await models.MarketOrderProduct.create({
-                    marketProductId:item.marketProductId,
-                    marketOrderId:newMarketOrder.id,
-                    quantity:item.quantity,
-                    price:marketProductExists.price
-                },{
-                    transaction:t
+                    marketProductId: item.marketProductId,
+                    marketOrderId: newMarketOrderBuy.id,
+                    quantity: item.quantity,
+                    price: marketProductExists.price
+                }, {
+                    transaction: t
                 });
+
+                await models.Cart.destroy({
+                    where: {
+                        marketProductId: item.marketProductId,
+                        branchId
+                    },
+                    transaction: t
+                })
             }
         })
         return {
-            success:true,
-            data:{
-                item:newMarketOrder
+            success: true,
+            data: {
+                item: newMarketOrderBuy
             }
         }
-    }catch(e){
-        return{
-            error:true,
-            code:HttpStatusCode.BAD_REQUEST,
-            message:`Lỗi ${e}`
+    } catch (e) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Lỗi ${e}`
         }
     }
 }
 
-module.exports.getMarketOrderService = async (result)=>{
-    try{
-        const {id,loginUser} = result;
+module.exports.getDetailMarketOrderService = async (result) => {
+    try {
+        const {id} = result;
         const marketOrder = await models.MarketOrder.findOne({
+            where: {
+                id
+            },
+            include: marketOrderInclude
+        });
+        if (!marketOrder) {
+            return {
+                error: true,
+                message: `Không tồn tại đơn hàng có id = ${id}`,
+                code: HttpStatusCode.BAD_REQUEST
+            }
+        }
+        return {
+            success: true,
+            data: {
+                item: marketOrder
+            }
+        }
+    } catch (e) {
+        return {
+            error: true,
+            message: `Lỗi ${e}`,
+            code: HttpStatusCode.BAD_REQUEST
+        }
+    }
+}
 
+module.exports.getAllMarketOrderService = async (result) => {
+    try {
+        const {limit = 10, page = 1, type, branchId, status} = result;
+        let where = {}
+        if (type === marketSellContant.MARKET_ORDER_TYPE.BUY) {
+            where.branchId = branchId;
+        }
+        if (type === marketSellContant.MARKET_ORDER_TYPE.SELL) {
+            where.toBranchId = branchId;
+        }
+        if (status) {
+            where.status = status;
+        }
+        const rows = await models.MarketOrder.findAll({
+            where,
+            include: marketOrderInclude,
+            limit: parseInt((limit)),
+            offset: (parseInt(page) - 1) * parseInt(limit),
+            order: [["createdAt", "DESC"]]
+        });
+        const count = await models.MarketOrder.count({
+            where
+        });
+        return {
+            success: true,
+            data: {
+                items: rows,
+                totalItem: count
+            }
+        }
+    } catch (e) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Loi ${e}`
+        }
+    }
+
+}
+
+module.exports.changeStatusMarketOrderService = async (result) => {
+    try {
+        const {id, status, note, products} = result;
+        const marketOrderExists = await models.MarketOrder.findOne({
+            where: {
+                id,
+            },
+            include: marketOrderInclude
+        });
+        if (!marketOrderExists) {
+            return {
+                error: true,
+                code: HttpStatusCode.BAD_REQUEST,
+                message: "Không tìm thấy đơn hàng"
+            }
+        }
+        const t = await models.sequelize.transaction(async (t) => {
+            await models.MarketOrder.update({
+                status
+            }, {
+                where: {
+                    id
+                },
+                transaction: t
+            });
+            await models.HistoryPurchase.create({
+                marketOrderId: id,
+                status,
+                time: new Date(),
+                note
+            }, {
+                transaction: t
+            });
+            let number;
+            if (status === marketSellContant.STATUS_ORDER.SEND || status === marketSellContant.STATUS_ORDER.CANCEL) {
+                if (status === marketSellContant.STATUS_ORDER.SEND) {
+                    number = -1;
+                } else {
+                    number = 1;
+                }
+                for (const item of marketOrderExists.products) {
+                    await models.MarketProduct.increment({
+                        quantity: item.quantity * number,
+                        quantitySold: item.quantity * number * (-1)
+                    }, {
+                        where: {
+                            id: item.marketProductId
+                        },
+                        transaction: t
+                    });
+                    await models.Inventory.increment({
+                        quantity: item.quantity * number * item?.marketProduct?.productUnit?.exchangeValue
+                    }, {
+                        where: {
+                            productId: item?.marketProduct?.product?.id,
+                            branchId: marketOrderExists.toBranchId
+                        },
+                        transaction: t
+                    });
+                    const inventory = await models.Inventory.findOne({
+                        where: {
+                            productId: item?.marketProduct?.product?.id,
+                            branchId: marketOrderExists.toBranchId
+                        },
+                        transaction: t
+                    });
+                    await models.WarehouseCard.create({
+                            code: marketOrderExists.code,
+                            type: warehouseStatus.SALE_MARKET,
+                            productId: item?.marketProduct?.product?.id,
+                            branchId: marketOrderExists.toBranchId,
+                            changeQty: item.quantity * number * item?.marketProduct?.productUnit?.exchangeValue,
+                            remainQty: inventory.quantity,
+                            createdAt: new Date(),
+                            updatedAt: new Date()
+                        }, {
+                            transaction: t
+                        }
+                    )
+                }
+                if (products) {
+                    for (const item of products) {
+                        const {marketProductId, batches} = item;
+                        let totalQuantity = batches.reduce((cal, item) => {
+                            return cal + item.quantity;
+                        }, 0);
+                        const marketOrderProduct = await models.MarketOrderProduct.findOne({
+                            where: {
+                                marketOrderId: id,
+                                marketProductId
+                            }
+                        });
+                        if (totalQuantity != marketOrderProduct.quantity) {
+                            throw new Error("Số lượng không hợp lệ");
+                        }
+                        for (const batch of batches) {
+                            await models.MarketProductBatch.increment({
+                                quantity: batch.quantity * number,
+                                quantitySold: batch.quantity * number * (-1)
+                            }, {
+                                where: {
+                                    marketProductId,
+                                    batchId: batch.batchId
+                                },
+                                transaction:t
+                            });
+
+                            await models.Batch.increment(
+                                {
+                                    quantity: batch.quantity * number
+                                },
+                                {
+                                    where: {
+                                        id: batch.batchId
+                                    },
+                                    transaction: t
+                                }
+                            )
+                        }
+                    }
+                }
+            }
         })
-    }catch(e){
-        return{
-            error:true,
-            message:`Lỗi ${e}`,
-            code:HttpStatusCode.BAD_REQUEST
+        return {
+            success: true,
+            data: null
+        }
+    } catch (e) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `${e}`
         }
     }
 }
