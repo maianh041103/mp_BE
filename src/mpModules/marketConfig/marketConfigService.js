@@ -43,6 +43,20 @@ const marketProductInclude = [
         model: models.MarketProductAgency,
         as: "agencys",
         attributes: ["id", "agencyId", "groupAgencyId", "price", "discountPrice"],
+        include:[{
+            model:models.RequestAgency,
+            as:"agency",
+            attributes: ["id"],
+            include:[{
+                model:models.Store,
+                as:"store",
+                attributes:["name","phone"]
+            }]
+        },{
+            model:models.GroupAgency,
+            as:"groupAgency",
+            attributes: ["name"]
+        }],
     },
     {
         model: models.User,
