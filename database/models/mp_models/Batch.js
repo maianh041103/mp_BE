@@ -45,7 +45,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER(10).UNSIGNED,
     },
     oldQuantity: {
-      allowNull: false,
+      allowNull: true,
       type: DataTypes.INTEGER(10).UNSIGNED,
     },
   }, {
