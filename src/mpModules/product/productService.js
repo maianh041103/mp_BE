@@ -1462,6 +1462,7 @@ export async function uploadFileService(loginUser, data, branchId) {
 export async function uploadFileKiotVietService(loginUser, data, branchId) {
     try {
         const t = await models.sequelize.transaction(async (t) => {
+            let listProductUnit = [];
             for (let index = 0; index < data.length; index++) {
                 const item = data[index];
                 let result = {
@@ -1741,6 +1742,45 @@ export async function uploadFileKiotVietService(loginUser, data, branchId) {
                         action: logActions.product_create.value,
                         data: product,
                     });
+
+                    //Thêm productUnit
+                    if(listProductUnit.length>0){
+                        for(let item of listProductUnit){
+                            const newProduct = await models.Product.findOne({
+                                where: {
+                                    code: item.codeBaseUnit,
+                                    storeId: loginUser.storeId
+                                },
+                                transaction: t
+                            });
+                            const productUnit = {
+                                productId: newProduct.id,
+                                unitName: item.unit,
+                                exchangeValue: item.exchangeValue,
+                                price: item.price,
+                                isDirectSale: item.isDirectSale || false,
+                                isBaseUnit: true,
+                                quantity: item.quantity || 0,
+                                code: item.code,
+                                barCode: item.barCode || "",
+                                point: item.point || 0,
+                                storeId: loginUser.storeId,
+                                createdBy: loginUser.id,
+                            };
+
+                            if (!item.code) {
+                                const nextValue = await getNextValue(item.storeId, item.type)
+                                item.code = generateProductCode(item.type, nextValue)
+                                if (!item.barCode) {
+                                    item.barCode = item.code
+                                }
+                            }
+                            await models.ProductUnit.create(productUnit, {
+                                transaction: t
+                            });
+                        }
+                    }
+                    listProductUnit = [];
                 } else {
                     const newProduct = await models.Product.findOne({
                         where: {
@@ -1749,31 +1789,36 @@ export async function uploadFileKiotVietService(loginUser, data, branchId) {
                         },
                         transaction: t
                     });
-                    const productUnit = {
-                        productId: newProduct.id,
-                        unitName: result.unit,
-                        exchangeValue: result.exchangeValue,
-                        price: result.price,
-                        isDirectSale: result.isDirectSale || false,
-                        isBaseUnit: true,
-                        quantity: result.quantity || 0,
-                        code: result.code,
-                        barCode: result.barCode || "",
-                        point: result.point || 0,
-                        storeId: loginUser.storeId,
-                        createdBy: loginUser.id,
-                    };
-
-                    if (!result.code) {
-                        const nextValue = await getNextValue(result.storeId, result.type)
-                        result.code = generateProductCode(result.type, nextValue)
-                        if (!result.barCode) {
-                            result.barCode = result.code
-                        }
+                    if(!newProduct){
+                        listProductUnit.push(result);
                     }
-                    await models.ProductUnit.create(productUnit, {
-                        transaction: t
-                    });
+                    else {
+                        const productUnit = {
+                            productId: newProduct.id,
+                            unitName: result.unit,
+                            exchangeValue: result.exchangeValue,
+                            price: result.price,
+                            isDirectSale: result.isDirectSale || false,
+                            isBaseUnit: true,
+                            quantity: result.quantity || 0,
+                            code: result.code,
+                            barCode: result.barCode || "",
+                            point: result.point || 0,
+                            storeId: loginUser.storeId,
+                            createdBy: loginUser.id,
+                        };
+
+                        if (!result.code) {
+                            const nextValue = await getNextValue(result.storeId, result.type)
+                            result.code = generateProductCode(result.type, nextValue)
+                            if (!result.barCode) {
+                                result.barCode = result.code
+                            }
+                        }
+                        await models.ProductUnit.create(productUnit, {
+                            transaction: t
+                        });
+                    }
                 }
             }
         });
