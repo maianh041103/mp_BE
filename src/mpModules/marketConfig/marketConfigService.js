@@ -32,7 +32,7 @@ const marketProductInclude = [
     {
         model: models.Product,
         as: "product",
-        attributes: ["id", "name", "shortName", "code", "groupProductId"],
+        attributes: ["id", "name", "shortName", "code", "groupProductId","description"],
         include: [{
             model: models.GroupProduct,
             as: "groupProduct",
@@ -258,7 +258,7 @@ module.exports.getAllProductService = async (result) => {
         {
             model: models.Product,
             as: "product",
-            attributes: ["id", "name", "shortName", "code", "groupProductId"],
+            attributes: ["id", "name", "shortName", "code", "groupProductId","description"],
             include: [{
                 model: models.GroupProduct,
                 as: "groupProduct",
