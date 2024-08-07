@@ -20,6 +20,10 @@ const marketProductInclude = [
         }]
     },
     {
+        model:models.Image,
+        as:"imageCenter"
+    },
+    {
         model: models.MarketProductAgency,
         as: "agencys",
         attributes: ["id", "agencyId", "groupAgencyId", "price", "discountPrice"],
@@ -42,6 +46,13 @@ const marketProductInclude = [
     {
         model: models.Store,
         as: "store",
+        attributes: [
+            "id", "name", "phone", "email", "field", "address", "wardId", "districtId", "provinceId", "logoId",
+            [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
+    WHERE market_products.storeId = store.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
+            [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
+    WHERE market_products.storeId = store.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
+        ],
         include: [{
             model: models.Image,
             as: "logo"
@@ -388,7 +399,7 @@ module.exports.getDetailProductService = async (result) => {
                 id,
                 storeId
             },
-            include: marketProductInclude
+            include: marketProductInclude,
         });
         if (!marketProduct) {
             return {
@@ -404,7 +415,7 @@ module.exports.getDetailProductService = async (result) => {
             where: {
                 marketType: marketConfigContant.MARKET_TYPE.COMMON,
                 storeId: {
-                    [Op.ne]: storeId
+                    [Op.eq]: storeId
                 }
             },
             include: [
@@ -425,6 +436,10 @@ module.exports.getDetailProductService = async (result) => {
             ]
         });
         marketProduct.dataValues.productWillCare = listProduct;
+        if(marketProduct.store) {
+            marketProduct.dataValues.store.dataValues.totalProduct = parseInt(marketProduct.dataValues.store.dataValues.totalProduct);
+            marketProduct.dataValues.store.dataValues.totalQuantitySold = parseInt(marketProduct.dataValues.store.dataValues.totalQuantitySold);
+        }
         return {
             success: true,
             data: {
