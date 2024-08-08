@@ -107,7 +107,6 @@ const cartInclude = [
     {
         model: models.MarketProduct,
         as: "marketProduct",
-        attributes: ["id", "productId", "images"],
         include: [{
             model: models.Product,
             as: "product",
@@ -116,6 +115,13 @@ const cartInclude = [
             model: models.ProductUnit,
             as: "productUnit",
             attributes: ["id", "exchangeValue", "unitName"]
+        },{
+            model:models.Store,
+            as:"store",
+            attributes: ["id","name"]
+        },{
+            model:models.Image,
+            as:"imageCenter"
         }]
     }
 ];
@@ -603,6 +609,7 @@ module.exports.getProductInCartService = async (result) => {
             where,
             include: cartInclude
         });
+        let listProductGroupByStore = [];
         for (let item of listProductInCart) {
             let images = (item?.marketProduct?.images || "").split("/");
             if (images.length > 0) {
@@ -612,11 +619,23 @@ module.exports.getProductInCartService = async (result) => {
                     }
                 }));
             }
+
+            let index = listProductGroupByStore.findIndex(tmp=>{
+                return tmp.storeId = item?.marketProduct?.store?.id;
+            })
+            if(index > -1){
+                listProductGroupByStore[index].products.push(item);
+            }else{
+                listProductGroupByStore.push({
+                    storeId:item?.marketProduct?.store?.id,
+                    products:[item]
+                })
+            }
         }
         return {
             success: true,
             data: {
-                item: listProductInCart
+                item: listProductGroupByStore
             }
         }
     } catch (e) {
@@ -1039,3 +1058,38 @@ module.exports.changeStatusMarketOrderService = async (result) => {
         }
     }
 }
+
+// module.exports.getProductPrivateService = async (result)=>{
+//     try {
+//         const {storeId} = result;
+//         const listMarketProduct = await models.MarketProduct.findAll(
+//             {
+//                 include:[
+//                     {
+//                         model: models.MarketProductAgency,
+//                         as: "agencys",
+//                         attributes: ["id", "agencyId", "groupAgencyId", "price", "discountPrice"],
+//                         where:{
+//                             [Op.or]:{
+//                                 agencyId:storeId,
+//                                 groupAgencyId:{
+//                                     [Op.in]: Sequelize.literal(`(SELECT groupAgencyId FROM request_agency WHERE agencyId = ${storeId})`)
+//                                 }
+//                             }
+//                         },
+//                     },
+//                     {
+//                         model:models.Store,
+//                         as:"store"
+//                     }
+//                 ]
+//             }
+//         );
+//     }catch(e){
+//         return {
+//             error: true,
+//             code: HttpStatusCode.BAD_REQUEST,
+//             message: `${e}`
+//         }
+//     }
+// }
