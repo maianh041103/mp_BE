@@ -597,9 +597,7 @@ export async function updateProduct(id, product, loginUser) {
 
         }
         if(imageId){
-            product.imageUrl = ((await models.Image.findOne({
-                id:imageId
-            }))||{}).filePath;
+            product.imageUrl = "";
         }
         await models.Product.update(product, {
             where: {
