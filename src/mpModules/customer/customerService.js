@@ -872,9 +872,9 @@ export async function uploadFileCreateCustomer(data, loginUser) {
             const payload = {
                 ...customer,
                 groupCustomerId: groupCustomer.id,
-                wardId: ward.id,
-                districtId: district.id,
-                provinceId: province.id
+                wardId: ward ? ward.id : null,
+                districtId: district ? district.id : null,
+                provinceId: province ? province.id : null
             }
 
             const checkPhone = await checkUniqueValue("Customer", {
