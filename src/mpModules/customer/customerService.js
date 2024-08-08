@@ -797,13 +797,13 @@ export async function uploadFileCreateCustomer(data, loginUser) {
                 address: _.get(item, 'Địa chỉ', '').toString().trim(),
                 facebook:_.get(item, 'Facebook', '').toString().trim(),
                 groupCustomerName: _.get(item, 'Nhóm khách hàng', '').toString().trim(),
-                status: parseInt(_.get(item, 'Trạng thái', 1).toString().trim()),
+                status: parseInt(_.get(item, 'Trạng thái', 1).toString()),
                 wardName: _.get(item, 'Xã', '').toString().trim(),
                 districtName: _.get(item, 'Huyện', '').toString().trim(),
                 provinceName: _.get(item, 'Tỉnh', '').toString().trim(),
                 lat: _.get(item, 'Vĩ độ', '').toString().trim(),
                 lng: _.get(item, 'Kinh độ', '').toString().trim(),
-                type: parseInt(_.get(item, 'Loại khách hàng', 1).toString().trim()),
+                type: parseInt(_.get(item, 'Loại khách hàng', 1).toString()),
                 storeId: loginUser.storeId,
                 createdBy: loginUser.id,
                 createdAt: new Date(),
@@ -925,7 +925,7 @@ export async function uploadFileCreateCustomerService(data, loginUser) {
                     gender: _.get(item, 'Giới tính', 'Nam').toString().trim(),
                     phone: formatMobileToSave(_.get(item, 'Điện thoại', '').toString().trim()),
                     email: _.get(item, 'Email', '').toString().trim(),
-                    taxCode: _.get(item, 'Mã thuế', '').toString().trim(),
+                    taxCode: _.get(item, 'Mã số thuế', '').toString().trim(),
                     address: _.get(item, 'Địa chỉ', '').toString().trim(),
                     groupCustomerName: _.get(item, 'Nhóm khách hàng', '').toString().trim(),
                     status: parseInt(_.get(item, 'Trạng thái', 1).toString().trim()),
@@ -1032,12 +1032,16 @@ export async function uploadFileCreateCustomerService(data, loginUser) {
                     provinceId: province? province.id : null
                 }
 
-                const checkPhone = await checkUniqueValue("Customer", {
-                    phone: payload.phone,
-                    storeId: loginUser.storeId,
-                });
-                if (checkPhone) {
-                    throw new Error(`Số điện thoại ${payload.phone} đã được đăng ký`);
+                if(customer.phone) {
+                    const checkPhone = await models.Customer.findOne({
+                        where: {
+                            phone: customer.phone,
+                            storeId: loginUser.storeId,
+                        }
+                    });
+                    if (checkPhone) {
+                        throw new Error(`Số điện thoại ${payload.phone} đã được đăng ký`);
+                    }
                 }
 
                 const newCustomer = await models.Customer.create(payload, {
