@@ -118,7 +118,8 @@ export const productAttributes = [
     "expiryPeriod",
     "status",
     "createdAt",
-    "drugCode"
+    "drugCode",
+    "imageUrl"
 ];
 
 export const filterInventories = {
