@@ -596,6 +596,11 @@ export async function updateProduct(id, product, loginUser) {
             }
 
         }
+        if(imageId){
+            product.imageUrl = ((await models.Image.findOne({
+                id:imageId
+            }))||{}).filePath;
+        }
         await models.Product.update(product, {
             where: {
                 id,
@@ -1466,7 +1471,7 @@ export async function uploadFileKiotVietService(loginUser, data, branchId) {
             for (let index = 0; index < data.length; index++) {
                 const item = data[index];
                 let result = {
-                    type: parseInt(_.get(item, 'Loại hàng', 'Hàng hóa').toString().trim()),
+                    type: _.get(item, 'Loại hàng', 'Hàng hóa').toString().trim(),
                     code: _.get(item, 'Mã hàng', '').toString().trim(),
                     barCode: _.get(item, 'Mã vạch', '').toString().trim(),
                     drugCode: _.get(item, 'Mã thuốc', '').toString().trim(),
@@ -1579,6 +1584,14 @@ export async function uploadFileKiotVietService(loginUser, data, branchId) {
                         },
                         transaction: t
                     })
+                }
+                if(result.type === 'Hàng hóa'){
+                    result.type = 2;
+                }
+                else if(result.type === 'Thuốc'){
+                    result.type = 1;
+                }else{
+                    result.type = 3;
                 }
                 if (result.codeBaseUnit === '') {
                     product = {
