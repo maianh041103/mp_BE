@@ -621,8 +621,8 @@ module.exports.getProductInCartService = async (result) => {
             }
 
             let index = listProductGroupByStore.findIndex(tmp=>{
-                return tmp.storeId = item?.marketProduct?.store?.id;
-            })
+                return tmp.storeId === item?.marketProduct?.store?.id;
+            });
             if(index > -1){
                 listProductGroupByStore[index].products.push(item);
             }else{
