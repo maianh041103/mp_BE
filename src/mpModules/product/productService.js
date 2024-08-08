@@ -596,7 +596,7 @@ export async function updateProduct(id, product, loginUser) {
             }
 
         }
-        if(imageId){
+        if(product.imageId){
             product.imageUrl = "";
         }
         await models.Product.update(product, {
