@@ -1036,7 +1036,7 @@ export async function uploadFileCreateCustomerService(data, loginUser) {
                     phone: payload.phone,
                     storeId: loginUser.storeId,
                 });
-                if (!checkPhone) {
+                if (checkPhone) {
                     throw new Error(`Số điện thoại ${payload.phone} đã được đăng ký`);
                 }
 
