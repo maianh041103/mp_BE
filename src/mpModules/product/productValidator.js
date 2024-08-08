@@ -31,6 +31,7 @@ const productSchema = Joi.object().keys({
   manufactureId: Joi.number().integer().allow(null).allow(""),
   countryId: Joi.number().integer().allow(null).allow(""),
   imageId: Joi.number().integer().allow(null).allow(""),
+  imageUrl: Joi.string().allow(null).allow(""),
   type: Joi.number().integer().required(),
   minInventory: Joi.number().integer().allow(null).allow(""),
   maxInventory: Joi.number().integer().allow(null).allow(""),
