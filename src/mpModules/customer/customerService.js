@@ -795,6 +795,7 @@ export async function uploadFileCreateCustomer(data, loginUser) {
                 email: _.get(item, 'Email', '').toString().trim(),
                 taxCode: _.get(item, 'Mã thuế', '').toString().trim(),
                 address: _.get(item, 'Địa chỉ', '').toString().trim(),
+                facebook:_.get(item, 'Facebook', '').toString().trim(),
                 groupCustomerName: _.get(item, 'Nhóm khách hàng', '').toString().trim(),
                 status: parseInt(_.get(item, 'Trạng thái', 1).toString().trim()),
                 wardName: _.get(item, 'Xã', '').toString().trim(),
