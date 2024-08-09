@@ -403,7 +403,6 @@ module.exports.getDetailProductService = async (result) => {
         const marketProduct = await models.MarketProduct.findOne({
             where: {
                 id,
-                storeId
             },
             include: marketProductInclude,
         });
@@ -421,7 +420,7 @@ module.exports.getDetailProductService = async (result) => {
             where: {
                 marketType: marketConfigContant.MARKET_TYPE.COMMON,
                 storeId: {
-                    [Op.eq]: storeId
+                    [Op.eq]: marketProduct.storeId
                 }
             },
             include: [
