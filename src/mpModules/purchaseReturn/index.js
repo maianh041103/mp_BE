@@ -6,11 +6,14 @@ const {
   createController,
   updateController,
   updateStatus, indexDelete, indexDeleteController,
+    exportPurchaseReturnController,
+    exportPurchaseReturnDetailController
 } = require("./purchaseReturnController");
 const { createValidator, updateStatusValidator } = require("./purchaseReturnValidator");
 
 const express = require("express");
 const {deleteProducts} = require("../product/productController");
+const {exportDoctorController} = require("../doctor/doctorController");
 const router = express.Router();
 
 router.post(
@@ -80,6 +83,22 @@ router.delete(
     },
     authorize,
     indexDeleteController
+);
+
+router.get("/export/excel", authenticate, (req, res, next) => {
+    req.apiRole = "";
+    next();
+},
+    authorize,
+    exportPurchaseReturnController
+);
+
+router.get("/export/excel-detail", authenticate, (req, res, next) => {
+        req.apiRole = "";
+        next();
+    },
+    authorize,
+    exportPurchaseReturnDetailController
 );
 
 module.exports = router;

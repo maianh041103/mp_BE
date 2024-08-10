@@ -122,6 +122,10 @@ const cartInclude = [
         },{
             model:models.Image,
             as:"imageCenter"
+        },{
+            model:models.Branch,
+            as:"branch",
+            attributes: ["id", "name"]
         }]
     }
 ];
@@ -437,6 +441,10 @@ module.exports.getDetailProductService = async (result) => {
                     model: models.ProductUnit,
                     as: "productUnit",
                     attributes: ["id", "exchangeValue", "unitName"]
+                },
+                {
+                    model:models.Image,
+                    as:"imageCenter"
                 }
             ]
         });
@@ -608,7 +616,7 @@ module.exports.getProductInCartService = async (result) => {
             where,
             include: cartInclude
         });
-        let listProductGroupByStore = [];
+        let listProductGroupByBranch = [];
         for (let item of listProductInCart) {
             let images = (item?.marketProduct?.images || "").split("/");
             if (images.length > 0) {
@@ -619,14 +627,14 @@ module.exports.getProductInCartService = async (result) => {
                 }));
             }
 
-            let index = listProductGroupByStore.findIndex(tmp=>{
-                return tmp.storeId === item?.marketProduct?.store?.id;
+            let index = listProductGroupByBranch.findIndex(tmp=>{
+                return tmp.branchId === item?.marketProduct?.branchId;
             });
             if(index > -1){
-                listProductGroupByStore[index].products.push(item);
+                listProductGroupByBranch[index].products.push(item);
             }else{
-                listProductGroupByStore.push({
-                    storeId:item?.marketProduct?.store?.id,
+                listProductGroupByBranch.push({
+                    branchId:item?.marketProduct?.branchId,
                     products:[item]
                 })
             }
@@ -634,7 +642,7 @@ module.exports.getProductInCartService = async (result) => {
         return {
             success: true,
             data: {
-                item: listProductGroupByStore
+                item: listProductGroupByBranch
             }
         }
     } catch (e) {
