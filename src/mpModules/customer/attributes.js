@@ -1,1 +1,1 @@
-export const customerAttributes = ["id", "fullName"];
+export const customerAttributes = ["id", "fullName","code"];

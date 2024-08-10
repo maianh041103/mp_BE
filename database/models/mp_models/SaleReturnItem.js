@@ -36,6 +36,10 @@ module.exports = (sequelize, DataTypes) => {
             totalPrice: {
                 allowNull: false,
                 type: DataTypes.INTEGER
+            },
+            point: {
+                allowNull: true,
+                type:DataTypes.INTEGER
             }
         },
         {

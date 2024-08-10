@@ -184,6 +184,15 @@ export async function indexCreate(saleReturn, loginUser) {
     })
 
     let pointDecrement = 0;
+
+    //Kiểm tra tích điểm có được bật k
+    const pointExists = await models.Point.findOne({
+      where:{
+        storeId:loginUser.storeId,
+        status:"active"
+      }
+    });
+    //End kiểm tra tích điểm có được bật k
     for (const item of saleReturn.products) {
       const findProduct = await models.Product.findOne({
         where: {
@@ -230,7 +239,7 @@ export async function indexCreate(saleReturn, loginUser) {
         )
 
         if (
-          orderProduct.quantity ==
+          orderProduct.quantity ===
           orderProduct.quantityLast + item.quantity
         ) {
           let id = saleReturn.orderId
@@ -284,6 +293,7 @@ export async function indexCreate(saleReturn, loginUser) {
         item.quantity * productUnit.exchangeValue,
         t
       )
+
       const saleReturnItem = await models.SaleReturnItem.create(
         {
           storeId: loginUser.storeId,
@@ -294,7 +304,8 @@ export async function indexCreate(saleReturn, loginUser) {
           discount: item.discount || 0,
           createdBy: loginUser.id,
           price: item.price,
-          totalPrice: item.price * item.totalQuantity
+          totalPrice: item.price * item.totalQuantity,
+          pointDecrement: pointExists ? orderProduct.point * item.quantity / orderProduct.quantity : 0
         },
         { transaction: t }
       )
@@ -366,12 +377,9 @@ export async function indexCreate(saleReturn, loginUser) {
     }
 
     //Trừ điểm tích lũy
-    const pointExists = await models.Point.findOne({
-      where:{
-        storeId:loginUser.storeId,
-        status:"active"
-      }
-    });
+    if(!pointExists){
+      pointDecrement = 0;
+    }
     if(pointExists) {
       await models.Customer.decrement({
         point: pointDecrement
@@ -381,17 +389,16 @@ export async function indexCreate(saleReturn, loginUser) {
         },
         transaction: t
       });
-
-      await models.PointHistory.create({
-            customerId: saleReturn.customerId,
-            point: pointDecrement * (-1),
-            saleReturnId: newSaleReturn.id,
-            code: code
-          },
-          {
-            transaction: t
-          });
     }
+    await models.PointHistory.create({
+          customerId: saleReturn.customerId,
+          point: pointDecrement * (-1),
+          saleReturnId: newSaleReturn.id,
+          code: code
+        },
+        {
+          transaction: t
+        });
     //End trừ điểm tích lũy
   })
   const refresh = await indexDetail(newSaleReturn.id, loginUser)
