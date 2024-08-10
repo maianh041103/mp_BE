@@ -1,4 +1,5 @@
 import { customerAttributes } from "../customer/attributes";
+import {Sequelize} from "sequelize";
 
 const models = require("../../../database/models");
 const { userAttributes } = require("../user/attributes");
@@ -14,7 +15,20 @@ const productAttributes = [
 
 
 const saleReturnItemAttributes = [
-    "id", "quantity", "price", "discount", "totalPrice"
+    "id", "quantity", "price", "discount", "totalPrice", "point",
+    [
+        Sequelize.literal(`(
+        SELECT CAST(order_products.price / order_products.quantity AS UNSIGNED)
+        FROM sale_return_item 
+        INNER JOIN sale_returns ON sale_returns.id = sale_return_item.saleReturnId 
+        INNER JOIN orders ON sale_returns.orderId = orders.id
+        INNER JOIN order_products ON order_products.productUnitId = sale_return_item.productUnitId 
+        AND orders.id = order_products.orderId
+        WHERE sale_return_item.id = items.id
+        LIMIT 1
+      )`),
+        "orderPrice"
+    ]
 ]
 
 const saleReturnItemBatchAttributes = ["id", "quantity"]
@@ -88,7 +102,14 @@ export const saleReturnIncludes = [
     {
         model: models.Order,
         as: "order",
-        attributes: ["code"]
+        attributes: ["code","userId","customerId","groupCustomerId","totalPrice"],
+        include:[
+            {
+                model: models.User,
+                as: "creator",
+                attributes: ["username"]
+            }
+        ]
     }
 ];
 
@@ -96,6 +117,7 @@ export const saleReturnAttributes = [
     "id",
     "code",
     "userId",
+    "description",
     "storeId",
     "branchId",
     "customerId",
@@ -106,6 +128,6 @@ export const saleReturnAttributes = [
     "returnFee",
     "paymentType",
     "status",
-    "createdAt",
+    "createdAt"
 ];
 
