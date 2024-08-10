@@ -9,7 +9,8 @@ const {
   updateStatus,
   indexDelete,
   indexDeleteController,
-  readHistoryController
+  readHistoryController,
+    exportExcelController
 } = require('./saleReturnController')
 const {
   createValidator,
@@ -93,6 +94,11 @@ router.get(
   },
   authorize,
   readHistoryController
-)
+);
+
+router.get("/export/excel",authenticate,(req,res,next)=>{
+    req.apiRole = '';
+    next();
+},authorize,exportExcelController)
 
 module.exports = router
