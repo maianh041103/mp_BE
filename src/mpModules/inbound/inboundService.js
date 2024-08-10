@@ -113,6 +113,11 @@ const inboundIncludes = [
         attributes: ["code","name","primePrice","baseUnit"]
       },
       {
+        model:models.ProductUnit,
+        as:"productUnit",
+        attributes: ["unitName"]
+      },
+      {
         model:models.InboundProductBatch,
         as:"batches",
         include:[{

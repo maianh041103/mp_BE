@@ -187,7 +187,7 @@ export async function exportInboundController(req,res){
           status:item.status === inboundStatus.SUCCEED ? "Đã nhập hàng" : "Đang nhập hàng",
           productCode: inboundProduct?.product.code,
           productName:inboundProduct?.product.name,
-          unitName:inboundProduct?.product?.baseUnit,
+          unitName:inboundProduct?.productUnit?.unitName,
           priceItem:inboundProduct.price,
           discountItem:inboundProduct.discount,
           primePriceItem:inboundProduct?.product.primePrice,

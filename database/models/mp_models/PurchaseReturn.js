@@ -133,6 +133,12 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: "supplierId",
       targetKey: "id",
     });
+
+    PurchaseReturn.hasMany(models.PurchaseReturnToProduct,{
+        as:"products",
+        foreignKey: "purchaseReturnId",
+        sourceKey:"id"
+    })
   };
   return PurchaseReturn;
 };
