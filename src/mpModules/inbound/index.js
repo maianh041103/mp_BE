@@ -6,7 +6,9 @@ const {
   createController,
   updateController,
   updateStatus,
-  getProductCustomer, indexDelete, createPaymentController
+  getProductCustomer, indexDelete,
+    createPaymentController,
+    exportInboundController
   // getOrderHistory,
 } = require("./inboundController");
 const { createValidator, updateStatusValidator } = require("./inboundValidator");
@@ -93,5 +95,10 @@ router.post(
   authorize,
   createPaymentController
 );
+
+router.get("/export/excel",authenticate,(req,res,next)=>{
+    req.apiRole = "";
+    next();
+},authorize,exportInboundController);
 
 module.exports = router;

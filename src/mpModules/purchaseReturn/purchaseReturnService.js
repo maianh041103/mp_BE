@@ -90,6 +90,33 @@ const purchaseReturnIncludes = [
       },
     ],
   },
+  {
+    model:models.PurchaseReturnToProduct,
+    as:"products",
+    attributes: ["id","importPrice","discount","quantity"],
+    include:[
+        {
+      model:models.Product,
+      as:"product",
+      attributes: ["id", "name","code","primePrice"],
+      },
+      {
+        model:models.ProductUnit,
+        as:"productUnit",
+        attributes: ["unitName"]
+      },
+      {
+        model:models.PurchaseReturnItemBatch,
+        as:"batches",
+        attributes: ["id","batchId","quantity"],
+        include:[{
+          model:models.Batch,
+          as:"batch",
+          attributes: ["id","name","expiryDate","quantity"],
+        }]
+      }
+    ]
+  }
 ];
 
 const purchaseReturnAttributes = [
@@ -106,6 +133,13 @@ const purchaseReturnAttributes = [
   "supplierId",
   "status",
   "createdAt",
+  "updatedAt",
+  [Sequelize.literal(`(SELECT COUNT(purchase_return_to_products.id) FROM purchase_return_to_products 
+  WHERE purchase_return_to_products.purchaseReturnId = PurchaseReturn.id
+  AND purchase_return_to_products.deletedAt IS NULL)`), 'countProduct'],
+  [Sequelize.literal(`(SELECT SUM(purchase_return_to_products.quantity) FROM purchase_return_to_products 
+  WHERE purchase_return_to_products.purchaseReturnId = PurchaseReturn.id
+  AND purchase_return_to_products.deletedAt IS NULL)`), 'quantityProduct'],
 ];
 
 const productAttributes = [
