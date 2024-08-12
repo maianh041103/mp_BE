@@ -351,7 +351,7 @@ module.exports.updateAddressService = async (result) => {
                     id: {
                         [Op.ne]: id
                     },
-                    storeId,
+                    branchId,
                 }
             })
         }
