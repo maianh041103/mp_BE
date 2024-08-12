@@ -252,7 +252,7 @@ module.exports.createProductService = async (result) => {
 
 module.exports.getAllProductService = async (result) => {
     const {status, groupAgencyId, agencyId, keyword, groupProductId,
-        type, createdAt, storeId, limit = 20, page = 1, isConfig,productType} = result;
+        type, createdAt, storeId, limit = 20, page = 1, isConfig,productType,loginUser} = result;
     let {sortBy} = result;
     let marketProductIncludeTmp = [
         {
@@ -298,6 +298,9 @@ module.exports.getAllProductService = async (result) => {
 
     let where = {};
     if(isConfig){
+        where.storeId = loginUser.storeId;
+    }
+    if(storeId){
         where.storeId = storeId;
     }
     if (status) {
