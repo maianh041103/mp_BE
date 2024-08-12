@@ -131,6 +131,24 @@ module.exports.getAllStore = async (req,res)=>{
     }
 }
 
+//[GET] mp/api/market/sell/store/:id
+module.exports.getDetailStore = async (req,res)=>{
+    try {
+        const { loginUser = {} } = req;
+        const {id} = req.params;
+        const result = await marketSellService.getDetailStoreService(
+            {
+                storeId: loginUser.storeId,
+                id
+            }
+        );
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (e) {
+        res.json(respondWithClientError(e))
+    }
+}
+
 //[POST] mp/api/market/sell/cart
 module.exports.addProductToCart = async (req,res)=>{
     try {
@@ -271,3 +289,19 @@ module.exports.changeStatusMarketOrder = async (req,res)=>{
         res.json(respondWithClientError(e))
     }
 }
+
+// //[GET] mp/api/market/sell/product-private
+// module.exports.getProductPrivate = async(req,res)=>{
+//     try {
+//         const { loginUser = {} } = req;
+//         const result = await marketSellService.getProductPrivateService(
+//             {
+//                 storeId: loginUser.storeId
+//             }
+//         );
+//         if (result.success) res.json(respondItemSuccess(result.data));
+//         else res.json(respondWithError(result.code, result.message, {}));
+//     } catch (e) {
+//         res.json(respondWithClientError(e))
+//     }
+// }

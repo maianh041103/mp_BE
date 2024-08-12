@@ -505,6 +505,37 @@ module.exports.getAllStoreService = async (result) => {
     }
 }
 
+module.exports.getDetailStoreService = async (result) => {
+    try {
+        const {storeId, id} = result;
+        const store = await models.Store.findOne({
+            where: {
+                id
+            },
+            attributes: [
+                "id", "name", "phone", "email", "field", "address", "wardId", "districtId", "provinceId", "logoId",
+                [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
+    WHERE market_products.storeId = Store.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
+                [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
+    WHERE market_products.storeId = Store.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
+            ],
+            include: storeInclude
+        });
+        store.dataValues.totalProduct = parseInt(store.dataValues.totalProduct);
+        store.dataValues.totalQuantitySold = parseInt(store.dataValues.totalQuantitySold);
+        return {
+            success: true,
+            data: store
+        }
+    } catch (e) {
+        return {
+            error: true,
+            message: `Lỗi ${e}`,
+            code: HttpStatusCode.BAD_REQUEST
+        }
+    }
+}
+
 module.exports.addProductToCartService = async (result) => {
     try {
         let {storeId, branchId, marketProductId, quantity, price} = result;
