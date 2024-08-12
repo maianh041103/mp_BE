@@ -299,6 +299,10 @@ module.exports.getAllProductService = async (result) => {
     let where = {};
     if(isConfig){
         where.storeId = loginUser.storeId;
+    }else{
+        where.storeId = {
+            [Op.ne]:loginUser.storeId
+        }
     }
     if(storeId){
         where.storeId = storeId;

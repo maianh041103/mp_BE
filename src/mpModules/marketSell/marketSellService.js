@@ -796,6 +796,7 @@ module.exports.createMarketOrderService = async (result) => {
                 transaction: t
             });
             const code = generateCode("MK", newMarketOrderBuy.id);
+            newMarketOrderBuy.code = code;
             await models.MarketOrder.update({
                 code
             }, {
