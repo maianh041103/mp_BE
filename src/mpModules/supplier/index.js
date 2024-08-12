@@ -7,7 +7,10 @@ const {
   updateSupplierController,
   deleteSupplierController,
   getTotalDebtController,
-  indexPaymentSupplierController
+  indexPaymentSupplierController,
+    createUploadKiotvietController,
+    exportSupplierExampleController,
+    exportSupplierController
 } = require("./supplierController");
 const { createValidator } = require("./supplierValidator");
 
@@ -90,4 +93,34 @@ router.get(
   indexPaymentSupplierController
 )
 
+router.post(
+    "/upload/kiotviet",
+    authenticate,
+    (req, res, next) => {
+        req.apiRole = "supplier_create";
+        next();
+    },
+    authorize,
+    createUploadKiotvietController
+);
+
+router.get("/export/example",authenticate,
+    (req,res,next)=>{
+        req.apiRole = "supplier_read";
+        next();
+    },
+    authorize,
+    exportSupplierExampleController
+);
+
+
+router.get(
+    "/export/excel",authenticate,
+    (req,res,next)=>{
+        req.apiRole = "supplier_read";
+        next();
+    },
+    authorize,
+    exportSupplierController
+);
 module.exports = router;
