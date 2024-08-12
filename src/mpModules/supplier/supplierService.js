@@ -1,3 +1,6 @@
+import {formatExcelDate, formatMobileToSave} from "../../helpers/utils";
+import {customerStatus} from "../customer/customerConstant";
+
 const Sequelize = require("sequelize");
 const _ = require("lodash");
 const { Op } = Sequelize;
@@ -26,8 +29,17 @@ const attributes = [
   "groupSupplierId",
   "storeId",
   "note",
+    "status",
   "createdAt",
-  "createdBy"
+  "createdBy",
+  [Sequelize.literal(`IFNULL((SELECT SUM(inbounds.totalPrice) FROM inbounds 
+  WHERE Supplier.id = inbounds.supplierId), 0)`), 'totalPrice'],
+  [Sequelize.literal(`IFNULL((SELECT SUM(inbounds.debt) FROM inbounds 
+  WHERE Supplier.id = inbounds.supplierId), 0)`), 'totalDebt'],
+  [Sequelize.literal(`IFNULL((SELECT SUM(purchase_returns.debt) FROM purchase_returns 
+  WHERE Supplier.id = purchase_returns.supplierId), 0)`), 'totalPurchaseDebt'],
+  [Sequelize.literal(`IFNULL((SELECT SUM(purchase_returns.totalPrice) FROM purchase_returns 
+  WHERE Supplier.id = purchase_returns.supplierId), 0)`), 'totalPurchasePrice'],
 ];
 
 const include = [
@@ -420,5 +432,151 @@ export async function indexPaymentSupplier(params, loginUser) {
   return {
     success: true,
     data: payments
+  }
+}
+
+export async function uploadFileCreateSupplierService(data, loginUser) {
+  try {
+    await models.sequelize.transaction(async (t) => {
+      for (const item of data) {
+        const supplier = {
+          name: _.get(item, 'Tên nhà cung cấp', '').toString().trim(),
+          code: _.get(item, 'Mã nhà cung cấp', '').toString().trim(),
+          phone: formatMobileToSave(_.get(item, 'Điện thoại', '').toString().trim()),
+          email: _.get(item, 'Email', '').toString().trim(),
+          address: _.get(item, 'Địa chỉ', '').toString().trim(),
+          districtAndProvinceName: _.get(item, 'Khu vực', '').toString().trim(),
+          wardName: _.get(item, 'Phường/Xã', '').toString().trim(),
+          debt:parseInt(_.get(item, 'Nợ cần trả hiện tại', 0)),
+          taxCode: _.get(item, 'Mã số thuế', '').toString().trim(),
+          note: _.get(item, 'Ghi chú', '').toString().trim(),
+          groupSupplierName: _.get(item, 'Nhóm nhà cung cấp', '').toString().trim(),
+          status: parseInt(_.get(item, 'Trạng thái', 1).toString().trim()),
+          companyName: _.get(item,'Công ty','').toString().trim(),
+          storeId: loginUser.storeId,
+        };
+        if(supplier.code){
+          const supplierExists = await models.Supplier.findOne({
+            where:{
+              code:supplier.code,
+              storeId:supplier.storeId
+            }
+          });
+          if(supplierExists){
+            throw new Error(`Nhà cung cấp có mã ${supplier.code} đã tồn tại`);
+          }
+        }
+        let groupSupplier = {}, ward, district, province;
+        if (supplier.groupSupplierName) {
+          [groupSupplier] = await models.GroupSupplier.findOrCreate({
+            where: {
+              name: {
+                [Op.like]: `%${supplier.groupSupplierName}%`
+              },
+              storeId: supplier.storeId
+            },
+            defaults: {
+              name: supplier.groupSupplierName,
+              storeId: supplier.storeId,
+              createdBy: loginUser.id
+            },
+            transaction: t
+          });
+        }
+
+        let [provinceName,districtName] = supplier.districtAndProvinceName.split("-");
+        province = await models.Province.findOne({
+          where: {
+            [Op.or]:{
+              name2: {
+                [Op.like]: `%${provinceName.trim()}%`
+              },
+              name:{
+                [Op.like]: `%${provinceName.trim()}%`
+              }
+            }
+          }, attributes: ["id"]
+        });
+        if (province) {
+          district = await models.District.findOne({
+            where: {
+              [Op.or]:{
+                name2: {
+                  [Op.like]: `%${districtName.trim()}%`
+                },
+                name:{
+                  [Op.like]: `%${provinceName.trim()}%`
+                }
+              }, provinceId: province.id,
+            }, attributes: ["id"]
+          });
+          if (district) {
+            ward = await models.Ward.findOne({
+              where: {
+                [Op.or]:{
+                  name2: {
+                    [Op.like]: `%${supplier.wardName.trim()}%`
+                  },
+                  name:{
+                    [Op.like]: `%${supplier.wardName.trim()}%`
+                  }
+                }, districtId: district.id,
+              }, attributes: ["id"]
+            });
+          }
+        }
+        const payload = {
+          ...supplier,
+          groupSupplierId: groupSupplier.id,
+          wardId: ward? ward.id:null,
+          districtId: district? district.id:null,
+          provinceId: province? province.id : null
+        }
+
+        if(supplier.phone) {
+          const checkPhone = await models.Supplier.findOne({
+            where: {
+              phone: supplier.phone,
+              storeId: loginUser.storeId,
+            }
+          });
+          if (checkPhone) {
+            throw new Error(`Số điện thoại ${payload.phone} đã được đăng ký`);
+          }
+        }
+
+        const newSupplier = await models.Supplier.create(payload, {
+          transaction: t
+        });
+        if (!payload.code) {
+          payload.code = `${generateSupplierCode(newSupplier.id)}`;
+          await models.Supplier.update(
+              {code: payload.code},
+              {
+                where: {id: newSupplier.id},
+                transaction: t
+              }
+          );
+        }
+
+        createUserTracking({
+          accountId: loginUser.id,
+          type: accountTypes.USER,
+          objectId: newSupplier.id,
+          action: logActions.supplier_create.value,
+          data: payload,
+        });
+      }
+    });
+    return{
+      success:true,
+      data:null
+    }
+  }catch(e){
+    return{
+      error:true,
+      code:HttpStatusCode.BAD_REQUEST,
+      message:`${e}`
+    }
   }
 }
