@@ -39,6 +39,11 @@ router.get("/store",authenticate,(req,res,next)=>{
     next();
 },authorize,controller.getAllStore);
 
+router.get("/store/:id",authenticate,(req,res,next)=>{
+    req.apiRole = [];
+    next();
+},authorize,controller.getDetailStore);
+
 router.post("/cart",authenticate,(req,res,next)=>{
     req.apiRole = [];
     next();
@@ -88,4 +93,10 @@ router.patch("/market-order/:id",authenticate,(req,res,next)=>{
     req.apiRole = [];
     next();
 },authorize,controller.changeStatusMarketOrder);
+
+// router.get("/product-private",authenticate,(req,res,next)=>{
+//     req.apiRole = [];
+//     next();
+// },authorize,controller.getProductPrivate);
+
 module.exports = router;
