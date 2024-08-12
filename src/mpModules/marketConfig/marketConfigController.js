@@ -31,7 +31,7 @@ module.exports.getAllProduct = async (req, res) => {
         const result = await marketConfigService.getAllProductService(
             {
                 ...req.query,
-                storeId: loginUser.storeId
+                loginUser
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
