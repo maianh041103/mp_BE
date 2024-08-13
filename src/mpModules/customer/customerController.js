@@ -120,8 +120,8 @@ export async function createController(req, res) {
             createdBy: loginUser.id,
             createdAt: new Date(),
             note: _.get(req.body, "note", ""),
-            lat: _.get(req.body, "lat", "").trim(),
-            lng: _.get(req.body, "lng", "").trim()
+            lat:_.get(req.body, "lat", "")?_.get(req.body, "lat", "").trim():null,
+            lng:_.get(req.body, "lng", "")?_.get(req.body, "lng", "").trim():null
         };
         const result = await createCustomer(customer, loginUser);
         if (result.success) res.json(respondItemSuccess(result.data));
