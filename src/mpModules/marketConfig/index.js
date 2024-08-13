@@ -1,15 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const controller = require("./marketConfigController");
-const { authenticate } = require("../../middlewares/auth");
-const { authorize } = require("../../middlewares/authorize");
+const {authenticate} = require("../../middlewares/auth");
+const {authorize} = require("../../middlewares/authorize");
 
 router.post("/product", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
 }, authorize, controller.createProduct);
 
-router.get("/product",authenticate, (req, res, next) => {
+router.get("/product", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
 }, authorize, controller.getAllProduct);
@@ -17,22 +17,22 @@ router.get("/product",authenticate, (req, res, next) => {
 router.patch("/product/changeStatus/:id/:status", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-},authorize,controller.changeStatusProduct);
+}, authorize, controller.changeStatusProduct);
 
-router.patch("/product/:id",authenticate, (req, res, next) => {
+router.patch("/product/:id", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-},authorize, controller.changeProduct);
+}, authorize, controller.changeProduct);
 
 router.get("/product/:id", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-},authorize, controller.getDetailProduct);
+}, authorize, controller.getDetailProduct);
 
 router.delete("/product/:id", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-},authorize,controller.deleteProduct);
+}, authorize, controller.deleteProduct);
 
 router.post("/agency", authenticate, (req, res, next) => {
     req.apiRole = [];
@@ -47,52 +47,56 @@ router.patch("/agency/:id/:status", authenticate, (req, res, next) => {
 router.get("/agency", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-},authorize,controller.getListAgency);
+}, authorize, controller.getListAgency);
+
+router.get("/agency/:id", authenticate, (req, res, next) => {
+    req.apiRole = "";
+    next();
+}, authorize, controller.getStatusAgency);
 
 router.delete("/agency/:id", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-},authorize,controller.deleteAgency);
+}, authorize, controller.deleteAgency);
 
-router.post("/group-agency",authenticate, (req, res, next) => {
+router.post("/group-agency", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-},authorize,controller.createGroupAgency);
+}, authorize, controller.createGroupAgency);
 
-router.get("/group-agency",authenticate,(req,res,next)=>{
+router.get("/group-agency", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-},authorize,controller.getAllGroupAgency);
+}, authorize, controller.getAllGroupAgency);
 
 router.get("/group-agency/:id", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-},authorize,controller.getDetailGroupAgency);
+}, authorize, controller.getDetailGroupAgency);
 
-router.patch("/group-agency/:id",authenticate, (req, res, next) => {
+router.patch("/group-agency/:id", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-},authorize,controller.changeGroupAgency);
+}, authorize, controller.changeGroupAgency);
 
-router.delete("/group-agency/:id",authenticate,(req,res,next)=>{
+router.delete("/group-agency/:id", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-},authorize,controller.deleteGroupAgency);
+}, authorize, controller.deleteGroupAgency);
 
-router.post("/image",authenticate,(req,res,next)=>{
+router.post("/image", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-},authorize,controller.createMarketImage);
+}, authorize, controller.createMarketImage);
 
-router.get("/image",authenticate,(req,res,next)=>{
-   req.apiRole = [];
-   next();
-},authorize,controller.getAllMarketImage);
-
-router.delete("/image/:id",authenticate,(req,res,next)=>{
+router.get("/image", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();
-},authorize,controller.deleteMarketImage);
+}, authorize, controller.getAllMarketImage);
 
+router.delete("/image/:id", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, controller.deleteMarketImage);
 
 module.exports = router;

@@ -162,6 +162,24 @@ module.exports.getListAgency = async (req, res) => {
         }
 }
 
+//[GET] mp/api/market/config/agency/:id
+module.exports.getStatusAgency = async (req,res)=>{
+    try {
+        const { loginUser = {} } = req;
+        const {id} = req.params;
+        const result = await marketConfigService.getStatusAgencyService(
+            {
+                id,
+                storeId: loginUser.storeId
+            }
+        );
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (e) {
+        res.json(respondWithClientError(e))
+    }
+}
+
 //[DELETE] mp/api/market/config/agency/:id
 module.exports.deleteAgency = async (req,res)=>{
     try {
