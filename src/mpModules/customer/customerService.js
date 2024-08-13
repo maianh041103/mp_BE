@@ -15,7 +15,7 @@ const sequelize = models.sequelize
 const {checkUniqueValue, randomString} = require("../../helpers/utils");
 const {customerStatus} = require("./customerConstant");
 const {HttpStatusCode} = require("../../helpers/errorCodes");
-const {addFilterByDate,formatExcelDate} = require("../../helpers/utils");
+const {addFilterByDate,formatExcelDate, checkCoordinates} = require("../../helpers/utils");
 const {
     accountTypes,
     logActions,
@@ -417,6 +417,13 @@ export async function updateCustomer(id, payload, loginUser) {
             message: "Khách hàng không tồn tại",
         };
     }
+    if(!checkCoordinates(payload.lng) || !checkCoordinates(payload.lat)) {
+        return{
+            error:true,
+            code:HttpStatusCode.NOT_FOUND,
+            message:"Địa chỉ nhập không hợp lệ"
+        }
+    }
     if (!findCustomer.code && !payload.code) {
         payload.code = `${generateCustomerCode(findCustomer.id)}`;
     }
@@ -446,6 +453,15 @@ export async function createCustomer(payload, loginUser) {
         phone: payload.phone,
         storeId: loginUser.storeId,
     });
+
+    if(!checkCoordinates(payload.lat)||!checkCoordinates(payload.lng)){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message: `Tọa độ nhập không hợp lệ`
+        }
+    }
+
     if (!checkPhone) {
         return {
             error: true,
@@ -809,6 +825,10 @@ export async function uploadFileCreateCustomer(data, loginUser) {
                 createdAt: new Date(),
                 note: _.get(item, 'Ghi chú', '').toString().trim()
             };
+
+            if(!checkCoordinates(customer.lat) || !checkCoordinates(customer.lng)){
+                throw new Error(`Tọa độ không hợp lệ`)
+            }
 
             if (customer.gender == 1) {
                 customer.gender = 'male';

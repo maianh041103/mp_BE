@@ -343,7 +343,9 @@ export function checkDouble(number) {
     return false;
   }
   try {
-    parseFloat(number)
+    if (!/^\d+(\.\d+)?$/.test(string)) {
+      return false;
+    }
   } catch (e) {
     return false;
   }
@@ -356,4 +358,13 @@ export function formatExcelDate(excelDate) {
   const month = String(date.getUTCMonth() + 1).padStart(2, '0');
   const day = String(date.getUTCDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+export function checkCoordinates(string){
+  if(string && string !== ""){
+    if (!/^\d+(\.\d+)?$/.test(string)) {
+      return false;
+    }
+  }
+  return true;
 }
