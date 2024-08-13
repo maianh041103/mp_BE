@@ -20,8 +20,8 @@ const marketProductInclude = [
         }]
     },
     {
-        model:models.Image,
-        as:"imageCenter"
+        model: models.Image,
+        as: "imageCenter"
     },
     {
         model: models.MarketProductAgency,
@@ -115,16 +115,16 @@ const cartInclude = [
             model: models.ProductUnit,
             as: "productUnit",
             attributes: ["id", "exchangeValue", "unitName"]
-        },{
-            model:models.Store,
-            as:"store",
-            attributes: ["id","name"]
-        },{
-            model:models.Image,
-            as:"imageCenter"
-        },{
-            model:models.Branch,
-            as:"branch",
+        }, {
+            model: models.Store,
+            as: "store",
+            attributes: ["id", "name"]
+        }, {
+            model: models.Image,
+            as: "imageCenter"
+        }, {
+            model: models.Branch,
+            as: "branch",
             attributes: ["id", "name"]
         }]
     }
@@ -164,11 +164,12 @@ const marketOrderInclude = [
         attributes: ["id", "name", "phone", "address1", "address2"]
     },
     {
-        model:models.HistoryPurchase,
-        as:"historyPurchase",
-        attributes: ["id","status","time","note"]
+        model: models.HistoryPurchase,
+        as: "historyPurchase",
+        attributes: ["id", "status", "time", "note"]
     }
 ];
+const marketProductPrivateInclude =
 
 module.exports.createAddressService = async (result) => {
     try {
@@ -443,13 +444,13 @@ module.exports.getDetailProductService = async (result) => {
                     attributes: ["id", "exchangeValue", "unitName"]
                 },
                 {
-                    model:models.Image,
-                    as:"imageCenter"
+                    model: models.Image,
+                    as: "imageCenter"
                 }
             ]
         });
         marketProduct.dataValues.productWillCare = listProduct;
-        if(marketProduct.store) {
+        if (marketProduct.store) {
             marketProduct.dataValues.store.dataValues.totalProduct = parseInt(marketProduct.dataValues.store.dataValues.totalProduct);
             marketProduct.dataValues.store.dataValues.totalQuantitySold = parseInt(marketProduct.dataValues.store.dataValues.totalQuantitySold);
         }
@@ -658,15 +659,15 @@ module.exports.getProductInCartService = async (result) => {
                 }));
             }
 
-            let index = listProductGroupByBranch.findIndex(tmp=>{
+            let index = listProductGroupByBranch.findIndex(tmp => {
                 return tmp.branchId === item?.marketProduct?.branchId;
             });
-            if(index > -1){
+            if (index > -1) {
                 listProductGroupByBranch[index].products.push(item);
-            }else{
+            } else {
                 listProductGroupByBranch.push({
-                    branchId:item?.marketProduct?.branchId,
-                    products:[item]
+                    branchId: item?.marketProduct?.branchId,
+                    products: [item]
                 })
             }
         }
@@ -791,7 +792,7 @@ module.exports.createMarketOrderService = async (result) => {
                 address: addressExists.address,
                 status: marketSellContant.STATUS_ORDER.PENDING,
                 phone: addressExists.phone,
-                toBranchId:toBranchId
+                toBranchId: toBranchId
             }, {
                 transaction: t
             });
@@ -999,44 +1000,43 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                         }
                     )
                 }
-                if(status === marketSellContant.STATUS_ORDER.SEND) {
-                    for(const item of products){
-                        for(const batch of item.batches){
+                if (status === marketSellContant.STATUS_ORDER.SEND) {
+                    for (const item of products) {
+                        for (const batch of item.batches) {
                             await models.MarketOrderBatch.create({
-                                marketOrderId:id,
-                                marketProductId:item.marketProductId,
+                                marketOrderId: id,
+                                marketProductId: item.marketProductId,
                                 batchId: batch.batchId,
-                                quantity:batch.quantity
-                            },{
-                                transaction:t
+                                quantity: batch.quantity
+                            }, {
+                                transaction: t
                             });
                         }
                     }
-                }
-                else{
+                } else {
                     const listMarketOrderBatch = await models.MarketOrderBatch.findAll({
-                        where:{
-                            marketOrderId:id
+                        where: {
+                            marketOrderId: id
                         }
                     });
                     //Tao products
                     products = [];
-                    for(const item of listMarketOrderBatch) {
+                    for (const item of listMarketOrderBatch) {
                         const index = products.findIndex(product => product.marketProductId === item.marketProductId);
-                        if(index === -1){
+                        if (index === -1) {
                             products.push({
-                                marketProductId:item.marketProductId,
-                                batches:[
+                                marketProductId: item.marketProductId,
+                                batches: [
                                     {
-                                        batchId:item.batchId,
-                                        quantity:item.quantity
+                                        batchId: item.batchId,
+                                        quantity: item.quantity
                                     }
                                 ]
                             })
-                        }else{
+                        } else {
                             products[index].batches.push({
-                                batchId:item.batchId,
-                                quantity:item.quantity
+                                batchId: item.batchId,
+                                quantity: item.quantity
                             })
                         }
                     }
@@ -1066,7 +1066,7 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                                     marketProductId,
                                     batchId: batch.batchId
                                 },
-                                transaction:t
+                                transaction: t
                             });
 
                             await models.Batch.increment(
@@ -1098,37 +1098,80 @@ module.exports.changeStatusMarketOrderService = async (result) => {
     }
 }
 
-// module.exports.getProductPrivateService = async (result)=>{
-//     try {
-//         const {storeId} = result;
-//         const listMarketProduct = await models.MarketProduct.findAll(
-//             {
-//                 include:[
-//                     {
-//                         model: models.MarketProductAgency,
-//                         as: "agencys",
-//                         attributes: ["id", "agencyId", "groupAgencyId", "price", "discountPrice"],
-//                         where:{
-//                             [Op.or]:{
-//                                 agencyId:storeId,
-//                                 groupAgencyId:{
-//                                     [Op.in]: Sequelize.literal(`(SELECT groupAgencyId FROM request_agency WHERE agencyId = ${storeId})`)
-//                                 }
-//                             }
-//                         },
-//                     },
-//                     {
-//                         model:models.Store,
-//                         as:"store"
-//                     }
-//                 ]
-//             }
-//         );
-//     }catch(e){
-//         return {
-//             error: true,
-//             code: HttpStatusCode.BAD_REQUEST,
-//             message: `${e}`
-//         }
-//     }
-// }
+module.exports.getProductPrivateService = async (result) => {
+    try {
+        const {storeId, limit = 10,page = 1} = result;
+        let include = [
+            {
+                model: models.Store,
+                as: "store",
+                include: [{
+                    model: models.RequestAgency,
+                    as: "agencys",
+                    where: {
+                        agencyId: storeId,
+                        status: marketConfigContant.AGENCY_STATUS.ACTIVE
+                    }
+                }]
+            },
+            {
+                model:models.MarketProductAgency,
+                as:"agencys",
+                where:Sequelize.literal('(`agencys`.`agencyId` = `store->agencys`.`id` OR `agencys`.`groupAgencyId` = `store->agencys`.`groupAgencyId`) AND `agencys`.`marketProductId` = `MarketProduct`.`id`'),
+                required:false
+            }
+        ];
+        let where = {
+            storeId: {
+                [Op.ne]: storeId
+            },
+            marketType: marketConfigContant.MARKET_TYPE.PRIVATE,
+        };
+        const listMarketProduct = await models.MarketProduct.findAll({
+            where,
+            include,
+            limit:parseInt(limit),
+            page:(parseInt(page) - 1)*(parseInt(limit))
+        });
+        const count = await models.MarketProduct.count({
+            where,
+            include:[
+                {
+                    model: models.Store,
+                    as: "store",
+                    include: [{
+                        model: models.RequestAgency,
+                        as: "agencys",
+                        where: {
+                            agencyId: storeId,
+                            status: marketConfigContant.AGENCY_STATUS.ACTIVE
+                        }
+                    }]
+                }
+            ]
+        });
+        for(const marketProduct of listMarketProduct){
+            if(marketProduct.agencys.length > 0){
+                let index = marketProduct.agencys.findIndex(item=>{
+                    return item.agencyId !== null;
+                });
+                if(index === -1) index = 0;
+                marketProduct.dataValues.price = marketProduct.dataValues.agencys[index].dataValues.price;
+                marketProduct.dataValues.discountPrice = marketProduct.dataValues.agencys[index].discountPrice;
+            }
+        }
+        return {
+            success: true,
+            data: {
+                items: listMarketProduct,
+                totalItem:count
+            }
+        }
+    } catch (e) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `${e}`
+        }
+    }
+}

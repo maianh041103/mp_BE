@@ -156,6 +156,19 @@ module.exports.createProductService = async (result) => {
             message:`Không tồn tại chi nhánh co id = ${branchId} thuộc cửa hàng id = ${storeId}`
         }
     }
+    const marketProductExists = await models.MarketProduct.findOne({
+        where:{
+            branchId,
+            productUnitId
+        }
+    });
+    if(marketProductExists){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:`Sản phẩm đã tồn tại trên chợ`
+        }
+    }
     let newMarketProduct;
     const t = await models.sequelize.transaction(async (t) => {
         const imageString = images.join("/");
@@ -835,6 +848,30 @@ module.exports.getListAgencyService = async (query) => {
         data: {
             items: rows,
             totalItem: count
+        }
+    }
+}
+
+module.exports.getStatusAgencyService = async (params)=>{
+    try {
+        const {id, storeId} = params;
+        const requestAgency = await models.RequestAgency.findOne({
+            where:{
+                storeId:id,
+                agencyId:storeId
+            }
+        });
+        let status = requestAgency?requestAgency.status:"false";
+        return {
+            success: true,
+            data: {
+                status
+            }
+        }
+    }catch(e){
+        return{
+            error:true,
+            status:status
         }
     }
 }

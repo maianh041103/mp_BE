@@ -144,19 +144,19 @@ module.exports = (sequelize, DataTypes) => {
 
         MarketProduct.belongsTo(models.Branch,{
             as:"branch",
-            sourceKey:"id",
+            targetKey:"id",
             foreignKey: "branchId"
         });
 
         MarketProduct.belongsTo(models.Image,{
             as:"imageCenter",
-            sourceKey:"id",
+            targetKey:"id",
             foreignKey:"thumbnail"
         });
 
         MarketProduct.belongsTo(models.ProductUnit,{
             as:"productUnit",
-            soureKey:"id",
+            targetKey:"id",
             foreignKey:"productUnitId"
         })
     };

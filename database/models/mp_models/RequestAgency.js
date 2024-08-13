@@ -38,16 +38,21 @@ module.exports = (sequelize, DataTypes) => {
         RequestAgency.belongsTo(models.Store, {
             as: 'store',
             foreignKey: 'storeId',
-            sourceKey: 'id',
+            targetKey: 'id',
         });
         RequestAgency.belongsTo(models.Store, {
             as: "agency",
             foreignKey: "agencyId",
-            sourceKey: "id"
+            targetKey: "id"
         })
         RequestAgency.belongsTo(models.GroupAgency, {
             as: "groupAgency",
             foreignKey: "groupAgencyId",
+            targetKey: "id"
+        });
+        RequestAgency.hasMany(models.MarketProductAgency,{
+            as:"productAgencys",
+            foreignKey: "agencyId",
             sourceKey: "id"
         })
     };
