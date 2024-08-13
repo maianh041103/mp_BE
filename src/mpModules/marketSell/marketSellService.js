@@ -162,11 +162,11 @@ const marketOrderInclude = [
         model: models.Branch,
         as: "toBranch",
         attributes: ["id", "name", "phone", "address1", "address2"],
-        include:[
+        include: [
             {
-                model:models.Store,
-                as:"store",
-                attributes: ["id","name"]
+                model: models.Store,
+                as: "store",
+                attributes: ["id", "name"]
             }
         ]
     },
@@ -176,7 +176,6 @@ const marketOrderInclude = [
         attributes: ["id", "status", "time", "note"]
     }
 ];
-const marketProductPrivateInclude =
 
 module.exports.createAddressService = async (result) => {
     try {
@@ -479,13 +478,12 @@ module.exports.getDetailProductService = async (result) => {
 module.exports.getAllStoreService = async (result) => {
     try {
         const {storeId, limit = 10, page = 1} = result;
-        let where = {
-            id: {
-                [Op.ne]: storeId
-            }
-        }
         const listStore = await models.Store.findAll({
-            where,
+            where: {
+                id: {
+                    [Op.ne]: storeId
+                }
+            },
             attributes: [
                 "id", "name", "phone", "email", "field", "address", "wardId", "districtId", "provinceId", "logoId",
                 [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
@@ -497,8 +495,19 @@ module.exports.getAllStoreService = async (result) => {
             limit: parseInt(limit),
             offset: (parseInt(page) - 1) * parseInt(limit)
         });
-        const count = await model.Store.count({
-            where
+
+        const count = await models.Store.count({
+            where:{
+                id: {
+                    [Op.ne]: storeId
+                },
+                [Op.and]: Sequelize.literal(`EXISTS (
+                SELECT 1 
+                FROM market_products 
+                WHERE market_products.storeId = Store.id 
+                AND market_products.deletedAt IS NULL
+            )`)
+            },
         })
         for (let item of listStore) {
             item.dataValues.totalProduct = parseInt(item.dataValues.totalProduct);
@@ -507,8 +516,8 @@ module.exports.getAllStoreService = async (result) => {
         return {
             success: true,
             data: {
-                items:listStore,
-                totalItem:count
+                items: listStore,
+                totalItem: count
             }
         }
     } catch (e) {
@@ -1114,7 +1123,7 @@ module.exports.changeStatusMarketOrderService = async (result) => {
 
 module.exports.getProductPrivateService = async (result) => {
     try {
-        const {storeId, limit = 10,page = 1, keyword} = result;
+        const {storeId, limit = 10, page = 1, keyword} = result;
         let include = [
             {
                 model: models.Store,
@@ -1129,10 +1138,10 @@ module.exports.getProductPrivateService = async (result) => {
                 }]
             },
             {
-                model:models.MarketProductAgency,
-                as:"agencys",
-                where:Sequelize.literal('(`agencys`.`agencyId` = `store->agencys`.`id` OR `agencys`.`groupAgencyId` = `store->agencys`.`groupAgencyId`) AND `agencys`.`marketProductId` = `MarketProduct`.`id`'),
-                required:false
+                model: models.MarketProductAgency,
+                as: "agencys",
+                where: Sequelize.literal('(`agencys`.`agencyId` = `store->agencys`.`id` OR `agencys`.`groupAgencyId` = `store->agencys`.`groupAgencyId`) AND `agencys`.`marketProductId` = `MarketProduct`.`id`'),
+                required: false
             }
         ];
         let where = {
@@ -1141,39 +1150,39 @@ module.exports.getProductPrivateService = async (result) => {
             },
             marketType: marketConfigContant.MARKET_TYPE.PRIVATE,
         };
-        if(keyword && keyword.trim() !== ""){
+        if (keyword && keyword.trim() !== "") {
             include.push({
-                model:models.Product,
-                as:"product",
+                model: models.Product,
+                as: "product",
                 where: {
                     name: {
                         [Op.like]: `%${keyword.trim()}%`
                     }
                 },
-                attributes:["name"]
+                attributes: ["name"]
             })
         }
         const listMarketProduct = await models.MarketProduct.findAll({
             where,
             include,
-            limit:parseInt(limit),
-            page:(parseInt(page) - 1)*(parseInt(limit))
+            limit: parseInt(limit),
+            page: (parseInt(page) - 1) * (parseInt(limit))
         });
-        const index = include.findIndex(item=>{
+        const index = include.findIndex(item => {
             return item.as === "agencys";
         });
-        include.splice(index,1);
+        include.splice(index, 1);
         console.log(include);
         const count = await models.MarketProduct.count({
             where,
             include
         });
-        for(const marketProduct of listMarketProduct){
-            if(marketProduct.agencys.length > 0){
-                let index = marketProduct.agencys.findIndex(item=>{
+        for (const marketProduct of listMarketProduct) {
+            if (marketProduct.agencys.length > 0) {
+                let index = marketProduct.agencys.findIndex(item => {
                     return item.agencyId !== null;
                 });
-                if(index === -1) index = 0;
+                if (index === -1) index = 0;
                 marketProduct.dataValues.price = marketProduct.dataValues.agencys[index].dataValues.price;
                 marketProduct.dataValues.discountPrice = marketProduct.dataValues.agencys[index].discountPrice;
             }
@@ -1182,7 +1191,7 @@ module.exports.getProductPrivateService = async (result) => {
             success: true,
             data: {
                 items: listMarketProduct,
-                totalItem:count
+                totalItem: count
             }
         }
     } catch (e) {
