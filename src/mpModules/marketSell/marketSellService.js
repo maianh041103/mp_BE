@@ -161,7 +161,14 @@ const marketOrderInclude = [
     {
         model: models.Branch,
         as: "toBranch",
-        attributes: ["id", "name", "phone", "address1", "address2"]
+        attributes: ["id", "name", "phone", "address1", "address2"],
+        include:[
+            {
+                model:models.Store,
+                as:"store",
+                attributes: ["id","name"]
+            }
+        ]
     },
     {
         model: models.HistoryPurchase,
@@ -820,7 +827,7 @@ module.exports.createMarketOrderService = async (result) => {
                     marketProductId: item.marketProductId,
                     marketOrderId: newMarketOrderBuy.id,
                     quantity: item.quantity,
-                    price: marketProductExists.price
+                    price: marketProductExists.discountPrice
                 }, {
                     transaction: t
                 });
@@ -1100,7 +1107,7 @@ module.exports.changeStatusMarketOrderService = async (result) => {
 
 module.exports.getProductPrivateService = async (result) => {
     try {
-        const {storeId, limit = 10,page = 1} = result;
+        const {storeId, limit = 10,page = 1, keyword} = result;
         let include = [
             {
                 model: models.Store,
@@ -1127,28 +1134,32 @@ module.exports.getProductPrivateService = async (result) => {
             },
             marketType: marketConfigContant.MARKET_TYPE.PRIVATE,
         };
+        if(keyword && keyword.trim() !== ""){
+            include.push({
+                model:models.Product,
+                as:"product",
+                where: {
+                    name: {
+                        [Op.like]: `%${keyword.trim()}%`
+                    }
+                },
+                attributes:["name"]
+            })
+        }
         const listMarketProduct = await models.MarketProduct.findAll({
             where,
             include,
             limit:parseInt(limit),
             page:(parseInt(page) - 1)*(parseInt(limit))
         });
+        const index = include.findIndex(item=>{
+            return item.as === "agencys";
+        });
+        include.splice(index,1);
+        console.log(include);
         const count = await models.MarketProduct.count({
             where,
-            include:[
-                {
-                    model: models.Store,
-                    as: "store",
-                    include: [{
-                        model: models.RequestAgency,
-                        as: "agencys",
-                        where: {
-                            agencyId: storeId,
-                            status: marketConfigContant.AGENCY_STATUS.ACTIVE
-                        }
-                    }]
-                }
-            ]
+            include
         });
         for(const marketProduct of listMarketProduct){
             if(marketProduct.agencys.length > 0){

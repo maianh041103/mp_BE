@@ -85,7 +85,7 @@ const marketProductInclude = [
 ]
 
 module.exports.createProductService = async (result) => {
-    const {
+    let {
         productId,
         marketType,
         price,
@@ -168,6 +168,9 @@ module.exports.createProductService = async (result) => {
             code:HttpStatusCode.BAD_REQUEST,
             message:`Sản phẩm đã tồn tại trên chợ`
         }
+    }
+    if(discountPrice <= 0){
+        discountPrice = price;
     }
     let newMarketProduct;
     const t = await models.sequelize.transaction(async (t) => {
