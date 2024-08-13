@@ -479,12 +479,13 @@ module.exports.getDetailProductService = async (result) => {
 module.exports.getAllStoreService = async (result) => {
     try {
         const {storeId, limit = 10, page = 1} = result;
+        let where = {
+            id: {
+                [Op.ne]: storeId
+            }
+        }
         const listStore = await models.Store.findAll({
-            where: {
-                id: {
-                    [Op.ne]: storeId
-                }
-            },
+            where,
             attributes: [
                 "id", "name", "phone", "email", "field", "address", "wardId", "districtId", "provinceId", "logoId",
                 [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
@@ -496,13 +497,19 @@ module.exports.getAllStoreService = async (result) => {
             limit: parseInt(limit),
             offset: (parseInt(page) - 1) * parseInt(limit)
         });
+        const count = await model.Store.count({
+            where
+        })
         for (let item of listStore) {
             item.dataValues.totalProduct = parseInt(item.dataValues.totalProduct);
             item.dataValues.totalQuantitySold = parseInt(item.dataValues.totalQuantitySold);
         }
         return {
             success: true,
-            data: listStore
+            data: {
+                items:listStore,
+                totalItem:count
+            }
         }
     } catch (e) {
         return {
