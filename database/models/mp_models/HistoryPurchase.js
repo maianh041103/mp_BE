@@ -19,6 +19,7 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: false,
                 type: DataTypes.ENUM(
                     marketSellContant.STATUS_ORDER.DONE,
+                    marketSellContant.STATUS_ORDER.CONFIRM,
                     marketSellContant.STATUS_ORDER.PROCESSING,
                     marketSellContant.STATUS_ORDER.SEND,
                     marketSellContant.STATUS_ORDER.CANCEL,
@@ -34,6 +35,10 @@ module.exports = (sequelize, DataTypes) => {
             note:{
                 allowNull:true,
                 type:DataTypes.TEXT
+            },
+            createdBy:{
+                allowNull:true,
+                type:DataTypes.INTEGER
             }
         },
         {

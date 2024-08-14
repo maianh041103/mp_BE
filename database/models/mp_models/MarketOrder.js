@@ -39,6 +39,7 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: false,
                 type:DataTypes.ENUM(
                     marketSellContant.STATUS_ORDER.DONE,
+                    marketSellContant.STATUS_ORDER.CONFIRM,
                     marketSellContant.STATUS_ORDER.SEND,
                     marketSellContant.STATUS_ORDER.CANCEL,
                     marketSellContant.STATUS_ORDER.PENDING,
@@ -46,6 +47,22 @@ module.exports = (sequelize, DataTypes) => {
                     marketSellContant.STATUS_ORDER.CLOSED
                 ),
                 defaultValues: marketSellContant.STATUS_ORDER.PENDING,
+            },
+            note:{
+                allowNull:true,
+                type: DataTypes.TEXT,
+            },
+            wardId:{
+                allowNull:true,
+                type: DataTypes.INTEGER(10).UNSIGNED,
+            },
+            districtId:{
+                allowNull:true,
+                type:DataTypes.INTEGER(10).UNSIGNED,
+            },
+            provinceId:{
+                allowNull:true,
+                type: DataTypes.INTEGER(10).UNSIGNED,
             },
             createdAt: {
                 allowNull: true,
@@ -92,7 +109,22 @@ module.exports = (sequelize, DataTypes) => {
             as:"historyPurchase",
             foreignKey:"marketOrderId",
             sourceKey:"id"
-        })
+        });
+        MarketOrder.belongsTo(models.Ward,{
+            as:"ward",
+            foreignKey:"wardId",
+            targetKey:"id"
+        });
+        MarketOrder.belongsTo(models.District,{
+            as:"district",
+            foreignKey:"districtId",
+            targetKey:"id"
+        });
+        MarketOrder.belongsTo(models.Province,{
+            as:"province",
+            foreignKey:"provinceId",
+            targetKey:"id"
+        });
     };
     return MarketOrder;
 };
