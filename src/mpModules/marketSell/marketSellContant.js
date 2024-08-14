@@ -12,3 +12,7 @@ module.exports.MARKET_ORDER_TYPE = {
     BUY:"buy",
     SELL:"sell"
 }
+
+module.exports.TIME_SHIP = {
+    TWO:2
+}

@@ -26,6 +26,14 @@ const requestAgencyInclude = [
                 as:"store"
             }
         ],
+    },
+    {
+        model:models.Store,
+        as:"store"
+    },
+    {
+        model:models.Store,
+        as:"agency"
     }
 ]
 const marketProductInclude = [
@@ -833,8 +841,10 @@ module.exports.changeStatusAgencyService = async (result) => {
 }
 
 module.exports.getListAgencyService = async (query) => {
-    const {status, limit = 10, page = 1} = query;
-    let where = {};
+    const {status, limit = 10, page = 1, storeId} = query;
+    let where = {
+        storeId
+    };
     if (status) {
         where.status = status;
     }
