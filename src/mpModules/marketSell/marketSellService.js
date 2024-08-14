@@ -967,7 +967,7 @@ module.exports.getAllMarketOrderService = async (result) => {
 
 module.exports.changeStatusMarketOrderService = async (result) => {
     try {
-        let {id, status, note, products} = result;
+        let {id, status, note, products, delivery, loginUser} = result;
         const marketOrderExists = await models.MarketOrder.findOne({
             where: {
                 id,
@@ -994,16 +994,65 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                 marketOrderId: id,
                 status,
                 time: new Date(),
+                createdBy:loginUser.id,
                 note
             }, {
                 transaction: t
             });
+            //Processing : Tạo mã seri và chon lô cho sản phẩm bán
+            if(status === marketSellContant.STATUS_ORDER.PROCESSING){
+                for (const item of products) {
+                    let series = item?.listSeri.map(seri=>{
+                        return{
+                            code:seri,
+                            marketOrderId:id,
+                            marketProductId:item?.marketProductId,
+                            createdBy:loginUser.id
+                        }
+                    });
+                    if (Array.isArray(series) && series.length > 0) {
+                        await models.Seri.bulkCreate(series, {
+                            transaction: t
+                        })
+                    }
+                    if(item?.batches && item?.batches.length > 0) {
+                        for (const batch of item?.batches) {
+                            await models.MarketOrderBatch.create({
+                                marketOrderId: id,
+                                marketProductId: item.marketProductId,
+                                batchId: batch.batchId,
+                                quantity: batch.quantity
+                            }, {
+                                transaction: t
+                            });
+                        }
+                    }
+                }
+            }
             let number;
             if (status === marketSellContant.STATUS_ORDER.SEND || status === marketSellContant.STATUS_ORDER.CANCEL) {
                 if (status === marketSellContant.STATUS_ORDER.SEND) {
                     number = -1;
+                    let endDate = new Date();
+                    endDate.setDate(endDate.getDate() + 2);
+                    await models.Delivery.create({
+                        code:delivery.code,
+                        price:delivery.price,
+                        name:delivery.name,
+                        startDate:new Date(),
+                        endDate
+                    },{
+                        transaction:t
+                    })
                 } else {
                     number = 1;
+                    await models.Seri.destroy({
+                        where:{
+                            marketOrderId:id
+                        }
+                    },{
+                        transaction:t
+                    });
                 }
                 for (const item of marketOrderExists.products) {
                     await models.MarketProduct.increment({
@@ -1045,45 +1094,31 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                         }
                     )
                 }
-                if (status === marketSellContant.STATUS_ORDER.SEND) {
-                    for (const item of products) {
-                        for (const batch of item.batches) {
-                            await models.MarketOrderBatch.create({
-                                marketOrderId: id,
-                                marketProductId: item.marketProductId,
-                                batchId: batch.batchId,
-                                quantity: batch.quantity
-                            }, {
-                                transaction: t
-                            });
-                        }
+                const listMarketOrderBatch = await models.MarketOrderBatch.findAll({
+                    where: {
+                        marketOrderId: id
                     }
-                } else {
-                    const listMarketOrderBatch = await models.MarketOrderBatch.findAll({
-                        where: {
-                            marketOrderId: id
-                        }
-                    });
-                    //Tao products
-                    products = [];
-                    for (const item of listMarketOrderBatch) {
-                        const index = products.findIndex(product => product.marketProductId === item.marketProductId);
-                        if (index === -1) {
-                            products.push({
-                                marketProductId: item.marketProductId,
-                                batches: [
-                                    {
-                                        batchId: item.batchId,
-                                        quantity: item.quantity
-                                    }
-                                ]
-                            })
-                        } else {
-                            products[index].batches.push({
-                                batchId: item.batchId,
-                                quantity: item.quantity
-                            })
-                        }
+                });
+
+                //Tao products
+                products = [];
+                for (const item of listMarketOrderBatch) {
+                    const index = products.findIndex(product => product.marketProductId === item.marketProductId);
+                    if (index === -1) {
+                        products.push({
+                            marketProductId: item.marketProductId,
+                            batches: [
+                                {
+                                    batchId: item.batchId,
+                                    quantity: item.quantity
+                                }
+                            ]
+                        })
+                    } else {
+                        products[index].batches.push({
+                            batchId: item.batchId,
+                            quantity: item.quantity
+                        })
                     }
                 }
 
