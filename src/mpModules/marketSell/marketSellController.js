@@ -279,6 +279,7 @@ module.exports.changeStatusMarketOrder = async (req,res)=>{
         const result = await marketSellService.changeStatusMarketOrderService(
             {
                 storeId: loginUser.storeId,
+                loginUser,
                 id,
                 ...req.body
             }
