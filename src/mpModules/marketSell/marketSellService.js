@@ -160,7 +160,14 @@ const marketOrderInclude = [
     {
         model: models.Branch,
         as: "branch",
-        attributes: ["id", "name", "phone", "address1", "address2"]
+        attributes: ["id", "name", "phone", "address1", "address2"],
+        include: [
+            {
+                model: models.Store,
+                as: "store",
+                attributes: ["id", "name"]
+            }
+        ]
     },
     {
         model: models.Branch,
@@ -1034,7 +1041,7 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                 if (status === marketSellContant.STATUS_ORDER.SEND) {
                     number = -1;
                     let endDate = new Date();
-                    endDate.setDate(endDate.getDate() + 2);
+                    endDate.setDate(endDate.getDate() + marketSellContant.TIME_SHIP.TWO);
                     await models.Delivery.create({
                         code:delivery.code,
                         price:delivery.price,
