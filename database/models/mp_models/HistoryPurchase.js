@@ -38,7 +38,7 @@ module.exports = (sequelize, DataTypes) => {
             },
             createdBy:{
                 allowNull:true,
-                type:DataTypes.INTEGER
+                type:DataTypes.INTEGER(10).UNSIGNED
             }
         },
         {
@@ -59,6 +59,11 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: "marketProductId",
             targetKey: "id"
         });
+        HistoryPurchase.belongsTo(models.User,{
+            as:"userCreated",
+            foreignKey: "createdBy",
+            targetKey: "id"
+        })
     };
     return HistoryPurchase
 };
