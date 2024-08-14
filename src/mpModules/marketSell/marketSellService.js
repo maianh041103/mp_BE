@@ -137,7 +137,7 @@ const marketOrderInclude = [
             {
                 model: models.MarketProduct,
                 as: "marketProduct",
-                attributes: ["id"],
+                attributes: ["id","thumbnail"],
                 include: [
                     {
                         model: models.Product,
@@ -148,6 +148,10 @@ const marketOrderInclude = [
                         model: models.ProductUnit,
                         as: "productUnit",
                         attributes: ["id", "unitName", "exchangeValue"]
+                    },
+                    {
+                        model: models.Image,
+                        as:"imageCenter"
                     }
                 ]
             }
@@ -174,6 +178,21 @@ const marketOrderInclude = [
         model: models.HistoryPurchase,
         as: "historyPurchase",
         attributes: ["id", "status", "time", "note"]
+    },
+    {
+        model:models.Ward,
+        as:"ward",
+        attributes: ["name", "name2"]
+    },
+    {
+        model:models.District,
+        as:"district",
+        attributes: ["name", "name2"]
+    },
+    {
+        model:models.Province,
+        as:"province",
+        attributes: ["name", "name2"]
     }
 ];
 
@@ -813,6 +832,9 @@ module.exports.createMarketOrderService = async (result) => {
             newMarketOrderBuy = await models.MarketOrder.create({
                 branchId, addressId,
                 address: addressExists.address,
+                districtId:addressExists.districtId,
+                wardId:addressExists.wardId,
+                provinceId:addressExists.provinceId,
                 status: marketSellContant.STATUS_ORDER.PENDING,
                 phone: addressExists.phone,
                 toBranchId: toBranchId

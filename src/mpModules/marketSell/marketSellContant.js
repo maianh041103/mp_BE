@@ -1,5 +1,6 @@
 module.exports.STATUS_ORDER = {
     PENDING:"pending",
+    CONFIRM:"confirm",
     PROCESSING:"processing",
     SEND:"send",
     DONE:"done",
