@@ -307,3 +307,21 @@ module.exports.getProductPrivate = async(req,res)=>{
         res.json(respondWithClientError(e))
     }
 }
+
+//[GET] mp/api/market/sell/seri/:marketOrderProductId
+module.exports.getSeri = async (req,res)=>{
+    try {
+        const { loginUser = {}} = req;
+        const {marketOrderProductId} = req.params;
+        const result = await marketSellService.getSeriService(
+            {
+                storeId: loginUser.storeId,
+                marketOrderProductId
+            }
+        );
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (e) {
+        res.json(respondWithClientError(e))
+    }
+}

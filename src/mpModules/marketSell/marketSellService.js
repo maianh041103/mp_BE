@@ -1266,3 +1266,61 @@ module.exports.getProductPrivateService = async (result) => {
         }
     }
 }
+
+module.exports.getSeriService = async (result) => {
+    try {
+        const {marketOrderProductId} = result;
+        let where = {};
+        const marketOrderProductExists = await models.MarketOrderProduct.findOne({
+            where:{
+                id:marketOrderProductId
+            }
+        });
+        if(!marketOrderProductExists){
+            return{
+                error:true,
+                code:HttpStatusCode.BAD_REQUEST,
+                message:"Mã sản phẩm của đơn hàng không hợp lệ"
+            }
+        }
+        const marketProduct = await models.MarketProduct.findOne({
+            where:{
+                id:marketOrderProductExists.marketProductId
+            },
+            attributes:["id","thumbnail","productId"],
+            include:[
+                {
+                    model:models.Image,
+                    as:"imageCenter"
+                },
+                {
+                    model:models.Product,
+                    as:"product",
+                    attributes:["name"]
+                }
+            ]
+        });
+        marketProduct.dataValues.quantity = marketOrderProductExists.quantity;
+        const series = await models.Seri.findAll({
+            where:{
+                marketOrderId:marketOrderProductExists.marketOrderId,
+                marketProductId:marketOrderProductExists.marketProductId
+            }
+        });
+
+
+        return {
+            success: true,
+            data: {
+                marketProduct,
+                series
+            }
+        }
+    } catch (e) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Loi ${e}`
+        }
+    }
+}

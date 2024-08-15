@@ -799,7 +799,7 @@ module.exports.createRequestAgencyService = async (result) => {
 }
 
 module.exports.changeStatusAgencyService = async (result) => {
-    const {id, storeId, status, groupAgencyId} = result;
+    const {id, storeId, status} = result;
     const requestAgency = await models.RequestAgency.findOne({
         where: {
             storeId,
@@ -813,22 +813,8 @@ module.exports.changeStatusAgencyService = async (result) => {
             code: HttpStatusCode.BAD_REQUEST
         };
     }
-    const groupAgencyExists = await models.RequestAgency.findOne({
-        where: {
-            storeId,
-            id: groupAgencyId
-        }
-    });
-    if (!groupAgencyExists) {
-        return {
-            error: true,
-            message: "Không tìm thấy nhóm đại lý",
-            code: HttpStatusCode.BAD_REQUEST
-        };
-    }
     await models.RequestAgency.update({
-        status: status,
-        groupAgencyId
+        status: status
     }, {
         where: {
             id
@@ -886,6 +872,35 @@ module.exports.getStatusAgencyService = async (params)=>{
             error:true,
             status:status
         }
+    }
+}
+
+module.exports.changeAgencyService = async (query) => {
+    const {id, storeId,groupAgencyId} = query;
+    const agencyExists = await models.RequestAgency.findOne({
+        where: {
+            id, storeId
+        }
+    });
+    if (!agencyExists) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Không tồn tại đại lý có id = ${id} trong cửa hàng`
+        };
+    }
+    await models.RequestAgency.update(
+        {
+          groupAgencyId
+        },
+        {
+        where: {
+            id, storeId
+        }
+    });
+    return {
+        success: true,
+        data: null
     }
 }
 

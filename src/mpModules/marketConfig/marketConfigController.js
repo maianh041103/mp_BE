@@ -134,8 +134,7 @@ module.exports.changeStatusAgency = async (req, res) => {
         const result = await marketConfigService.changeStatusAgencyService(
             {
                 id, status,
-                storeId: loginUser.storeId,
-                ...req.body
+                storeId: loginUser.storeId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -171,6 +170,26 @@ module.exports.getStatusAgency = async (req,res)=>{
             {
                 id,
                 storeId: loginUser.storeId
+            }
+        );
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (e) {
+        res.json(respondWithClientError(e))
+    }
+}
+
+//[PATCH] mp/api/market/config/agency/:id
+module.exports.changeAgency = async (req,res)=>{
+    try {
+        const { loginUser = {} } = req;
+        const {id} = req.params;
+        const {groupAgencyId} = req.body;
+        const result = await marketConfigService.changeAgencyService(
+            {
+                id,
+                storeId: loginUser.storeId,
+                groupAgencyId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
