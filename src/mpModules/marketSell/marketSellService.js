@@ -44,24 +44,25 @@ const marketProductInclude = [
         attributes: ["id", "batchId", "quantity", "quantitySold"]
     },
     {
-        model: models.Store,
-        as: "store",
-        attributes: [
-            "id", "name", "phone", "email", "field", "address", "wardId", "districtId", "provinceId", "logoId",
-            [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
-    WHERE market_products.storeId = store.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
-            [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
-    WHERE market_products.storeId = store.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
-        ],
-        include: [{
-            model: models.Image,
-            as: "logo"
-        }]
-    },
-    {
         model: models.Branch,
         as: "branch",
-        attributes: ["id", "name", "phone"]
+        attributes: [
+            "id", "name", "phone", "address1", "address2", "wardId", "districtId", "provinceId",
+            [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
+    WHERE market_products.branchId = branch.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
+            [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
+    WHERE market_products.branchId = branch.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
+        ],
+        include: [{
+            model:models.Store,
+            as:"store",
+            include:[
+                {
+                    model: models.Image,
+                    as: "logo"
+                }
+            ]
+        }]
     },
     {
         model: models.ProductUnit,
@@ -91,7 +92,7 @@ const marketAddressInclude = [
         attributes: ["id", "name"]
     }
 ];
-const storeInclude = [
+const branchInclude = [
     {
         model: models.MarketProduct,
         as: "marketProduct",
@@ -99,8 +100,12 @@ const storeInclude = [
         required: true
     },
     {
-        model: models.Image,
-        as: "logo"
+        model:models.Store,
+        as:"store",
+        include:[{
+            model: models.Image,
+            as: "logo"
+        }]
     }
 ];
 const cartInclude = [
@@ -205,7 +210,7 @@ const marketOrderInclude = [
 
 module.exports.createAddressService = async (result) => {
     try {
-        let {phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress, branchId} = result;
+        let {phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress, branchId, loginUser} = result;
         let newAddress;
         const branchExists = await models.Branch.findOne({
             where: {
@@ -230,7 +235,8 @@ module.exports.createAddressService = async (result) => {
                 phone = store.phone;
             }
             newAddress = await models.Address.create({
-                phone, wardId, districtId, provinceId, address, branchId, isDefaultAddress
+                phone, wardId, districtId, provinceId, address, branchId, isDefaultAddress,
+                fullName: loginUser.fullName
             }, {
                 transaction: t
             });
@@ -266,7 +272,7 @@ module.exports.createAddressService = async (result) => {
 
 module.exports.getAllAddressService = async (result) => {
     try {
-        const {branchId, isDefaultAddress, limit = 20, page = 1} = result;
+        const {branchId, isDefaultAddress, limit = 20, page = 1,loginUser} = result;
         if (!branchId) {
             return {
                 error: true,
@@ -340,7 +346,7 @@ module.exports.getDetailAddressService = async (result) => {
 
 module.exports.updateAddressService = async (result) => {
     try {
-        let {id, storeId, phone, wardId, districtId, provinceId, address, isDefaultAddress, branchId} = result;
+        let {id, storeId, phone, wardId, districtId, provinceId, address, isDefaultAddress, branchId, loginUser} = result;
         const addressExists = await models.Address.findOne({
             where: {
                 id
@@ -370,7 +376,8 @@ module.exports.updateAddressService = async (result) => {
             }
         }
         await models.Address.update({
-            phone, wardId, districtId, provinceId, address, isDefaultAddress
+            phone, wardId, districtId, provinceId, address, isDefaultAddress,
+            fullName:loginUser.fullName
         }, {
             where: {
                 id
@@ -456,8 +463,11 @@ module.exports.getDetailProductService = async (result) => {
         const listProduct = await models.MarketProduct.findAll({
             where: {
                 marketType: marketConfigContant.MARKET_TYPE.COMMON,
-                storeId: {
-                    [Op.eq]: marketProduct.storeId
+                branchId: {
+                    [Op.eq]: marketProduct.branchId
+                },
+                id:{
+                    [Op.ne]:marketProduct.id
                 }
             },
             include: [
@@ -501,48 +511,55 @@ module.exports.getDetailProductService = async (result) => {
     }
 }
 
-module.exports.getAllStoreService = async (result) => {
+module.exports.getAllBranchService = async (result) => {
     try {
-        const {storeId, limit = 10, page = 1} = result;
-        const listStore = await models.Store.findAll({
+        const {branchId, limit = 10, page = 1} = result;
+        if(!branchId){
+            return{
+                error:true,
+                code:HttpStatusCode.BAD_REQUEST,
+                message:"Vui lòng nhập thông tin chi nhánh"
+            }
+        }
+        const listBranch = await models.Branch.findAll({
             where: {
                 id: {
-                    [Op.ne]: storeId
+                    [Op.ne]: branchId
                 }
             },
             attributes: [
-                "id", "name", "phone", "email", "field", "address", "wardId", "districtId", "provinceId", "logoId",
+                "id", "name", "phone", "address1", "address2", "wardId", "districtId", "provinceId",
                 [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
-    WHERE market_products.storeId = Store.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
+    WHERE market_products.branchId = Branch.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
                 [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
-    WHERE market_products.storeId = Store.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
+    WHERE market_products.branchId = Branch.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
             ],
-            include: storeInclude,
+            include: branchInclude,
             limit: parseInt(limit),
             offset: (parseInt(page) - 1) * parseInt(limit)
         });
 
-        const count = await models.Store.count({
+        const count = await models.Branch.count({
             where:{
                 id: {
-                    [Op.ne]: storeId
+                    [Op.ne]: branchId
                 },
                 [Op.and]: Sequelize.literal(`EXISTS (
                 SELECT 1 
                 FROM market_products 
-                WHERE market_products.storeId = Store.id 
+                WHERE market_products.branchId = Branch.id 
                 AND market_products.deletedAt IS NULL
             )`)
             },
         })
-        for (let item of listStore) {
+        for (let item of listBranch) {
             item.dataValues.totalProduct = parseInt(item.dataValues.totalProduct);
             item.dataValues.totalQuantitySold = parseInt(item.dataValues.totalQuantitySold);
         }
         return {
             success: true,
             data: {
-                items: listStore,
+                items: listBranch,
                 totalItem: count
             }
         }
@@ -555,27 +572,27 @@ module.exports.getAllStoreService = async (result) => {
     }
 }
 
-module.exports.getDetailStoreService = async (result) => {
+module.exports.getDetailBranchService = async (result) => {
     try {
         const {storeId, id} = result;
-        const store = await models.Store.findOne({
+        const branch = await models.Branch.findOne({
             where: {
                 id
             },
             attributes: [
-                "id", "name", "phone", "email", "field", "address", "wardId", "districtId", "provinceId", "logoId",
+                "id", "name", "phone", "address1", "address2", "wardId", "districtId", "provinceId",
                 [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
-    WHERE market_products.storeId = Store.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
+    WHERE market_products.branchId = Branch.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
                 [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
-    WHERE market_products.storeId = Store.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
+    WHERE market_products.branchId = Branch.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
             ],
-            include: storeInclude
+            include: branchInclude
         });
-        store.dataValues.totalProduct = parseInt(store.dataValues.totalProduct);
-        store.dataValues.totalQuantitySold = parseInt(store.dataValues.totalQuantitySold);
+        branch.dataValues.totalProduct = parseInt(branch.dataValues.totalProduct);
+        branch.dataValues.totalQuantitySold = parseInt(branch.dataValues.totalQuantitySold);
         return {
             success: true,
-            data: store
+            data: branch
         }
     } catch (e) {
         return {
@@ -821,7 +838,7 @@ module.exports.deleteProductInCartService = async (result) => {
 
 module.exports.createMarketOrderService = async (result) => {
     try {
-        const {branchId, addressId, listProduct, toBranchId} = result;
+        const {branchId, addressId, listProduct, toBranchId, loginUser} = result;
         const addressExists = await models.Address.findOne({
             where: {
                 id: addressId
@@ -844,7 +861,8 @@ module.exports.createMarketOrderService = async (result) => {
                 provinceId:addressExists.provinceId,
                 status: marketSellContant.STATUS_ORDER.PENDING,
                 phone: addressExists.phone,
-                toBranchId: toBranchId
+                toBranchId: toBranchId,
+                fullName:loginUser.fullName
             }, {
                 transaction: t
             });
@@ -1187,16 +1205,23 @@ module.exports.changeStatusMarketOrderService = async (result) => {
 
 module.exports.getProductPrivateService = async (result) => {
     try {
-        const {storeId, limit = 10, page = 1, keyword} = result;
+        const {storeId,branchId, limit = 10, page = 1, keyword} = result;
+        if(!branchId){
+            return{
+                error:true,
+                code:HttpStatusCode.BAD_REQUEST,
+                message:"Vui lòng gửi thông tin chi nhánh"
+            }
+        }
         let include = [
             {
-                model: models.Store,
-                as: "store",
+                model: models.Branch,
+                as: "branch",
                 include: [{
                     model: models.RequestAgency,
                     as: "agencys",
                     where: {
-                        agencyId: storeId,
+                        agencyId: branchId,
                         status: marketConfigContant.AGENCY_STATUS.ACTIVE
                     }
                 }]
@@ -1204,13 +1229,13 @@ module.exports.getProductPrivateService = async (result) => {
             {
                 model: models.MarketProductAgency,
                 as: "agencys",
-                where: Sequelize.literal('(`agencys`.`agencyId` = `store->agencys`.`id` OR `agencys`.`groupAgencyId` = `store->agencys`.`groupAgencyId`) AND `agencys`.`marketProductId` = `MarketProduct`.`id`'),
+                where: Sequelize.literal('(`agencys`.`agencyId` = `branch->agencys`.`id` OR `agencys`.`groupAgencyId` = `branch->agencys`.`groupAgencyId`) AND `agencys`.`marketProductId` = `MarketProduct`.`id`'),
                 required: false
             }
         ];
         let where = {
-            storeId: {
-                [Op.ne]: storeId
+            branchId: {
+                [Op.ne]: branchId
             },
             marketType: marketConfigContant.MARKET_TYPE.PRIVATE,
         };
@@ -1236,7 +1261,7 @@ module.exports.getProductPrivateService = async (result) => {
             return item.as === "agencys";
         });
         include.splice(index, 1);
-        console.log(include);
+
         const count = await models.MarketProduct.count({
             where,
             include

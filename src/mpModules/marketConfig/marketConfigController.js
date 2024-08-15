@@ -48,7 +48,8 @@ module.exports.changeStatusProduct = async (req, res) => {
         const {id,status} = req.params;
         const result = await marketConfigService.changeStatusProductService(
             {
-                id,status,storeId: loginUser.storeId
+                id,status,storeId: loginUser.storeId,
+                ...req.query
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -126,7 +127,7 @@ module.exports.createAgency = async (req, res) => {
     }
 }
 
-//[PATCH] mp/api/market/config/agency/changeStatus
+//[PATCH] mp/api/market/config/agency/changeStatus/:id/:status
 module.exports.changeStatusAgency = async (req, res) => {
     try {
         const { loginUser = {} } = req;
@@ -169,7 +170,8 @@ module.exports.getStatusAgency = async (req,res)=>{
         const result = await marketConfigService.getStatusAgencyService(
             {
                 id,
-                storeId: loginUser.storeId
+                storeId: loginUser.storeId,
+                ...req.query
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -182,14 +184,13 @@ module.exports.getStatusAgency = async (req,res)=>{
 //[PATCH] mp/api/market/config/agency/:id
 module.exports.changeAgency = async (req,res)=>{
     try {
-        const { loginUser = {} } = req;
         const {id} = req.params;
         const {groupAgencyId} = req.body;
         const result = await marketConfigService.changeAgencyService(
             {
                 id,
-                storeId: loginUser.storeId,
-                groupAgencyId
+                groupAgencyId,
+                ...req.query
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -207,7 +208,8 @@ module.exports.deleteAgency = async (req,res)=>{
         const result = await marketConfigService.deleteAgencyService(
             {
                 id,
-                storeId: loginUser.storeId
+                storeId: loginUser.storeId,
+                ...req.query
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -260,7 +262,8 @@ module.exports.getDetailGroupAgency = async (req,res)=>{
         const result = await marketConfigService.getDetailGroupAgencyService(
             {
                 id,
-                storeId: loginUser.storeId
+                storeId: loginUser.storeId,
+                ...req.query
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -277,8 +280,8 @@ module.exports.changeGroupAgency = async (req,res)=>{
         const result = await marketConfigService.changeGroupAgencyService(
             {
                 ...req.body,
-                storeId: loginUser.storeId,
                 id: req.params.id,
+                ...req.query,
                 loginUser
             }
         );

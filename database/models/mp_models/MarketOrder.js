@@ -15,6 +15,10 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: true,
                 type: Sequelize.STRING(20)
             },
+            fullName: {
+              allowNull: true,
+              type: Sequelize.STRING(255)
+            },
             branchId: {
                 allowNull: false,
                 type: DataTypes.INTEGER(10).UNSIGNED,

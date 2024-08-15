@@ -10,6 +10,10 @@ module.exports = (sequelize, DataTypes) => {
                 autoIncrement: true,
                 allowNull: false,
             },
+            fullName: {
+                type: DataTypes.STRING,
+                allowNull: true,
+            },
             phone: {
                 allowNull: true,
                 type: Sequelize.STRING(15)

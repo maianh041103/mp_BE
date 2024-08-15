@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
             autoIncrement: true,
             allowNull: false,
         },
-        storeId: {
+        branchId: {
             allowNull: false,
             type: DataTypes.INTEGER(10).UNSIGNED,
         },
@@ -35,12 +35,12 @@ module.exports = (sequelize, DataTypes) => {
     });
     RequestAgency.associate = function (models) {
         // associations can be defined here
-        RequestAgency.belongsTo(models.Store, {
-            as: 'store',
-            foreignKey: 'storeId',
+        RequestAgency.belongsTo(models.Branch, {
+            as: 'branch',
+            foreignKey: 'branchId',
             targetKey: 'id',
         });
-        RequestAgency.belongsTo(models.Store, {
+        RequestAgency.belongsTo(models.Branch, {
             as: "agency",
             foreignKey: "agencyId",
             targetKey: "id"
