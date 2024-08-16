@@ -150,7 +150,7 @@ export async function updateController(req, res) {
             address: _.get(req, "body.address", ""),
             position: _.get(req, "body.position", null),
             avatarId: _.get(req, "body.avatarId", null),
-            groupCustomerId: _.get(req, "body.groupCustomerId", null),
+            groupCustomerId: _.get(req, "body.groupCustomerId", []),
             password: hashPassword(_.get(req, "body.password", "")),
             wardId: _.get(req.body, "wardId", null),
             districtId: _.get(req.body, "districtId", null),

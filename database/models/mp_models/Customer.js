@@ -159,9 +159,9 @@ module.exports = (sequelize, Sequelize) => {
       targetKey: 'id',
     });
 
-    Customer.belongsTo(models.GroupCustomer, {
-      as: "groupCustomer",
-      foreignKey: "groupCustomerId",
+    Customer.hasMany(models.CustomerGroupCustomer, {
+      as: "listGroupCustomer",
+      foreignKey: "customerId",
       sourceKey: "id",
     });
 
