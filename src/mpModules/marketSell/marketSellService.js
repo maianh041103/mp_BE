@@ -492,9 +492,9 @@ module.exports.getDetailProductService = async (result) => {
             ]
         });
         marketProduct.dataValues.productWillCare = listProduct;
-        if (marketProduct.store) {
-            marketProduct.dataValues.store.dataValues.totalProduct = parseInt(marketProduct.dataValues.store.dataValues.totalProduct);
-            marketProduct.dataValues.store.dataValues.totalQuantitySold = parseInt(marketProduct.dataValues.store.dataValues.totalQuantitySold);
+        if (marketProduct.branch) {
+            marketProduct.dataValues.branch.dataValues.totalProduct = parseInt(marketProduct.dataValues.branch.dataValues.totalProduct);
+            marketProduct.dataValues.branch.dataValues.totalQuantitySold = parseInt(marketProduct.dataValues.branch.dataValues.totalQuantitySold);
         }
         return {
             success: true,
@@ -921,10 +921,17 @@ module.exports.createMarketOrderService = async (result) => {
 
 module.exports.getDetailMarketOrderService = async (result) => {
     try {
-        const {id} = result;
+        const {id, branchId} = result;
+        if(!branchId){
+            return{
+                error:true,
+                message:"Vui lòng truyền lên thông tin chi nhánh",
+                code:HttpStatusCode.BAD_REQUEST
+            }
+        }
         const marketOrder = await models.MarketOrder.findOne({
             where: {
-                id
+                id,branchId
             },
             include: marketOrderInclude
         });
@@ -987,7 +994,115 @@ module.exports.getAllMarketOrderService = async (result) => {
             message: `Loi ${e}`
         }
     }
+}
 
+module.exports.getDetailProductPrivateService = async (result)=>{
+    try {
+        const {id, storeId, branchId} = result;
+        if(!branchId){
+            return{
+                error:true,
+                code:HttpStatusCode.BAD_REQUEST,
+                message:"Vui lòng nhập thông tin chi nhánh"
+            }
+        }
+
+        let include = [
+            {
+                model: models.Branch,
+                as: "branch",
+                include: [{
+                    model: models.RequestAgency,
+                    as: "agencys",
+                    where: {
+                        agencyId: branchId,
+                        status: marketConfigContant.AGENCY_STATUS.ACTIVE
+                    }
+                }]
+            },
+            {
+                model: models.MarketProductAgency,
+                as: "agencys",
+                where: Sequelize.literal('(`agencys`.`agencyId` = `branch->agencys`.`id` OR `agencys`.`groupAgencyId` = `branch->agencys`.`groupAgencyId`) AND `agencys`.`marketProductId` = `MarketProduct`.`id`'),
+                required: false
+            },
+            {
+                model:models.Product,
+                as:"product",
+                attributes: ["id", "name", "shortName"]
+            }
+        ];
+
+        const marketProduct = await models.MarketProduct.findOne({
+            where: {
+                id,
+            },
+            include
+        });
+
+        if (!marketProduct) {
+            return {
+                error: true,
+                code: HttpStatusCode.BAD_REQUEST,
+                message: `Không tìm thấy sản phẩm có id = ${id} trên chợ`
+            }
+        }
+
+        if (marketProduct.images) {
+            marketProduct.dataValues.images = await getImages(marketProduct.images);
+        }
+
+        const listProduct = await models.MarketProduct.findAll({
+            where: {
+                marketType: marketConfigContant.MARKET_TYPE.PRIVATE,
+                branchId: {
+                    [Op.eq]: marketProduct.branchId
+                },
+                id:{
+                    [Op.ne]:marketProduct.id
+                }
+            },
+            include
+        });
+        for(const product of listProduct){
+            if (product.agencys.length > 0) {
+                let index = product.agencys.findIndex(item => {
+                    return item.agencyId !== null;
+                });
+                if (index === -1) index = 0;
+                product.dataValues.price = product.dataValues.agencys[index].dataValues.price;
+                product.dataValues.discountPrice = product.dataValues.agencys[index].discountPrice;
+            }
+        }
+        marketProduct.dataValues.productWillCare = listProduct;
+
+        if (marketProduct.branch) {
+            marketProduct.dataValues.branch.dataValues.totalProduct = parseInt(marketProduct.dataValues.branch.dataValues.totalProduct);
+            marketProduct.dataValues.branch.dataValues.totalQuantitySold = parseInt(marketProduct.dataValues.branch.dataValues.totalQuantitySold);
+        }
+
+        if (marketProduct.agencys.length > 0) {
+            let index = marketProduct.agencys.findIndex(item => {
+                return item.agencyId !== null;
+            });
+            if (index === -1) index = 0;
+            marketProduct.dataValues.price = marketProduct.dataValues.agencys[index].dataValues.price;
+            marketProduct.dataValues.discountPrice = marketProduct.dataValues.agencys[index].discountPrice;
+        }
+
+        return {
+            success: true,
+            data: {
+                item: marketProduct
+            }
+        }
+    } catch (e) {
+        return {
+            error: true,
+            message: `Lỗi ${e}`,
+            code: HttpStatusCode.BAD_REQUEST
+        }
+    }
 }
 
 module.exports.changeStatusMarketOrderService = async (result) => {
@@ -1330,16 +1445,58 @@ module.exports.getSeriService = async (result) => {
             where:{
                 marketOrderId:marketOrderProductExists.marketOrderId,
                 marketProductId:marketOrderProductExists.marketProductId
-            }
+            },
+            attributes:["id","code"]
         });
-
-
         return {
             success: true,
             data: {
                 marketProduct,
                 series
             }
+        }
+    } catch (e) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Loi ${e}`
+        }
+    }
+}
+
+module.exports.updateSeriService = async (result)=>{
+    try {
+        const {marketOrderId,products = [],loginUser} = result;
+        const t = await models.sequelize.transaction(async (t)=>{
+            for(const product of products){
+                const {marketProductId, listSeri = []} = product;
+                for(const seri of listSeri){
+                    if(seri.id){
+                        await models.Seri.update({
+                            code:seri.code
+                        },{
+                            where:{
+                                id:seri.id
+                            },
+                            transaction:t
+                        });
+                    }
+                    else{
+                        await models.Seri.create({
+                            code:seri.code,
+                            marketOrderId,
+                            marketProductId,
+                            createdBy:loginUser.id
+                        },{
+                            transaction:t
+                        });
+                    }
+                }
+            }
+        });
+        return {
+            success: true,
+            data: null
         }
     } catch (e) {
         return {

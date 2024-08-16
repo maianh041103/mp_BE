@@ -89,9 +89,19 @@ router.get("/product-private",authenticate,(req,res,next)=>{
     next();
 },authorize,controller.getProductPrivate);
 
+router.get("/product-private/:id",authenticate,(req,res,next)=>{
+    req.apiRole = [];
+    next();
+},authorize,controller.getDetailProductPrivate);
+
 router.get("/seri/:marketOrderProductId",authenticate,(req,res,next)=>{
     req.apiRole = [];
     next();
 },authorize,controller.getSeri);
+
+router.patch("/seri",authenticate,(req,res,next)=>{
+    req.apiRole = [];
+    next();
+},authorize,controller.updateSeri);
 
 module.exports = router;
