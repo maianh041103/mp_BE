@@ -94,4 +94,9 @@ router.get("/seri/:marketOrderProductId",authenticate,(req,res,next)=>{
     next();
 },authorize,controller.getSeri);
 
+router.patch("/seri",authenticate,(req,res,next)=>{
+    req.apiRole = [];
+    next();
+},authorize,controller.updateSeri);
+
 module.exports = router;

@@ -1330,16 +1330,58 @@ module.exports.getSeriService = async (result) => {
             where:{
                 marketOrderId:marketOrderProductExists.marketOrderId,
                 marketProductId:marketOrderProductExists.marketProductId
-            }
+            },
+            attributes:["id","code"]
         });
-
-
         return {
             success: true,
             data: {
                 marketProduct,
                 series
             }
+        }
+    } catch (e) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Loi ${e}`
+        }
+    }
+}
+
+module.exports.updateSeriService = async (result)=>{
+    try {
+        const {marketOrderId,products = [],loginUser} = result;
+        const t = await models.sequelize.transaction(async (t)=>{
+            for(const product of products){
+                const {marketProductId, listSeri = []} = product;
+                for(const seri of listSeri){
+                    if(seri.id){
+                        await models.Seri.update({
+                            code:seri.code
+                        },{
+                            where:{
+                                id:seri.id
+                            },
+                            transaction:t
+                        });
+                    }
+                    else{
+                        await models.Seri.create({
+                            code:seri.code,
+                            marketOrderId,
+                            marketProductId,
+                            createdBy:loginUser.id
+                        },{
+                            transaction:t
+                        });
+                    }
+                }
+            }
+        });
+        return {
+            success: true,
+            data: null
         }
     } catch (e) {
         return {

@@ -329,3 +329,20 @@ module.exports.getSeri = async (req,res)=>{
         res.json(respondWithClientError(e))
     }
 }
+
+//[PATCH] mp/api/market/sell/seri
+module.exports.updateSeri = async (req,res)=>{
+    try {
+        const { loginUser = {}} = req;
+        const result = await marketSellService.updateSeriService(
+            {
+                loginUser,
+                ...req.body
+            }
+        );
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    }catch(e){
+        res.json(respondWithClientError(e))
+    }
+}
