@@ -108,6 +108,18 @@ module.exports = (sequelize, Sequelize) => {
       foreignKey: 'wardId',
       targetKey: 'id',
     });
+
+    Branch.hasMany(models.MarketProduct,{
+      as: 'marketProduct',
+      foreignKey: 'branchId',
+      sourceKey: 'id',
+    });
+
+    Branch.hasMany(models.RequestAgency,{
+      as:"agencys",
+      foreignKey:"branchId",
+      sourceKey:"id"
+    })
   };
   return Branch;
 };

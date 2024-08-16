@@ -34,15 +34,15 @@ router.get("/product/:id",authenticate,(req,res,next)=>{
     next();
 },authorize,controller.getDetailProduct);
 
-router.get("/store",authenticate,(req,res,next)=>{
+router.get("/branch",authenticate,(req,res,next)=>{
     req.apiRole = [];
     next();
-},authorize,controller.getAllStore);
+},authorize,controller.getAllBranch);
 
-router.get("/store/:id",authenticate,(req,res,next)=>{
+router.get("/branch/:id",authenticate,(req,res,next)=>{
     req.apiRole = [];
     next();
-},authorize,controller.getDetailStore);
+},authorize,controller.getDetailBranch);
 
 router.post("/cart",authenticate,(req,res,next)=>{
     req.apiRole = [];
@@ -88,5 +88,10 @@ router.get("/product-private",authenticate,(req,res,next)=>{
     req.apiRole = [];
     next();
 },authorize,controller.getProductPrivate);
+
+router.get("/seri/:marketOrderProductId",authenticate,(req,res,next)=>{
+    req.apiRole = [];
+    next();
+},authorize,controller.getSeri);
 
 module.exports = router;

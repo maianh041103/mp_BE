@@ -22,18 +22,26 @@ const requestAgencyInclude = [
                 attributes: ["id", "fullName"],
             },
             {
-                model:models.Store,
-                as:"store"
+                model:models.Branch,
+                as:"branch"
             }
         ],
     },
     {
-        model:models.Store,
-        as:"store"
+        model:models.Branch,
+        as:"branch",
+        include:[{
+            model:models.Store,
+            as:"store"
+        }]
     },
     {
-        model:models.Store,
-        as:"agency"
+        model:models.Branch,
+        as:"agency",
+        include:[{
+            model:models.Store,
+            as:"store"
+        }]
     }
 ]
 const marketProductInclude = [
@@ -56,8 +64,8 @@ const marketProductInclude = [
             as:"agency",
             attributes: ["id"],
             include:[{
-                model:models.Store,
-                as:"store",
+                model:models.Branch,
+                as:"branch",
                 attributes:["name","phone"]
             }]
         },{
@@ -177,7 +185,7 @@ module.exports.createProductService = async (result) => {
             message:`Sản phẩm đã tồn tại trên chợ`
         }
     }
-    if(discountPrice <= 0){
+    if(!discountPrice || discountPrice <= 0){
         discountPrice = price;
     }
     let newMarketProduct;
@@ -229,7 +237,7 @@ module.exports.createProductService = async (result) => {
                     const groupAgencyExists = await models.GroupAgency.findOne({
                         where: {
                             id: item.groupId,
-                            storeId
+                            branchId
                         }
                     });
                     if (!groupAgencyExists) {
@@ -244,7 +252,7 @@ module.exports.createProductService = async (result) => {
                     const agencyExists = await models.RequestAgency.findOne({
                         where: {
                             id: item.agencyId,
-                            storeId
+                            branchId
                         }
                     });
                     if (!agencyExists) {
@@ -276,7 +284,8 @@ module.exports.createProductService = async (result) => {
 
 module.exports.getAllProductService = async (result) => {
     const {status, groupAgencyId, agencyId, keyword, groupProductId,
-        type, createdAt, storeId, limit = 20, page = 1, isConfig,productType,loginUser} = result;
+        type, createdAt, storeId, limit = 20, page = 1,
+        isConfig, productType, loginUser, branchId, otherBranchId} = result;
     let {sortBy} = result;
     let marketProductIncludeTmp = [
         {
@@ -322,14 +331,14 @@ module.exports.getAllProductService = async (result) => {
 
     let where = {};
     if(isConfig){
-        where.storeId = loginUser.storeId;
+        where.branchId = branchId;
     }else{
-        where.storeId = {
-            [Op.ne]:loginUser.storeId
+        where.branchId = {
+            [Op.ne]:branchId
         }
     }
-    if(storeId){
-        where.storeId = storeId;
+    if(otherBranchId){
+        where.branchId = otherBranchId;
     }
     if (status) {
         where.status = status;
@@ -407,10 +416,17 @@ module.exports.getAllProductService = async (result) => {
 }
 
 module.exports.changeStatusProductService = async (result) => {
-    const {id, status, storeId} = result;
+    const {id, status, storeId, branchId} = result;
+    if(!branchId){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:"Vui lòng truyền thông tin chi nhánh"
+        }
+    }
     const marketProductExists = await models.MarketProduct.findOne({
         where: {
-            id, storeId
+            id, branchId
         }
     });
     if (!marketProductExists) {
@@ -451,7 +467,7 @@ module.exports.changeProductService = async (result) => {
         loginUser,
         branchId,
         thumbnail,
-        productUnitId = 0
+        productUnitId
     } = result;
     const marketProductExists = await models.MarketProduct.findOne({
         where: {
@@ -465,6 +481,9 @@ module.exports.changeProductService = async (result) => {
             code: HttpStatusCode.BAD_REQUEST,
             message: `Không tồn tại sản phẩm trên chợ có id = ${id}`
         }
+    }
+    if(!productUnitId){
+        productUnitId = marketProductExists.productUnitId;
     }
     if(!branchId){
         branchId = marketProductExists.branchId;
@@ -684,11 +703,10 @@ module.exports.getDetailProductService = async (result) => {
 }
 
 module.exports.deleteProductService = async (result) => {
-    const {id, storeId} = result;
+    const {id} = result;
     const itemExists = await models.MarketProduct.findOne({
         where: {
-            id,
-            storeId
+            id
         }
     });
     if (!itemExists) {
@@ -726,72 +744,40 @@ module.exports.deleteProductService = async (result) => {
 }
 
 module.exports.createRequestAgencyService = async (result) => {
-    const {listAgency, isFollow, groupAgencyId, storeId} = result;
-    const t = await models.sequelize.transaction(async (t) => {
-        if (isFollow) {
-            const isExists = await models.RequestAgency.findOne({
-                where: {
-                    storeId: {
-                        [Op.in]: listAgency
-                    },
-                    agencyId: storeId,
-                    status: {
-                        [Op.ne]: marketConfigContant.AGENCY_STATUS.CANCEL
-                    }
-                }
-            });
-            if (isExists) {
-                throw new Error(`Tồn tại cửa hàng đã gửi follow`);
-            }
-            if (groupAgencyId) {
-                const groupAgencyExists = await models.GroupAgency.findOne({
-                    where: {
-                        id: groupAgencyId,
-                        storeId
-                    }
-                });
-                if (!groupAgencyExists) {
-                    throw new Error(`Không tồn tại nhóm đại lý có id = ${groupAgencyId}`);
-                }
-            }
-            // Dang nhap tk 1 : 1 follow 2 => agency: 1 , store : 2
-            for (const item of listAgency) {
-                await models.RequestAgency.create({
-                    storeId: item,
-                    agencyId: storeId,
-                    status: marketConfigContant.AGENCY_STATUS.PENDING
-                }, {
-                    transaction: t
-                });
-            }
-        } else {
-            const isExists = await models.RequestAgency.findOne({
-                where: {
-                    storeId,
-                    agencyId: {
-                        [Op.in]: listAgency
-                    },
-                    status: {
-                        [Op.ne]: marketConfigContant.AGENCY_STATUS.CANCEL
-                    }
-                }
-            });
-            if (isExists) {
-                throw new Error(`Cửa hàng đã gửi follow`);
-            }
-            // 1 muon chon follow la 2
-            for (const item of listAgency) {
-                await models.RequestAgency.create({
-                    storeId,
-                    agencyId: item,
-                    status: marketConfigContant.AGENCY_STATUS.ACTIVE,
-                    groupAgencyId
-                }, {
-                    transaction: t
-                })
+    const {branchId, listAgency, storeId} = result;
+    if(!branchId){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:"Vui lòng truyền thông tin chi nhánh"
+        }
+    }
+    const isExists = await models.RequestAgency.findOne({
+        where: {
+            branchId: {
+                [Op.in]: listAgency
+            },
+            agencyId: branchId,
+            status: {
+                [Op.ne]: marketConfigContant.AGENCY_STATUS.CANCEL
             }
         }
-    })
+    });
+    if (isExists) {
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:`Tồn tại chi nhánh đã gửi follow`
+        }
+    }
+    // Dang nhap tk 1 : 1 follow 2 => agency: 1 , branch : 2
+    for (const item of listAgency) {
+        await models.RequestAgency.create({
+            branchId: item,
+            agencyId: branchId,
+            status: marketConfigContant.AGENCY_STATUS.PENDING
+        });
+    }
     return {
         success: true,
         data: null
@@ -799,10 +785,9 @@ module.exports.createRequestAgencyService = async (result) => {
 }
 
 module.exports.changeStatusAgencyService = async (result) => {
-    const {id, storeId, status, groupAgencyId} = result;
+    const {id, storeId, status} = result;
     const requestAgency = await models.RequestAgency.findOne({
         where: {
-            storeId,
             id
         }
     });
@@ -813,22 +798,8 @@ module.exports.changeStatusAgencyService = async (result) => {
             code: HttpStatusCode.BAD_REQUEST
         };
     }
-    const groupAgencyExists = await models.RequestAgency.findOne({
-        where: {
-            storeId,
-            id: groupAgencyId
-        }
-    });
-    if (!groupAgencyExists) {
-        return {
-            error: true,
-            message: "Không tìm thấy nhóm đại lý",
-            code: HttpStatusCode.BAD_REQUEST
-        };
-    }
     await models.RequestAgency.update({
-        status: status,
-        groupAgencyId
+        status: status
     }, {
         where: {
             id
@@ -841,9 +812,16 @@ module.exports.changeStatusAgencyService = async (result) => {
 }
 
 module.exports.getListAgencyService = async (query) => {
-    const {status, limit = 10, page = 1, storeId} = query;
+    const {status, limit = 10, page = 1, storeId, branchId} = query;
+    if(!branchId){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:"Vui lòng truyền thông tin chi nhánh"
+        }
+    }
     let where = {
-        storeId
+        branchId
     };
     if (status) {
         where.status = status;
@@ -867,11 +845,18 @@ module.exports.getListAgencyService = async (query) => {
 
 module.exports.getStatusAgencyService = async (params)=>{
     try {
-        const {id, storeId} = params;
+        const {id, storeId, branchId} = params;
+        if(!branchId){
+            return{
+                error:true,
+                code:HttpStatusCode.BAD_REQUEST,
+                message:"Vui lòng truyền thông tin chi nhánh"
+            }
+        }
         const requestAgency = await models.RequestAgency.findOne({
             where:{
-                storeId:id,
-                agencyId:storeId
+                branchId:id,
+                agencyId:branchId
             }
         });
         let status = requestAgency?requestAgency.status:"false";
@@ -889,21 +874,64 @@ module.exports.getStatusAgencyService = async (params)=>{
     }
 }
 
+module.exports.changeAgencyService = async (query) => {
+    const {id, groupAgencyId, branchId} = query;
+    if(!branchId){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:"Vui lòng truyền thông tin chi nhánh"
+        }
+    }
+    const agencyExists = await models.RequestAgency.findOne({
+        where: {
+            id,branchId
+        }
+    });
+    if (!agencyExists) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Không tồn tại đại lý có id = ${id} trong cửa hàng`
+        };
+    }
+    await models.RequestAgency.update(
+        {
+          groupAgencyId
+        },
+        {
+        where: {
+            id
+        }
+    });
+    return {
+        success: true,
+        data: null
+    }
+}
+
 module.exports.deleteAgencyService = async (query) => {
-    const {id, storeId} = query;
+    const {id, branchId} = query;
+    if(!branchId){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:"Vui lòng truyền thông tin chi nhánh"
+        }
+    }
     const agencyExists = await models.RequestAgency.findOne({
         where: {
             [Op.or]: [
                 {
                     [Op.and]: {
                         id,
-                        storeId
+                        branchId
                     }
                 },
                 {
                     [Op.and]: {
                         id,
-                        agencyId: storeId
+                        agencyId: branchId
                     }
                 }
             ]
@@ -918,20 +946,7 @@ module.exports.deleteAgencyService = async (query) => {
     }
     await models.RequestAgency.destroy({
         where: {
-            [Op.or]: [
-                {
-                    [Op.and]: {
-                        id,
-                        storeId
-                    }
-                },
-                {
-                    [Op.and]: {
-                        id,
-                        agencyId: storeId
-                    }
-                }
-            ]
+            id
         }
     });
     return {
@@ -941,11 +956,31 @@ module.exports.deleteAgencyService = async (query) => {
 }
 
 module.exports.createGroupAgencyService = async (result) => {
-    const {name, description, storeId, loginUser} = result;
+    const {name, description, storeId, loginUser, branchId} = result;
+    if(!branchId){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:"Vui lòng truyền thông tin chi nhánh"
+        }
+    }
+    const branchExists = await models.Branch.findOne({
+        where:{
+            id:branchId,
+            storeId
+        }
+    });
+    if(!branchExists) {
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:`Không tồn tại chi nhánh id = ${branchId} trong cửa hàng storeId = ${storeId}`
+        }
+    }
     const newGroupAgency = await models.GroupAgency.create({
         name,
         description,
-        storeId,
+        branchId,
         createdBy: loginUser.id
     });
     return {
@@ -957,7 +992,14 @@ module.exports.createGroupAgencyService = async (result) => {
 }
 
 module.exports.getAllGroupAgencyService = async (result) => {
-    const {storeId, keyword, limit = 10, page = 1} = result;
+    const {storeId, keyword,branchId, limit = 10, page = 1} = result;
+    if(!branchId){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:"Vui lòng truyền thông tin chi nhánh"
+        }
+    }
     let where = {};
     if (keyword) {
         where = {
@@ -966,7 +1008,7 @@ module.exports.getAllGroupAgencyService = async (result) => {
             }
         }
     }
-    where.storeId = storeId;
+    where.branchId = branchId;
     const {rows, count} = await models.GroupAgency.findAndCountAll({
         where,
         limit: parseInt(limit),
@@ -983,10 +1025,17 @@ module.exports.getAllGroupAgencyService = async (result) => {
 }
 
 module.exports.getDetailGroupAgencyService = async (result) => {
-    const {id, storeId} = result;
+    const {id, branchId} = result;
+    if(!branchId){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:"Vui lòng truyền thông tin chi nhánh"
+        }
+    }
     const groupAgency = await models.GroupAgency.findOne({
         where: {
-            id, storeId
+            id, branchId
         }
     });
     if (!groupAgency) {
@@ -1005,10 +1054,17 @@ module.exports.getDetailGroupAgencyService = async (result) => {
 }
 
 module.exports.changeGroupAgencyService = async (result) => {
-    const {name, description, loginUser, storeId, id} = result;
+    const {name, description, loginUser, id, branchId} = result;
+    if(!branchId){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:"Vui lòng truyền thông tin chi nhánh"
+        }
+    }
     const groupAgencyExists = await models.GroupAgency.findOne({
         where: {
-            storeId, id
+            branchId, id
         }
     });
     if (!groupAgencyExists) {
@@ -1023,8 +1079,7 @@ module.exports.changeGroupAgencyService = async (result) => {
         updatedBy: loginUser.id
     }, {
         where: {
-            storeId: storeId,
-            id: id
+            id
         }
     });
     return {
@@ -1037,7 +1092,7 @@ module.exports.deleteGroupAgencyService = async (result) => {
     const {id, storeId} = result;
     const groupAgencyExists = await models.GroupAgency.findOne({
         where: {
-            id, storeId
+            id
         }
     });
     if (!groupAgencyExists) {
@@ -1049,7 +1104,7 @@ module.exports.deleteGroupAgencyService = async (result) => {
     }
     await models.GroupAgency.destroy({
         where: {
-            id, storeId
+            id
         }
     });
     return {

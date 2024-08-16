@@ -39,6 +39,11 @@ router.post("/agency", authenticate, (req, res, next) => {
     next();
 }, authorize, controller.createAgency);
 
+router.patch("/agency/:id",authenticate,(req,res,next)=>{
+    req.apiRole = [];
+    next();
+},authorize,controller.changeAgency);
+
 router.patch("/agency/:id/:status", authenticate, (req, res, next) => {
     req.apiRole = [];
     next();

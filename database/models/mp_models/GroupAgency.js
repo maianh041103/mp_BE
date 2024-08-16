@@ -7,7 +7,7 @@ module.exports = (sequelize, DataTypes) => {
             autoIncrement: true,
             allowNull: false,
         },
-        storeId: {
+        branchId: {
             allowNull: false,
             type: DataTypes.INTEGER(10).UNSIGNED,
         },
@@ -34,9 +34,9 @@ module.exports = (sequelize, DataTypes) => {
     });
     GroupAgency.associate = function (models) {
         // associations can be defined here
-        GroupAgency.belongsTo(models.Store, {
-            as: 'store',
-            foreignKey: 'storeId',
+        GroupAgency.belongsTo(models.Branch, {
+            as: 'branch',
+            foreignKey: 'branchId',
             sourceKey: 'id'
         });
         GroupAgency.belongsTo(models.User,{

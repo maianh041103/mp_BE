@@ -13,7 +13,8 @@ module.exports.createAddress = async (req, res) => {
         const result = await marketSellService.createAddressService(
             {
                 ...req.body,
-                storeId: loginUser.storeId
+                storeId: loginUser.storeId,
+                loginUser
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -31,6 +32,7 @@ module.exports.getAllAddress = async (req,res)=>{
             {
                 storeId: loginUser.storeId,
                 ...req.query,
+                loginUser
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -68,7 +70,8 @@ module.exports.updateAddress = async (req,res)=>{
             {
                 storeId: loginUser.storeId,
                 id,
-                ...req.body
+                ...req.body,
+                loginUser
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -114,11 +117,11 @@ module.exports.getDetailProduct = async (req,res)=>{
     }
 }
 
-//[GET] mp/api/market/sell/store
-module.exports.getAllStore = async (req,res)=>{
+//[GET] mp/api/market/sell/branch
+module.exports.getAllBranch = async (req,res)=>{
     try {
         const { loginUser = {} } = req;
-        const result = await marketSellService.getAllStoreService(
+        const result = await marketSellService.getAllBranchService(
             {
                 storeId: loginUser.storeId,
                 ...req.query
@@ -131,12 +134,12 @@ module.exports.getAllStore = async (req,res)=>{
     }
 }
 
-//[GET] mp/api/market/sell/store/:id
-module.exports.getDetailStore = async (req,res)=>{
+//[GET] mp/api/market/sell/branch/:id
+module.exports.getDetailBranch = async (req,res)=>{
     try {
         const { loginUser = {} } = req;
         const {id} = req.params;
-        const result = await marketSellService.getDetailStoreService(
+        const result = await marketSellService.getDetailBranchService(
             {
                 storeId: loginUser.storeId,
                 id
@@ -226,7 +229,8 @@ module.exports.createMarketOrder = async (req,res)=>{
         const result = await marketSellService.createMarketOrderService(
             {
                 ...req.body,
-                storeId: loginUser.storeId
+                storeId: loginUser.storeId,
+                loginUser
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -299,6 +303,24 @@ module.exports.getProductPrivate = async(req,res)=>{
             {
                 storeId: loginUser.storeId,
                 ...req.query
+            }
+        );
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (e) {
+        res.json(respondWithClientError(e))
+    }
+}
+
+//[GET] mp/api/market/sell/seri/:marketOrderProductId
+module.exports.getSeri = async (req,res)=>{
+    try {
+        const { loginUser = {}} = req;
+        const {marketOrderProductId} = req.params;
+        const result = await marketSellService.getSeriService(
+            {
+                storeId: loginUser.storeId,
+                marketOrderProductId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
