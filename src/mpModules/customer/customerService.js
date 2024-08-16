@@ -65,9 +65,14 @@ const customerIncludes = [
         attributes: ["id", "originalName", "fileName", "filePath", "path"],
     },
     {
-        model: models.GroupCustomer,
-        as: "groupCustomer",
-        attributes: ["id", "name", "description", "type", "discount"],
+        model: models.CustomerGroupCustomer,
+        as: "listGroupCustomer",
+        attributes: ["id"],
+        include:[{
+            model:models.GroupCustomer,
+            as:"groupCustomer",
+            attributes: ["id", "name", "description", "type", "discount"],
+        }]
     },
     {
         model: models.Province,
@@ -427,11 +432,41 @@ export async function updateCustomer(id, payload, loginUser) {
     if (!findCustomer.code && !payload.code) {
         payload.code = `${generateCustomerCode(findCustomer.id)}`;
     }
-    await models.Customer.update(payload, {
-        where: {
-            id,
-        },
-    });
+    const t = await models.sequelize.transaction(async (t)=>{
+        await models.CustomerGroupCustomer.destroy({
+            where:{
+                customerId:id,
+                groupCustomerId:{
+                    [Op.notIn]:payload.groupCustomerId
+                }
+            },
+            transaction: t
+        });
+        for(const groupCustomerId of payload.groupCustomerId){
+            const findGroupCustomerExists = await models.CustomerGroupCustomer.findOne({
+                where:{
+                    customerId:id,
+                    groupCustomerId
+                }
+            });
+            if(!findGroupCustomerExists){
+                await models.CustomerGroupCustomer.create({
+                    customerId:id,
+                    groupCustomerId
+                },{
+                    transaction: t
+                })
+            }
+        }
+        delete payload.groupCustomerId;
+        await models.Customer.update(payload, {
+            where: {
+                id,
+            },
+            transaction:t
+        });
+
+    })
     return {
         success: true,
     };
@@ -469,16 +504,35 @@ export async function createCustomer(payload, loginUser) {
             message: `Số điện thoại ${payload.phone} đã được đăng ký`,
         };
     }
+    let newCustomer;
 
-    const newCustomer = await models.Customer.create(payload);
+    const t = await models.sequelize.transaction(async (t)=>{
+        let groupCustomers = payload.groupCustomerId || [];
+        delete payload.groupCustomerId;
 
-    if (!payload.code) {
-        payload.code = `${generateCustomerCode(newCustomer.id)}`;
-        await models.Customer.update(
-            {code: payload.code},
-            {where: {id: newCustomer.id}}
-        );
-    }
+        newCustomer = await models.Customer.create(payload,{
+            transaction: t
+        });
+
+        groupCustomers = groupCustomers.map((item)=>{
+            return{
+                groupCustomerId:item,
+                customerId:newCustomer.id
+            }
+        });
+        await models.CustomerGroupCustomer.bulkCreate(groupCustomers,{
+            transaction:t
+        })
+
+        if (!payload.code) {
+            payload.code = `${generateCustomerCode(newCustomer.id)}`;
+            await models.Customer.update(
+                {code: payload.code},
+                {where: {id: newCustomer.id},
+                transaction: t}
+            );
+        }
+    })
 
     createUserTracking({
         accountId: loginUser.id,
@@ -487,10 +541,7 @@ export async function createCustomer(payload, loginUser) {
         action: logActions.customer_create.value,
         data: payload,
     });
-    //   sendNotificationThroughSms({
-    //     phone: newCustomer.phone,
-    //     content: `Dang ki thanh cong. Tai khoan cua ban dang duoc cho kich hoat.`,
-    //   });
+
     return {
         success: true,
         data: await models.Customer.findByPk(newCustomer.id, {
@@ -564,11 +615,21 @@ export async function deleteCustomerById(id, loginUser) {
             message: "Khách hàng không tồn tại",
         };
     }
-    await models.Customer.destroy({
-        where: {
-            id,
-        },
-    });
+    const t = await models.sequelize.transaction(async (t)=>{
+        await models.CustomerGroupCustomer.destroy({
+            where:{
+                customerId:id
+            },
+            transaction:t
+        });
+        await models.Customer.destroy({
+            where: {
+                id,
+            },
+            transaction:t
+        });
+
+    })
     createUserTracking({
         accountId: loginUser.id,
         type: accountTypes.USER,
@@ -843,20 +904,6 @@ export async function uploadFileCreateCustomer(data, loginUser) {
                 delete customer.birthday;
             }
             let groupCustomer = {}, ward, district, province;
-            [groupCustomer] = await models.GroupCustomer.findOrCreate({
-                where: {
-                    name: {
-                        [Op.like]: `%${customer.groupCustomerName}%`
-                    },
-                    storeId: customer.storeId
-                },
-                defaults: {
-                    name: customer.groupCustomerName,
-                    storeId: customer.storeId,
-                    createdBy: loginUser.id
-                },
-                transaction: t
-            });
             if (customer.status === 0) {
                 customer.status = customerStatus.INACTIVE;
             } else if(customer.status === 2) {
@@ -891,7 +938,6 @@ export async function uploadFileCreateCustomer(data, loginUser) {
             }
             const payload = {
                 ...customer,
-                groupCustomerId: groupCustomer.id,
                 wardId: ward ? ward.id : null,
                 districtId: district ? district.id : null,
                 provinceId: province ? province.id : null
@@ -919,6 +965,34 @@ export async function uploadFileCreateCustomer(data, loginUser) {
                     }
                 );
             }
+
+            let listCustomerName = customer.groupCustomerName.split("|");
+            if (listCustomerName.length > 0) {
+                for(const groupCustomerName of listCustomerName){
+                    [groupCustomer] = await models.GroupCustomer.findOrCreate({
+                        where: {
+                            name: {
+                                [Op.like]: `%${groupCustomerName}%`
+                            },
+                            storeId: customer.storeId
+                        },
+                        defaults: {
+                            name: groupCustomerName,
+                            storeId: customer.storeId,
+                            createdBy: loginUser.id
+                        },
+                        transaction: t
+                    });
+
+                    await models.CustomerGroupCustomer.create({
+                        customerId: newCustomer.id,
+                        groupCustomerId: groupCustomer.id
+                    },{
+                        transaction:t
+                    })
+                }
+            }
+
             createUserTracking({
                 accountId: loginUser.id,
                 type: accountTypes.USER,
@@ -979,23 +1053,6 @@ export async function uploadFileCreateCustomerService(data, loginUser) {
                     delete customer.birthday;
                 }
                 let groupCustomer = {}, ward, district, province;
-                let listCustomerName = customer.groupCustomerName.split("|");
-                if (listCustomerName.length > 0) {
-                    [groupCustomer] = await models.GroupCustomer.findOrCreate({
-                        where: {
-                            name: {
-                                [Op.like]: `%${listCustomerName[0]}%`
-                            },
-                            storeId: customer.storeId
-                        },
-                        defaults: {
-                            name: listCustomerName[0],
-                            storeId: customer.storeId,
-                            createdBy: loginUser.id
-                        },
-                        transaction: t
-                    });
-                }
                 if (customer.status === 0) {
                     customer.status = customerStatus.INACTIVE;
                 } else if(customer.status === 2) {
@@ -1003,15 +1060,15 @@ export async function uploadFileCreateCustomerService(data, loginUser) {
                 }else{
                     customer.status = customerStatus.ACTIVE;
                 }
-                let [provinceName,districtName] = customer.districtAndProvinceName.split("-");
+                let [provinceName = "",districtName = ""] = customer.districtAndProvinceName.split("-");
                 province = await models.Province.findOne({
                     where: {
                         [Op.or]:{
                             name2: {
-                                [Op.like]: `%${provinceName.trim()}%`
+                                [Op.like]: `${provinceName.trim()}`
                             },
                             name:{
-                                [Op.like]: `%${provinceName.trim()}%`
+                                [Op.like]: `${provinceName.trim()}`
                             }
                         }
                     }, attributes: ["id"]
@@ -1021,10 +1078,10 @@ export async function uploadFileCreateCustomerService(data, loginUser) {
                         where: {
                             [Op.or]:{
                                 name2: {
-                                    [Op.like]: `%${districtName.trim()}%`
+                                    [Op.like]: `${districtName.trim()}`
                                 },
                                 name:{
-                                    [Op.like]: `%${provinceName.trim()}%`
+                                    [Op.like]: `${provinceName.trim()}`
                                 }
                             }, provinceId: province.id,
                         }, attributes: ["id"]
@@ -1034,10 +1091,10 @@ export async function uploadFileCreateCustomerService(data, loginUser) {
                             where: {
                                 [Op.or]:{
                                     name2: {
-                                        [Op.like]: `%${customer.wardName.trim()}%`
+                                        [Op.like]: `${customer.wardName.trim()}`
                                     },
                                     name:{
-                                        [Op.like]: `%${customer.wardName.trim()}%`
+                                        [Op.like]: `${customer.wardName.trim()}`
                                     }
                                 }, districtId: district.id,
                             }, attributes: ["id"]
@@ -1046,7 +1103,6 @@ export async function uploadFileCreateCustomerService(data, loginUser) {
                 }
                 const payload = {
                     ...customer,
-                    groupCustomerId: groupCustomer.id,
                     wardId: ward? ward.id:null,
                     districtId: district? district.id:null,
                     provinceId: province? province.id : null
@@ -1077,6 +1133,34 @@ export async function uploadFileCreateCustomerService(data, loginUser) {
                         }
                     );
                 }
+
+                let listCustomerName = customer.groupCustomerName.split("|");
+                if (listCustomerName.length > 0) {
+                    for(const groupCustomerName of listCustomerName){
+                        [groupCustomer] = await models.GroupCustomer.findOrCreate({
+                            where: {
+                                name: {
+                                    [Op.like]: `%${groupCustomerName}%`
+                                },
+                                storeId: customer.storeId
+                            },
+                            defaults: {
+                                name: groupCustomerName,
+                                storeId: customer.storeId,
+                                createdBy: loginUser.id
+                            },
+                            transaction: t
+                        });
+
+                        await models.CustomerGroupCustomer.create({
+                            customerId: newCustomer.id,
+                            groupCustomerId: groupCustomer.id
+                        },{
+                            transaction:t
+                        })
+                    }
+                }
+
                 createUserTracking({
                     accountId: loginUser.id,
                     type: accountTypes.USER,
