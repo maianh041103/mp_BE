@@ -89,7 +89,8 @@ const orderIncludes = [
       {
         model: models.Doctor,
         as: 'doctor',
-        attributes: ['name', 'phone', 'code', 'email', 'gender']
+        attributes: ['name', 'phone', 'code', 'email', 'gender'],
+        paranoid: false
       },
       {
         model: models.HealthFacility,
@@ -122,12 +123,14 @@ const orderIncludes = [
   {
     model: models.User,
     as: 'user',
-    attributes: userAttributes
+    attributes: userAttributes,
+    paranoid: false
   },
   {
     model: models.User,
     as: 'creator',
-    attributes: userAttributes
+    attributes: userAttributes,
+    paranoid: false
   },
   {
     model: models.Customer,
@@ -139,7 +142,8 @@ const orderIncludes = [
       'email',
       'address',
       'groupCustomerId'
-    ]
+    ],
+    paranoid: false
   }
 ]
 
