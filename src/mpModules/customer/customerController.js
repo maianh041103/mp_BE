@@ -1,7 +1,6 @@
 import {readDefaultCustomer} from "./customerService";
 import {indexOrderDebt} from "./CustomerDebtService";
 import ExcelJS from "exceljs";
-import {indexDoctors} from "../doctor/doctorService";
 import path from "path";
 import fs from "fs";
 
@@ -26,7 +25,7 @@ const {
     historyPointService,
     historyVisitedService,
     uploadFileCreateCustomer,
-    uploadFileCreateCustomerService
+    uploadFileCreateCustomerKiotVietService
 } = require("./customerService");
 const {hashPassword} = require("../auth/authService");
 const {formatMobileToSave} = require("../../helpers/utils");
@@ -150,7 +149,7 @@ export async function updateController(req, res) {
             address: _.get(req, "body.address", ""),
             position: _.get(req, "body.position", null),
             avatarId: _.get(req, "body.avatarId", null),
-            groupCustomerId: _.get(req, "body.groupCustomerId", []),
+            groupCustomerId: _.get(req, "body.groupCustomerId", null),
             password: hashPassword(_.get(req, "body.password", "")),
             wardId: _.get(req.body, "wardId", null),
             districtId: _.get(req.body, "districtId", null),
@@ -324,13 +323,19 @@ export async function exportCustomerController(req, res) {
             {header: "Ghi chú", key: "note", width: 30},
             {header: "Loại khách hàng", key: "type", width: 15},
             {header: "Trạng thái", key: "status", width: 10},
-            {header: "Kinh độ", key: "lng", width: 10},
-            {header: "Vĩ độ", key: "lat", width: 10},
+            {header: "Tọa độ", key: "location", width: 40},
             {header: "Điểm tích lũy", key: "point", width: 10},
             {header: "Nợ", key: "debt", width: 10},
         ];
         const result = await indexCustomers({storeId, page, limit});
         result.data.items.forEach(item => {
+            let location = ""
+            if(item.lat && item.lat !== ""){
+                location += item.lat + ", ";
+            }
+            if(item.lng && item.lng !== ""){
+                location += item.lng;
+            }
             worksheet.addRow({
                 name: item.fullName,
                 phone: item.phone,
@@ -348,8 +353,7 @@ export async function exportCustomerController(req, res) {
                 note: item?.note,
                 type: item?.type,
                 status: item?.status == "draft" ? item.status = 2 : (item?.status == "inactive" ? item.status = 0 : item.status = 1),
-                lng: item?.lng,
-                lat: item?.lat,
+                location,
                 point: item?.point,
                 debt: item?.debt
             });
@@ -408,7 +412,7 @@ export async function createCustomerByUploadKiotvietController(req, res) {
         const worksheet = workbook.Sheets[sheetName];
         const data = xlsx.utils.sheet_to_json(worksheet);
 
-        const result = await uploadFileCreateCustomerService(data, loginUser);
+        const result = await uploadFileCreateCustomerKiotVietService(data, loginUser);
         if (result.success) res.json(respondItemSuccess());
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {
