@@ -19,19 +19,19 @@ module.exports = (sequelize, DataTypes) => {
                 type: Sequelize.STRING(15)
             },
             wardId: {
-                allowNull: false,
+                allowNull: true,
                 type: Sequelize.INTEGER(5).UNSIGNED,
             },
             districtId: {
-                allowNull: false,
+                allowNull: true,
                 type: Sequelize.INTEGER(5).UNSIGNED,
             },
             provinceId: {
-                allowNull: false,
+                allowNull: true,
                 type: Sequelize.INTEGER(2).UNSIGNED,
             },
             address: {
-                allowNull: false,
+                allowNull: true,
                 type: Sequelize.STRING(100),
             },
             branchId: {

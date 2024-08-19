@@ -528,7 +528,7 @@ module.exports.getAllBranchService = async (result) => {
                 }
             },
             attributes: [
-                "id", "name", "phone", "address1", "address2", "wardId", "districtId", "provinceId",
+                "id", "name", "phone", "address1", "address2", "wardId", "districtId", "provinceId","isAgency",
                 [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
     WHERE market_products.branchId = Branch.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
                 [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
@@ -580,7 +580,7 @@ module.exports.getDetailBranchService = async (result) => {
                 id
             },
             attributes: [
-                "id", "name", "phone", "address1", "address2", "wardId", "districtId", "provinceId",
+                "id", "name", "phone", "address1", "address2", "wardId", "districtId", "provinceId","isAgency",
                 [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
     WHERE market_products.branchId = Branch.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
                 [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products

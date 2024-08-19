@@ -59,6 +59,11 @@ module.exports = (sequelize, Sequelize) => {
       type: Sequelize.INTEGER(1).UNSIGNED,
       defaultValue: 1,
     },
+    isAgency:{
+      allowNull:true,
+      type:Sequelize.BOOLEAN,
+      defaultValue:false
+    },
     createdAt: {
       allowNull: true,
       type: Sequelize.DATE
