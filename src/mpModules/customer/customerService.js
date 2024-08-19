@@ -33,6 +33,7 @@ const customerAttributes = [
     "address",
     "avatarId",
     "birthday",
+    "facebook",
     "gender",
     "groupCustomerId",
     "position",
@@ -878,8 +879,7 @@ export async function uploadFileCreateCustomer(data, loginUser) {
                 wardName: _.get(item, 'Xã', '').toString().trim(),
                 districtName: _.get(item, 'Huyện', '').toString().trim(),
                 provinceName: _.get(item, 'Tỉnh', '').toString().trim(),
-                lat: _.get(item, 'Vĩ độ', '').toString().trim(),
-                lng: _.get(item, 'Kinh độ', '').toString().trim(),
+                location: _.get(item,'Tọa độ','').toString().trim(),
                 type: parseInt(_.get(item, 'Loại khách hàng', 1).toString()),
                 storeId: loginUser.storeId,
                 createdBy: loginUser.id,
@@ -936,19 +936,29 @@ export async function uploadFileCreateCustomer(data, loginUser) {
                     });
                 }
             }
+            let lat = "",lng="";
+            if(customer.location){
+                [lat,lng] = customer.location.split(",");
+            }
             const payload = {
                 ...customer,
                 wardId: ward ? ward.id : null,
                 districtId: district ? district.id : null,
-                provinceId: province ? province.id : null
+                provinceId: province ? province.id : null,
+                lat:lat.trim(),
+                lng:lng.trim()
             }
 
-            const checkPhone = await checkUniqueValue("Customer", {
-                phone: payload.phone,
-                storeId: loginUser.storeId,
-            });
-            if (!checkPhone) {
-                throw new Error(`Số điện thoại ${payload.phone} đã được đăng ký`);
+            if(payload.phone) {
+                const checkPhone = await models.Customer.findOne({
+                    where: {
+                        phone: customer.phone,
+                        storeId: loginUser.storeId,
+                    }
+                });
+                if (checkPhone) {
+                    throw new Error(`Số điện thoại ${payload.phone} đã được đăng ký`);
+                }
             }
 
             const newCustomer = await models.Customer.create(payload, {
@@ -1008,7 +1018,7 @@ export async function uploadFileCreateCustomer(data, loginUser) {
     }
 }
 
-export async function uploadFileCreateCustomerService(data, loginUser) {
+export async function uploadFileCreateCustomerKiotVietService(data, loginUser) {
     try {
         await models.sequelize.transaction(async (t) => {
             for (const item of data) {
@@ -1033,7 +1043,8 @@ export async function uploadFileCreateCustomerService(data, loginUser) {
                     storeId: loginUser.storeId,
                     createdBy: loginUser.id,
                     createdAt: new Date(),
-                    note: _.get(item, 'Ghi chú', '').toString().trim()
+                    note: _.get(item, 'Ghi chú', '').toString().trim(),
+                    location: _.get(item,'Tọa độ','').toString().trim()
                 };
 
                 if (customer.gender === 'Nam') {
@@ -1101,11 +1112,17 @@ export async function uploadFileCreateCustomerService(data, loginUser) {
                         });
                     }
                 }
+                let lng = "",lat = "";
+                if(customer.location){
+                    [lat,lng] = customer.location.split(",");
+                }
                 const payload = {
                     ...customer,
                     wardId: ward? ward.id:null,
                     districtId: district? district.id:null,
-                    provinceId: province? province.id : null
+                    provinceId: province? province.id : null,
+                    lng: lng.trim(),
+                    lat: lat.trim()
                 }
 
                 if(customer.phone) {
