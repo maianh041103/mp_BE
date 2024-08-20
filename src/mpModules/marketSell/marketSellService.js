@@ -210,7 +210,7 @@ const marketOrderInclude = [
         model:models.Province,
         as:"province",
         attributes: ["name", "name2"]
-    }
+    },
 ];
 const marketOrderAttributes = [
     "id","code","fullName","branchId","toBranchId","addressId","address",
@@ -964,6 +964,15 @@ const handleGetDetailMarketOrder = async ( {id,branchId} )=>{
 module.exports.getDetailMarketOrderService = async (result) => {
     try {
         const marketOrder = await handleGetDetailMarketOrder(result);
+        for(const product of marketOrder.products){
+            const series = await models.Seri.findAll({
+                where:{
+                    marketOrderId: product.marketOrderId,
+                    marketProductId: product.marketProductId
+                }
+            });
+            product.dataValues.series = series;
+        }
         return {
             success: true,
             data: {
@@ -1572,24 +1581,39 @@ module.exports.marketOrderPaymentService = async (result)=>{
                 },
                 transaction:t
             });
+
+            //Tạo hóa đơn
             // // Tạo hóa đơn
             // const newOrder = await models.Order.create(
             //     {
             //         code: marketOrderExists.code,
             //         description: marketOrderExists.note,
             //         customerId: customer.id,
+            //         totalPrice: marketOrderExists.totalPrice,
+            //         paymentType: order.paymentType,
+            //         cashOfCustomer: order.cashOfCustomer,
+            //         customerOwes: 0,
             //         totalPrice: marketOrderExists.dataValues.totalPrice,
             //         paymentType: (paid < marketOrderExists.dataValues.totalPrice)? "DEBT" : "BANK",
             //         cashOfCustomer: marketOrderExists.dataValues.totalPrice,
             //         customerOwes: marketOrderExists.dataValues.totalPrice -paid,
             //         refund: 0,
             //         discount: 0,
+            //         discountType: order.discountType,
+            //         status: orderStatuses.DRAFT,
+            //         storeId: loginUser.storeId,
+            //         branchId: order.branchId,
+            //         createdBy: loginUser.id,
+            //         discountOrder: order.discountOrder || 0,
+            //         paymentPoint: order.paymentPoint,
+            //         discountByPoint: moneyDiscountByPoint
             //         status: orderStatuses.SUCCEED,
             //         storeId: storeId,
             //         branchId: branchId,
             //         createdBy: loginUser.id
             //     },
             //     { transaction: t }
+            // )
             // );
             // for (const item of marketOrderExists.products) {
             //     const productUnit = await models.ProductUnit.findOne({

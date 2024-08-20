@@ -865,26 +865,26 @@ export async function uploadFileCreateCustomer(data, loginUser) {
     await models.sequelize.transaction(async (t) => {
         for (const item of data) {
             const customer = {
-                fullName: _.get(item, 'Họ tên', '').toString().trim(),
-                code: _.get(item, 'Mã khách hàng', '').toString().trim(),
-                birthday: _.get(item, 'Ngày sinh','').toString().trim(),
-                gender: parseInt(_.get(item, 'Giới tính', '').toString().trim()),
-                phone: formatMobileToSave(_.get(item, 'Số điện thoại', '').toString().trim()),
-                email: _.get(item, 'Email', '').toString().trim(),
-                taxCode: _.get(item, 'Mã thuế', '').toString().trim(),
-                address: _.get(item, 'Địa chỉ', '').toString().trim(),
-                facebook:_.get(item, 'Facebook', '').toString().trim(),
-                groupCustomerName: _.get(item, 'Nhóm khách hàng', '').toString().trim(),
+                fullName: _.get(item, 'Họ tên', '') ? _.get(item, 'Họ tên', '').toString().trim() : "",
+                code: _.get(item, 'Mã khách hàng', '') ? _.get(item, 'Mã khách hàng', '').toString().trim() : "",
+                birthday: _.get(item, 'Ngày sinh','') ? _.get(item, 'Ngày sinh','').toString().trim() : "",
+                gender: _.get(item, 'Giới tính', 0) ? parseInt(_.get(item, 'Giới tính', 0).toString().trim()) : 0,
+                phone: _.get(item, 'Số điện thoại', '') ? formatMobileToSave(_.get(item, 'Số điện thoại', '').toString().trim()) : "",
+                email: _.get(item, 'Email', '') ? _.get(item, 'Email', '').toString().trim() : "",
+                taxCode: _.get(item, 'Mã thuế', '') ? _.get(item, 'Mã thuế', '').toString().trim() : "",
+                address: _.get(item, 'Địa chỉ', '') ? _.get(item, 'Địa chỉ', '').toString().trim() : "",
+                facebook: _.get(item, 'Facebook', '') ? _.get(item, 'Facebook', '').toString().trim() : "",
+                groupCustomerName: _.get(item, 'Nhóm khách hàng', '') ? _.get(item, 'Nhóm khách hàng', '').toString().trim() : "",
                 status: parseInt(_.get(item, 'Trạng thái', 1).toString()),
-                wardName: _.get(item, 'Xã', '').toString().trim(),
-                districtName: _.get(item, 'Huyện', '').toString().trim(),
-                provinceName: _.get(item, 'Tỉnh', '').toString().trim(),
-                location: _.get(item,'Tọa độ','').toString().trim(),
+                wardName: _.get(item, 'Xã', '') ? _.get(item, 'Xã', '').toString().trim() : "",
+                districtName: _.get(item, 'Huyện', '') ? _.get(item, 'Huyện', '').toString().trim() : "",
+                provinceName: _.get(item, 'Tỉnh', '') ? _.get(item, 'Tỉnh', '').toString().trim() : "",
+                location: _.get(item,'Tọa độ','') ? _.get(item,'Tọa độ','').toString().trim() : "",
                 type: parseInt(_.get(item, 'Loại khách hàng', 1).toString()),
                 storeId: loginUser.storeId,
                 createdBy: loginUser.id,
                 createdAt: new Date(),
-                note: _.get(item, 'Ghi chú', '').toString().trim()
+                note: _.get(item, 'Ghi chú', '') ? _.get(item, 'Ghi chú', '').toString().trim() : ""
             };
 
             if(!checkCoordinates(customer.lat) || !checkCoordinates(customer.lng)){
@@ -945,8 +945,8 @@ export async function uploadFileCreateCustomer(data, loginUser) {
                 wardId: ward ? ward.id : null,
                 districtId: district ? district.id : null,
                 provinceId: province ? province.id : null,
-                lat:lat.trim(),
-                lng:lng.trim()
+                lat: lat ? lat.trim() : "",
+                lng: lng ? lng.trim() : ""
             }
 
             if(payload.phone) {
@@ -1023,28 +1023,28 @@ export async function uploadFileCreateCustomerKiotVietService(data, loginUser) {
         await models.sequelize.transaction(async (t) => {
             for (const item of data) {
                 const customer = {
-                    fullName: _.get(item, 'Tên khách hàng', '').toString().trim(),
-                    code: _.get(item, 'Mã khách hàng', '').toString().trim(),
-                    birthday: _.get(item, 'Ngày sinh','').toString().trim(),
-                    gender: _.get(item, 'Giới tính', 'Nam').toString().trim(),
-                    phone: formatMobileToSave(_.get(item, 'Điện thoại', '').toString().trim()),
-                    email: _.get(item, 'Email', '').toString().trim(),
-                    taxCode: _.get(item, 'Mã số thuế', '').toString().trim(),
-                    address: _.get(item, 'Địa chỉ', '').toString().trim(),
-                    groupCustomerName: _.get(item, 'Nhóm khách hàng', '').toString().trim(),
-                    status: parseInt(_.get(item, 'Trạng thái', 1).toString().trim()),
-                    wardName: _.get(item, 'Phường/Xã', '').toString().trim(),
-                    districtAndProvinceName: _.get(item, 'Khu vực giao hàng', '').toString().trim(),
-                    type: _.get(item, 'Loại khách', 'Cá nhân').toString().trim(),
-                    company: _.get(item,'Công ty','').toString().trim(),
-                    point:parseInt(_.get(item, 'Điểm hiện tại', 0)),
-                    debt:parseInt(_.get(item, 'Nợ cần thu hiện tại', 0)),
-                    facebook:_.get(item,'Facebook','').toString().trim(),
+                    fullName: _.get(item, 'Tên khách hàng', '') ? _.get(item, 'Tên khách hàng', '').toString().trim() : "",
+                    code: _.get(item, 'Mã khách hàng', '') ? _.get(item, 'Mã khách hàng', '').toString().trim() : "",
+                    birthday: _.get(item, 'Ngày sinh','') ? _.get(item, 'Ngày sinh','').toString().trim() : "",
+                    gender: _.get(item, 'Giới tính', 'Nam') ? _.get(item, 'Giới tính', 'Nam').toString().trim() : "",
+                    phone: _.get(item, 'Điện thoại', '') ? formatMobileToSave(_.get(item, 'Điện thoại', '').toString().trim()) : "",
+                    email: _.get(item, 'Email', '') ? _.get(item, 'Email', '').toString().trim() : "",
+                    taxCode: _.get(item, 'Mã số thuế', '') ? _.get(item, 'Mã số thuế', '').toString().trim() : "",
+                    address: _.get(item, 'Địa chỉ', '') ? _.get(item, 'Địa chỉ', '').toString().trim() : "",
+                    groupCustomerName: _.get(item, 'Nhóm khách hàng', '') ? _.get(item, 'Nhóm khách hàng', '').toString().trim() : "",
+                    status: _.get(item, 'Trạng thái', 1) ? parseInt(_.get(item, 'Trạng thái', 1).toString().trim()) : 1,
+                    wardName: _.get(item, 'Phường/Xã', '') ? _.get(item, 'Phường/Xã', '').toString().trim() : "",
+                    districtAndProvinceName: _.get(item, 'Khu vực giao hàng', '') ? _.get(item, 'Khu vực giao hàng', '').toString().trim() : "",
+                    type: _.get(item, 'Loại khách', 'Cá nhân') ? _.get(item, 'Loại khách', 'Cá nhân').toString().trim() : "",
+                    company: _.get(item,'Công ty','') ? _.get(item,'Công ty','').toString().trim() : "",
+                    point:_.get(item, 'Điểm hiện tại', 0) ? parseInt(_.get(item, 'Điểm hiện tại', 0).toString().trim()) : 0,
+                    debt:_.get(item, 'Nợ cần thu hiện tại', 0) ? parseInt(_.get(item, 'Nợ cần thu hiện tại', 0).toString().trim()) : 0,
+                    facebook: _.get(item,'Facebook','') ? _.get(item,'Facebook','').toString().trim() : "",
                     storeId: loginUser.storeId,
                     createdBy: loginUser.id,
                     createdAt: new Date(),
-                    note: _.get(item, 'Ghi chú', '').toString().trim(),
-                    location: _.get(item,'Tọa độ','').toString().trim()
+                    note: _.get(item, 'Ghi chú', '') ? _.get(item, 'Ghi chú', '').toString().trim() : "",
+                    location: _.get(item,'Tọa độ','') ? _.get(item,'Tọa độ','').toString().trim() : ""
                 };
 
                 if (customer.gender === 'Nam') {
@@ -1072,19 +1072,21 @@ export async function uploadFileCreateCustomerKiotVietService(data, loginUser) {
                     customer.status = customerStatus.ACTIVE;
                 }
                 let [provinceName = "",districtName = ""] = customer.districtAndProvinceName.split("-");
-                province = await models.Province.findOne({
-                    where: {
-                        [Op.or]:{
-                            name2: {
-                                [Op.like]: `${provinceName.trim()}`
-                            },
-                            name:{
-                                [Op.like]: `${provinceName.trim()}`
+                if(provinceName) {
+                    province = await models.Province.findOne({
+                        where: {
+                            [Op.or]: {
+                                name2: {
+                                    [Op.like]: `${provinceName.trim()}`
+                                },
+                                name: {
+                                    [Op.like]: `${provinceName.trim()}`
+                                }
                             }
-                        }
-                    }, attributes: ["id"]
-                });
-                if (province) {
+                        }, attributes: ["id"]
+                    });
+                }
+                if (province && districtName) {
                     district = await models.District.findOne({
                         where: {
                             [Op.or]:{
@@ -1097,7 +1099,7 @@ export async function uploadFileCreateCustomerKiotVietService(data, loginUser) {
                             }, provinceId: province.id,
                         }, attributes: ["id"]
                     });
-                    if (district) {
+                    if (district && customer.wardName) {
                         ward = await models.Ward.findOne({
                             where: {
                                 [Op.or]:{
@@ -1121,8 +1123,8 @@ export async function uploadFileCreateCustomerKiotVietService(data, loginUser) {
                     wardId: ward? ward.id:null,
                     districtId: district? district.id:null,
                     provinceId: province? province.id : null,
-                    lng: lng.trim(),
-                    lat: lat.trim()
+                    lng: lng ? lng.trim() : "",
+                    lat: lat ? lat.trim() : ""
                 }
 
                 if(customer.phone) {
