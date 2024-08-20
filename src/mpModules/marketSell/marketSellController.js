@@ -374,6 +374,7 @@ module.exports.marketOrderPayment = async (req,res)=>{
         const result = await marketSellService.marketOrderPaymentService(
             {
                 storeId: loginUser.storeId,
+                loginUser,
                 marketOrderId,
                 ...req.body
             }
