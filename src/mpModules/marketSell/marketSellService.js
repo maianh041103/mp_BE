@@ -148,7 +148,7 @@ const marketOrderInclude = [
                     {
                         model: models.Product,
                         as: "product",
-                        attributes: ["id", "name"]
+                        attributes: ["id", "name","primePrice"]
                     },
                     {
                         model: models.ProductUnit,
@@ -210,7 +210,7 @@ const marketOrderInclude = [
         model:models.Province,
         as:"province",
         attributes: ["name", "name2"]
-    }
+    },
 ];
 const marketOrderAttributes = [
     "id","code","fullName","branchId","toBranchId","addressId","address",
@@ -941,7 +941,11 @@ const handleGetDetailMarketOrder = async ( {id,branchId} )=>{
     }
     let marketOrder = await models.MarketOrder.findOne({
         where: {
-            id,branchId
+            id,
+            [Op.or]:{
+                branchId:branchId,
+                toBranchId:branchId
+            }
         },
         include: marketOrderInclude,
         attributes:marketOrderAttributes
@@ -960,6 +964,15 @@ const handleGetDetailMarketOrder = async ( {id,branchId} )=>{
 module.exports.getDetailMarketOrderService = async (result) => {
     try {
         const marketOrder = await handleGetDetailMarketOrder(result);
+        for(const product of marketOrder.products){
+            const series = await models.Seri.findAll({
+                where:{
+                    marketOrderId: product.marketOrderId,
+                    marketProductId: product.marketProductId
+                }
+            });
+            product.dataValues.series = series;
+        }
         return {
             success: true,
             data: {
@@ -1530,7 +1543,7 @@ module.exports.updateSeriService = async (result)=>{
 
 module.exports.marketOrderPaymentService = async (result)=>{
     try {
-        const {marketOrderId, storeId, branchId,paid} = result;
+        const {marketOrderId, storeId,loginUser, branchId,paid} = result;
         const marketOrderExists = await handleGetDetailMarketOrder({id:marketOrderId,branchId});
         if(!marketOrderExists){
             return{
@@ -1548,7 +1561,8 @@ module.exports.marketOrderPaymentService = async (result)=>{
         }
         const customer = await models.Customer.findOne({
             where:{
-                branchId,type:customerContant.customerType.Agency
+                branchId:marketOrderExists.branchId,
+                type:customerContant.customerType.Agency
             }
         });
         if(!customer){
@@ -1567,29 +1581,86 @@ module.exports.marketOrderPaymentService = async (result)=>{
                 },
                 transaction:t
             });
-            //Tạo hóa đơn
-            // const newOrder = await models.Order.create(
-            //     {
-            //         code: marketOrderExists.code,
-            //         description: marketOrderExists.note,
-            //         customerId: customer.id,
-            //         totalPrice: marketOrderExists.totalPrice,
-            //         paymentType: order.paymentType,
-            //         cashOfCustomer: order.cashOfCustomer,
-            //         customerOwes: 0,
-            //         refund: 0,
-            //         discount: 0,
-            //         discountType: order.discountType,
-            //         status: orderStatuses.DRAFT,
-            //         storeId: loginUser.storeId,
-            //         branchId: order.branchId,
-            //         createdBy: loginUser.id,
-            //         discountOrder: order.discountOrder || 0,
-            //         paymentPoint: order.paymentPoint,
-            //         discountByPoint: moneyDiscountByPoint
-            //     },
-            //     { transaction: t }
-            // )
+            // Tạo hóa đơn
+            const newOrder = await models.Order.create(
+                {
+                    code: marketOrderExists.code,
+                    description: marketOrderExists.note,
+                    customerId: customer.id,
+                    totalPrice: marketOrderExists.dataValues.totalPrice,
+                    paymentType: (paid < marketOrderExists.dataValues.totalPrice)? "DEBT" : "BANK",
+                    cashOfCustomer: marketOrderExists.dataValues.totalPrice,
+                    customerOwes: marketOrderExists.dataValues.totalPrice -paid,
+                    refund: 0,
+                    discount: 0,
+                    status: orderStatuses.SUCCEED,
+                    storeId: storeId,
+                    branchId: branchId,
+                    createdBy: loginUser.id
+                },
+                { transaction: t }
+            );
+            for (const item of marketOrderExists.products) {
+                const productUnit = await models.ProductUnit.findOne({
+                    where: {
+                        id: item?.marketProduct?.productUnit?.id
+                    }
+                });
+
+                const orderProduct = await models.OrderProduct.create(
+                    {
+                        orderId: newOrder.id,
+                        productId: item?.marketProduct?.product?.id,
+                        productUnitId: item?.marketProduct?.productUnit?.id,
+                        isDiscount: false,
+                        itemPrice: item?.price,
+                        discountPrice:0,
+                        productUnitData: JSON.stringify(productUnit),
+                        price: +item.price * +item.quantity,
+                        quantityBaseUnit: +item?.marketProduct?.productUnit?.exchangeValue * +item.quantity,
+                        quantity: item?.quantity,
+                        discount: 0,
+                        primePrice: item?.marketProduct?.product?.primePrice,
+                        customerId: newOrder.customerId,
+                        createdBy: newOrder.createdBy,
+                        updatedBy: newOrder.createdBy,
+                        createdAt: new Date(),
+                        comboId: null,
+                        quantityLast: null,
+                        point: 0
+                    },
+                    { transaction: t }
+                )
+
+                if (item?.orderBatches) {
+                    for (const _batch of item?.orderBatches) {
+                        await models.OrderProductBatch.create(
+                            {
+                                orderProductId: orderProduct.id,
+                                batchId: _batch.batchId,
+                                quantity: _batch.quantity
+                            },
+                            { transaction: t }
+                        )
+                    }
+                }
+            }
+            // End tạo hóa đơn
+            // Nợ
+            if(newOrder.customerOwes > 0){
+                await models.CustomerDebt.create(
+                    {
+                        totalAmount: newOrder.totalPrice,
+                        debtAmount: newOrder.customerOwes,
+                        customerId: newOrder.customerId,
+                        orderId: newOrder.id,
+                        type: 'ORDER'
+                    },
+                    { transaction: t }
+                )
+            }
+            // // End nợ
+
 
         });
         return {
