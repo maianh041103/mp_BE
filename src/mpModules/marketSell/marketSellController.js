@@ -365,3 +365,22 @@ module.exports.updateSeri = async (req,res)=>{
         res.json(respondWithClientError(e))
     }
 }
+
+//[PATCH] mp/api/market/payment/:marketOrderId
+module.exports.marketOrderPayment = async (req,res)=>{
+    try {
+        const { loginUser = {}} = req;
+        const {marketOrderId} = req.params;
+        const result = await marketSellService.marketOrderPaymentService(
+            {
+                storeId: loginUser.storeId,
+                marketOrderId,
+                ...req.body
+            }
+        );
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (e) {
+        res.json(respondWithClientError(e))
+    }
+}

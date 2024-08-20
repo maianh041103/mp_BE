@@ -84,6 +84,11 @@ router.patch("/market-order/:id",authenticate,(req,res,next)=>{
     next();
 },authorize,controller.changeStatusMarketOrder);
 
+router.patch("/market-order/payment/:id",authenticate,(req,res,next)=>{
+    req.apiRole = [];
+    next();
+},authorize,controller.marketOrderPayment);
+
 router.get("/product-private",authenticate,(req,res,next)=>{
     req.apiRole = [];
     next();

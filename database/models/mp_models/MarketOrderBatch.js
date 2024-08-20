@@ -11,12 +11,12 @@ module.exports = (sequelize, DataTypes) => {
                 autoIncrement: true,
                 allowNull: false,
             },
-            marketOrderId: {
+            marketOrderId:{
                 allowNull: false,
-                type: DataTypes.INTEGER(10).UNSIGNED,
+                type:DataTypes.INTEGER(10).UNSIGNED,
             },
-            marketProductId:{
-                allowNull:false,
+            marketOrderProductId:{
+                allowNull: false,
                 type:DataTypes.INTEGER(10).UNSIGNED,
             },
             batchId:{
@@ -36,14 +36,9 @@ module.exports = (sequelize, DataTypes) => {
     );
 
     MarketOrderBatch.associate = function (models) {
-        MarketOrderBatch.belongsTo(models.MarketOrder, {
-            as: "marketOrder",
-            foreignKey: "marketOrderId",
-            targetKey: "id"
-        });
-        MarketOrderBatch.belongsTo(models.MarketProduct, {
-            as: "marketProduct",
-            foreignKey: "marketOrderId",
+        MarketOrderBatch.belongsTo(models.MarketOrderProduct, {
+            as: "product",
+            foreignKey: "marketOrderProductId",
             targetKey: "id"
         });
         MarketOrderBatch.belongsTo(models.Batch,{

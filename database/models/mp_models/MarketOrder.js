@@ -68,6 +68,11 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull:true,
                 type: DataTypes.INTEGER(10).UNSIGNED,
             },
+            isPayment:{
+                allowNull:true,
+                type:DataTypes.BOOLEAN,
+                defaultValue:false
+            },
             createdAt: {
                 allowNull: true,
                 type: DataTypes.DATE,

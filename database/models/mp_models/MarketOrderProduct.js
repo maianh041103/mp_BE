@@ -45,6 +45,11 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: "marketProductId",
             targetKey: "id"
         });
+        MarketOrderProduct.hasMany(models.MarketOrderBatch,{
+            as: "orderBatches",
+            foreignKey:"marketOrderProductId",
+            sourceKey:"id"
+        });
     };
     return MarketOrderProduct;
 };

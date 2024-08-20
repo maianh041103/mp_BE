@@ -6,8 +6,9 @@ const {getImages} = require("../../helpers/getImages");
 const marketConfigContant = require("../marketConfig/marketConfigContant")
 const marketSellContant = require("./marketSellContant");
 const {generateCode} = require("../../helpers/codeGenerator");
-const {createWarehouseCard} = require("../warehouse/warehouseService");
 const {warehouseStatus} = require("../warehouse/constant");
+const {orderStatuses} = require("../order/orderConstant");
+const customerContant = require("../customer/customerConstant");
 
 const marketProductInclude = [
     {
@@ -159,6 +160,10 @@ const marketOrderInclude = [
                         as:"imageCenter"
                     }
                 ]
+            },
+            {
+                model:models.MarketOrderBatch,
+                as:"orderBatches"
             }
         ]
     },
@@ -207,6 +212,13 @@ const marketOrderInclude = [
         attributes: ["name", "name2"]
     }
 ];
+const marketOrderAttributes = [
+    "id","code","fullName","branchId","toBranchId","addressId","address",
+    "phone","status","note","wardId","districtId","provinceId","isPayment","createdAt",
+    [Sequelize.literal(`(SELECT SUM(market_order_products.quantity * market_order_products.price)
+    FROM market_order_products
+    WHERE MarketOrder.id = market_order_products.marketOrderId )`), 'totalPrice'],
+]
 
 module.exports.createAddressService = async (result) => {
     try {
@@ -919,29 +931,35 @@ module.exports.createMarketOrderService = async (result) => {
     }
 }
 
+const handleGetDetailMarketOrder = async ( {id,branchId} )=>{
+    if(!branchId){
+        return{
+            error:true,
+            message:"Vui lòng truyền lên thông tin chi nhánh",
+            code:HttpStatusCode.BAD_REQUEST
+        }
+    }
+    let marketOrder = await models.MarketOrder.findOne({
+        where: {
+            id,branchId
+        },
+        include: marketOrderInclude,
+        attributes:marketOrderAttributes
+    });
+    if (!marketOrder) {
+        return {
+            error: true,
+            message: `Không tồn tại đơn hàng có id = ${id}`,
+            code: HttpStatusCode.BAD_REQUEST
+        }
+    }
+    marketOrder.dataValues.totalPrice = parseInt(marketOrder.dataValues.totalPrice);
+    return marketOrder;
+}
+
 module.exports.getDetailMarketOrderService = async (result) => {
     try {
-        const {id, branchId} = result;
-        if(!branchId){
-            return{
-                error:true,
-                message:"Vui lòng truyền lên thông tin chi nhánh",
-                code:HttpStatusCode.BAD_REQUEST
-            }
-        }
-        const marketOrder = await models.MarketOrder.findOne({
-            where: {
-                id,branchId
-            },
-            include: marketOrderInclude
-        });
-        if (!marketOrder) {
-            return {
-                error: true,
-                message: `Không tồn tại đơn hàng có id = ${id}`,
-                code: HttpStatusCode.BAD_REQUEST
-            }
-        }
+        const marketOrder = await handleGetDetailMarketOrder(result);
         return {
             success: true,
             data: {
@@ -973,10 +991,14 @@ module.exports.getAllMarketOrderService = async (result) => {
         const rows = await models.MarketOrder.findAll({
             where,
             include: marketOrderInclude,
+            attributes:marketOrderAttributes,
             limit: parseInt((limit)),
             offset: (parseInt(page) - 1) * parseInt(limit),
             order: [["createdAt", "DESC"]]
         });
+        for(const row of rows){
+            row.dataValues.totalPrice = parseInt(row.dataValues.totalPrice);
+        }
         const count = await models.MarketOrder.count({
             where
         });
@@ -1159,7 +1181,7 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                         for (const batch of item?.batches) {
                             await models.MarketOrderBatch.create({
                                 marketOrderId: id,
-                                marketProductId: item.marketProductId,
+                                marketOrderProductId: item.marketOrderProductId,
                                 batchId: batch.batchId,
                                 quantity: batch.quantity
                             }, {
@@ -1243,10 +1265,10 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                 //Tao products
                 products = [];
                 for (const item of listMarketOrderBatch) {
-                    const index = products.findIndex(product => product.marketProductId === item.marketProductId);
+                    const index = products.findIndex(product => product.marketOrderProductId === item.marketOrderProductId);
                     if (index === -1) {
                         products.push({
-                            marketProductId: item.marketProductId,
+                            marketOrderProductId: item.marketOrderProductId,
                             batches: [
                                 {
                                     batchId: item.batchId,
@@ -1264,14 +1286,13 @@ module.exports.changeStatusMarketOrderService = async (result) => {
 
                 if (products) {
                     for (const item of products) {
-                        const {marketProductId, batches} = item;
+                        const {marketOrderProductId, batches} = item;
                         let totalQuantity = batches.reduce((cal, item) => {
                             return cal + item.quantity;
                         }, 0);
                         const marketOrderProduct = await models.MarketOrderProduct.findOne({
                             where: {
-                                marketOrderId: id,
-                                marketProductId
+                                id:marketOrderProductId
                             }
                         });
                         if (totalQuantity != marketOrderProduct.quantity) {
@@ -1283,7 +1304,7 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                                 quantitySold: batch.quantity * number * (-1)
                             }, {
                                 where: {
-                                    marketProductId,
+                                    marketProductId:marketOrderProduct.marketProductId,
                                     batchId: batch.batchId
                                 },
                                 transaction: t
@@ -1493,6 +1514,83 @@ module.exports.updateSeriService = async (result)=>{
                     }
                 }
             }
+        });
+        return {
+            success: true,
+            data: null
+        }
+    } catch (e) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Loi ${e}`
+        }
+    }
+}
+
+module.exports.marketOrderPaymentService = async (result)=>{
+    try {
+        const {marketOrderId, storeId, branchId,paid} = result;
+        const marketOrderExists = await handleGetDetailMarketOrder({id:marketOrderId,branchId});
+        if(!marketOrderExists){
+            return{
+                error:true,
+                message:`Không tìm thấy đơn hàng có id = ${marketOrderId} của chi nhánh id = ${branchId}`,
+                code:HttpStatusCode.BAD_REQUEST
+            }
+        }
+        if(paid === 0){
+            return{
+                error:true,
+                message:"Vui lòng thanh toán với số tiền lớn hơn 0",
+                code: HttpStatusCode.BAD_REQUEST
+            }
+        }
+        const customer = await models.Customer.findOne({
+            where:{
+                branchId,type:customerContant.customerType.Agency
+            }
+        });
+        if(!customer){
+            return{
+                error:true,
+                message:"Không tồn tại chi nhánh trong bảng khách hàng",
+                code:HttpStatusCode.BAD_REQUEST
+            }
+        }
+        const t = await models.sequelize.transaction(async (t)=>{
+            await models.MarketOrder.update({
+                isPayment:true
+            },{
+                where:{
+                    id:marketOrderId
+                },
+                transaction:t
+            });
+            //Tạo hóa đơn
+            // const newOrder = await models.Order.create(
+            //     {
+            //         code: marketOrderExists.code,
+            //         description: marketOrderExists.note,
+            //         customerId: customer.id,
+            //         totalPrice: marketOrderExists.totalPrice,
+            //         paymentType: order.paymentType,
+            //         cashOfCustomer: order.cashOfCustomer,
+            //         customerOwes: 0,
+            //         refund: 0,
+            //         discount: 0,
+            //         discountType: order.discountType,
+            //         status: orderStatuses.DRAFT,
+            //         storeId: loginUser.storeId,
+            //         branchId: order.branchId,
+            //         createdBy: loginUser.id,
+            //         discountOrder: order.discountOrder || 0,
+            //         paymentPoint: order.paymentPoint,
+            //         discountByPoint: moneyDiscountByPoint
+            //     },
+            //     { transaction: t }
+            // )
+
         });
         return {
             success: true,
