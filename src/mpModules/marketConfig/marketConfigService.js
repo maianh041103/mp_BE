@@ -557,7 +557,7 @@ module.exports.changeProductService = async (result) => {
                     const groupAgencyExists = await models.GroupAgency.findOne({
                         where: {
                             id: groupId,
-                            storeId
+                            branchId
                         }
                     });
                     if (!groupAgencyExists) {
@@ -567,7 +567,7 @@ module.exports.changeProductService = async (result) => {
                     const agencyExists = await models.RequestAgency.findOne({
                         where: {
                             id: agencyId,
-                            storeId
+                            branchId
                         }
                     });
                     if (!agencyExists) {
