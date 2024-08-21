@@ -56,7 +56,7 @@ module.exports = (sequelize, DataTypes) => {
         MarketProductBatch.belongsTo(models.Store, {
             as: "store",
             foreignKey: "storeId",
-            targetKey: "id",
+            targetKey: "id"
         });
 
         MarketProductBatch.belongsTo(models.MarketProduct, {
@@ -64,6 +64,12 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: "marketProductId",
             targetKey: "id"
         });
+
+        MarketProductBatch.belongsTo(models.Batch,{
+            as:"batch",
+            foreignKey: "batchId",
+            targetKey: "id"
+        })
     };
     return MarketProductBatch;
 };

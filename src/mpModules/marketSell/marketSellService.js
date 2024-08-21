@@ -9,6 +9,9 @@ const {generateCode} = require("../../helpers/codeGenerator");
 const {warehouseStatus} = require("../warehouse/constant");
 const {orderStatuses} = require("../order/orderConstant");
 const customerContant = require("../customer/customerConstant");
+const transactionContant = require("../transaction/transactionContant");
+const transactionService = require("../transaction/transactionService");
+const {createOrderPayment} = require("../order/OrderPaymentService");
 
 const marketProductInclude = [
     {
@@ -1156,6 +1159,7 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                 message: "Không tìm thấy đơn hàng"
             }
         }
+
         const t = await models.sequelize.transaction(async (t) => {
             await models.MarketOrder.update({
                 status
@@ -1190,16 +1194,63 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                             transaction: t
                         })
                     }
-                    if(item?.batches && item?.batches.length > 0) {
-                        for (const batch of item?.batches) {
-                            await models.MarketOrderBatch.create({
-                                marketOrderId: id,
-                                marketOrderProductId: item.marketOrderProductId,
-                                batchId: batch.batchId,
-                                quantity: batch.quantity
-                            }, {
-                                transaction: t
-                            });
+                    // if(item?.batches && item?.batches.length > 0) {
+                    //     for (const batch of item?.batches) {
+                    //         await models.MarketOrderBatch.create({
+                    //             marketOrderId: id,
+                    //             marketOrderProductId: item.marketOrderProductId,
+                    //             batchId: batch.batchId,
+                    //             quantity: batch.quantity
+                    //         }, {
+                    //             transaction: t
+                    //         });
+                    //     }
+                    // }
+                    //Xử lý batches
+                    const marketProduct = await models.MarketProduct.findOne({
+                        where: {
+                            id: item.marketProductId
+                        },
+                        include: [
+                            {
+                                model: models.Product,
+                                as: "product"
+                            },
+                            {
+                                model: models.MarketProductBatch,
+                                as: "batches",
+                                include: [
+                                    {
+                                        model: models.Batch,
+                                        as: "batch",
+                                        attributes: ["id", "expiryDate"]
+                                    }
+                                ]
+                            }
+                        ],
+                        order: [
+                            [{ model: 'batches->batch', as: "batch" }, 'expiryDate', 'ASC']
+                        ]
+                    });
+                    const marketOrderProduct = await models.MarketOrderProduct.findOne({
+                        where:{
+                            id: item.marketOrderProductId
+                        }
+                    });
+                    if(marketProduct?.product?.isBatchExpireControl){
+                        let quantity = marketOrderProduct.quantity;
+                        for(const batch of marketProduct.batches){
+                            if(quantity > 0) {
+                                const newMarketOrderBatch = await models.MarketOrderBatch.create({
+                                    marketOrderId: id,
+                                    marketOrderProductId: item.marketOrderProductId,
+                                    batchId: batch.batchId,
+                                    quantity: quantity <= batch.quantity ? quantity : quantity - batch.quantity
+                                }, {
+                                    transaction: t
+                                });
+                                quantity -= newMarketOrderBatch;
+                            }
                         }
                     }
                 }
@@ -1207,6 +1258,17 @@ module.exports.changeStatusMarketOrderService = async (result) => {
             let number;
             if (status === marketSellContant.STATUS_ORDER.SEND || status === marketSellContant.STATUS_ORDER.CANCEL) {
                 if (status === marketSellContant.STATUS_ORDER.SEND) {
+                    const countSeri = await models.Seri.count({
+                        where:{
+                            marketOrderId:id
+                        }
+                    });
+                    const countProduct = marketOrderExists?.products?.reduce((calc,item)=>{
+                        return calc + item.quantity;
+                    },0);
+                    if(countSeri < countProduct){
+                        throw new Error("Vui lòng nhập hết mã seri cho đơn hàng");
+                    }
                     number = -1;
                     let endDate = new Date();
                     endDate.setDate(endDate.getDate() + marketSellContant.TIME_SHIP.TWO);
@@ -1341,7 +1403,7 @@ module.exports.changeStatusMarketOrderService = async (result) => {
         })
         return {
             success: true,
-            data: null
+            data: marketOrderExists
         }
     } catch (e) {
         return {
@@ -1561,10 +1623,11 @@ module.exports.marketOrderPaymentService = async (result)=>{
         }
         const customer = await models.Customer.findOne({
             where:{
-                branchId:marketOrderExists.branchId,
+                branchId:marketOrderExists.toBranchId,
                 type:customerContant.customerType.Agency
             }
         });
+
         if(!customer){
             return{
                 error:true,
@@ -1582,101 +1645,118 @@ module.exports.marketOrderPaymentService = async (result)=>{
                 transaction:t
             });
 
-            //Tạo hóa đơn
-            // // Tạo hóa đơn
-            // const newOrder = await models.Order.create(
-            //     {
-            //         code: marketOrderExists.code,
-            //         description: marketOrderExists.note,
-            //         customerId: customer.id,
-            //         totalPrice: marketOrderExists.totalPrice,
-            //         paymentType: order.paymentType,
-            //         cashOfCustomer: order.cashOfCustomer,
-            //         customerOwes: 0,
-            //         totalPrice: marketOrderExists.dataValues.totalPrice,
-            //         paymentType: (paid < marketOrderExists.dataValues.totalPrice)? "DEBT" : "BANK",
-            //         cashOfCustomer: marketOrderExists.dataValues.totalPrice,
-            //         customerOwes: marketOrderExists.dataValues.totalPrice -paid,
-            //         refund: 0,
-            //         discount: 0,
-            //         discountType: order.discountType,
-            //         status: orderStatuses.DRAFT,
-            //         storeId: loginUser.storeId,
-            //         branchId: order.branchId,
-            //         createdBy: loginUser.id,
-            //         discountOrder: order.discountOrder || 0,
-            //         paymentPoint: order.paymentPoint,
-            //         discountByPoint: moneyDiscountByPoint
-            //         status: orderStatuses.SUCCEED,
-            //         storeId: storeId,
-            //         branchId: branchId,
-            //         createdBy: loginUser.id
-            //     },
-            //     { transaction: t }
-            // )
-            // );
-            // for (const item of marketOrderExists.products) {
-            //     const productUnit = await models.ProductUnit.findOne({
-            //         where: {
-            //             id: item?.marketProduct?.productUnit?.id
-            //         }
-            //     });
-            //
-            //     const orderProduct = await models.OrderProduct.create(
-            //         {
-            //             orderId: newOrder.id,
-            //             productId: item?.marketProduct?.product?.id,
-            //             productUnitId: item?.marketProduct?.productUnit?.id,
-            //             isDiscount: false,
-            //             itemPrice: item?.price,
-            //             discountPrice:0,
-            //             productUnitData: JSON.stringify(productUnit),
-            //             price: +item.price * +item.quantity,
-            //             quantityBaseUnit: +item?.marketProduct?.productUnit?.exchangeValue * +item.quantity,
-            //             quantity: item?.quantity,
-            //             discount: 0,
-            //             primePrice: item?.marketProduct?.product?.primePrice,
-            //             customerId: newOrder.customerId,
-            //             createdBy: newOrder.createdBy,
-            //             updatedBy: newOrder.createdBy,
-            //             createdAt: new Date(),
-            //             comboId: null,
-            //             quantityLast: null,
-            //             point: 0
-            //         },
-            //         { transaction: t }
-            //     )
-            //
-            //     if (item?.orderBatches) {
-            //         for (const _batch of item?.orderBatches) {
-            //             await models.OrderProductBatch.create(
-            //                 {
-            //                     orderProductId: orderProduct.id,
-            //                     batchId: _batch.batchId,
-            //                     quantity: _batch.quantity
-            //                 },
-            //                 { transaction: t }
-            //             )
-            //         }
-            //     }
-            // }
-            // // End tạo hóa đơn
-            // // Nợ
-            // if(newOrder.customerOwes > 0){
-            //     await models.CustomerDebt.create(
-            //         {
-            //             totalAmount: newOrder.totalPrice,
-            //             debtAmount: newOrder.customerOwes,
-            //             customerId: newOrder.customerId,
-            //             orderId: newOrder.id,
-            //             type: 'ORDER'
-            //         },
-            //         { transaction: t }
-            //     )
-            // }
-            // // End nợ
+            // Tạo hóa đơn
+            const newOrder = await models.Order.create(
+                {
+                    code: marketOrderExists.code,
+                    description: marketOrderExists.note,
+                    customerId: customer.id,
+                    totalPrice: marketOrderExists.dataValues.totalPrice,
+                    paymentType: (paid < marketOrderExists.dataValues.totalPrice)? "DEBT" : "BANK",
+                    cashOfCustomer: paid,
+                    customerOwes: marketOrderExists.dataValues.totalPrice - paid,
+                    refund: 0,
+                    discount: 0,
+                    status: orderStatuses.SUCCEED,
+                    userId:loginUser.id,
+                    storeId: loginUser.storeId,
+                    createdBy: loginUser.id,
+                    branchId: branchId
+                },
+                { transaction: t }
+            );
+            for (const item of marketOrderExists.products) {
+                const productUnit = await models.ProductUnit.findOne({
+                    where: {
+                        id: item?.marketProduct?.productUnit?.id
+                    }
+                });
 
+                const orderProduct = await models.OrderProduct.create(
+                    {
+                        orderId: newOrder.id,
+                        productId: item?.marketProduct?.product?.id,
+                        productUnitId: item?.marketProduct?.productUnit?.id,
+                        isDiscount: false,
+                        itemPrice: item?.price,
+                        discountPrice:0,
+                        productUnitData: JSON.stringify(productUnit),
+                        price: +item.price * +item.quantity,
+                        quantityBaseUnit: +item?.marketProduct?.productUnit?.exchangeValue * +item.quantity,
+                        quantity: item?.quantity,
+                        discount: 0,
+                        primePrice: item?.marketProduct?.product?.primePrice,
+                        customerId: newOrder.customerId,
+                        createdBy: newOrder.createdBy,
+                        updatedBy: newOrder.createdBy,
+                        createdAt: new Date(),
+                        comboId: null,
+                        quantityLast: null,
+                        userId:loginUser.id,
+                        point: 0
+                    },
+                    { transaction: t }
+                )
 
+                if (item?.orderBatches) {
+                    for (const _batch of item?.orderBatches) {
+                        await models.OrderProductBatch.create(
+                            {
+                                orderProductId: orderProduct.id,
+                                batchId: _batch.batchId,
+                                quantity: _batch.quantity
+                            },
+                            { transaction: t }
+                        )
+                    }
+                }
+            }
+            // End tạo hóa đơn
+            // Nợ
+            if(newOrder.customerOwes > 0){
+                await models.CustomerDebt.create(
+                    {
+                        totalAmount: newOrder.totalPrice,
+                        debtAmount: newOrder.customerOwes,
+                        customerId: newOrder.customerId,
+                        orderId: newOrder.id,
+                        type: 'ORDER'
+                    },
+                    { transaction: t }
+                )
+            }
+            // End nợ
+            //Tạo transaction
+            const idString = newOrder.id.toString()
+            const typeTransaction =
+                await transactionService.generateTypeTransactionOrder(loginUser.storeId)
+            const newTransaction = await models.Transaction.create(
+                {
+                    code: `TTHD${idString.padStart(9, '0')}`,
+                    paymentDate: new Date(),
+                    ballotType: transactionContant.BALLOTTYPE.INCOME,
+                    typeId: typeTransaction,
+                    value:
+                        newOrder.totalPrice <= newOrder.cashOfCustomer
+                            ? newOrder.totalPrice
+                            : newOrder.cashOfCustomer,
+                    createdBy: loginUser.id,
+                    target: transactionContant.TARGET.CUSTOMER,
+                    targetId: customer.id,
+                    isDebt: true,
+                    branchId: newOrder.branchId,
+                    isPaymentOrder: true,
+                    userId: loginUser.id
+                },
+                {
+                    transaction: t
+                }
+            )
+            //End tạo transaction
+            newOrder.transactionId = newTransaction.id;
+            //Tạo payment
+            await createOrderPayment(newOrder, t);
+            //End taọ payment
         });
         return {
             success: true,

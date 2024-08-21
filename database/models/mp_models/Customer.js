@@ -125,6 +125,10 @@ module.exports = (sequelize, Sequelize) => {
         type: Sequelize.BOOLEAN,
         defaultValue: false
       },
+        branchId:{
+          type:Sequelize.INTEGER(10).UNSIGNED,
+            allowNull:true
+        },
       createdAt: {
         allowNull: true,
         type: Sequelize.DATE,

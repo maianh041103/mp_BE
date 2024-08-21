@@ -2,10 +2,36 @@ const Sequelize = require("sequelize");
 const {Op} = Sequelize;
 const models = require("../../../database/models");
 const {HttpStatusCode} = require("../../helpers/errorCodes");
-const moment = require("moment/moment");
-const {formatMobileToSave} = require("../../helpers/utils");
 const {customerStatus, customerType, customerTypeOptions} = require("../customer/customerConstant");
-const {hashPassword} = require("../auth/authService");
+const {generateCode} = require("../../helpers/codeGenerator");
+
+const handlerCreateCustomer = async ({branchExists,t})=>{
+    const newCustomer = await models.Customer.create({
+        fullName: branchExists.name,
+        phone: branchExists.phone,
+        code:branchExists.code,
+        address: branchExists.address1,
+        type: customerType.Agency,
+        status: branchExists.status === 1 ? customerStatus.ACTIVE : customerStatus.INACTIVE,
+        wardId: branchExists.wardId,
+        districtId: branchExists.districtId,
+        provinceId: branchExists.provinceId,
+        createdAt: new Date(),
+        storeId:branchExists.storeId,
+        branchId:branchExists.id
+    },{
+        transaction:t
+    });
+    const code = generateCode("KH",newCustomer.id);
+    await models.Customer.update({
+        code,
+    },{
+        where:{
+            id:newCustomer.id
+        },
+        transaction:t
+    })
+}
 
 module.exports.createAgencyService = async (result)=>{
     try {
@@ -32,22 +58,7 @@ module.exports.createAgencyService = async (result)=>{
                 transaction: t
             });
 
-            await models.Customer.create({
-                fullName: branchExists.name,
-                phone: branchExists.phone,
-                code:branchExists.code,
-                address: branchExists.address1,
-                type: customerType.Agency,
-                status: branchExists.status === 1 ? customerStatus.ACTIVE : customerStatus.INACTIVE,
-                wardId: branchExists.wardId,
-                districtId: branchExists.districtId,
-                provinceId: branchExists.provinceId,
-                createdAt: new Date(),
-                storeId:branchExists.storeId,
-                branchId:branchExists.id
-            },{
-                transaction:t
-            });
+            await handlerCreateCustomer({branchExists,t});
 
             await models.Address.create({
                 fullName: branchExists.name,
@@ -75,3 +86,4 @@ module.exports.createAgencyService = async (result)=>{
         }
     }
 }
+
