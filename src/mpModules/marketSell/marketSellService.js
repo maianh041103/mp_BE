@@ -1403,7 +1403,7 @@ module.exports.changeStatusMarketOrderService = async (result) => {
         })
         return {
             success: true,
-            data: marketOrderExists
+            data: null
         }
     } catch (e) {
         return {
@@ -1411,6 +1411,111 @@ module.exports.changeStatusMarketOrderService = async (result) => {
             code: HttpStatusCode.BAD_REQUEST,
             message: `${e}`
         }
+    }
+}
+
+module.exports.updateOrderService = async (result) => {
+    const {id, addressId, listProduct, branchId, note} = result;
+    const marketOrder = await models.MarketOrder.findOne({
+        where: {
+            id,
+            [Op.or]: {
+                branchId,
+                toBranchId: branchId
+            }
+        }
+    });
+    if (!marketOrder) {
+        return {
+            error: true,
+            message: `Không tồn tại đơn hàng có id = ${id}`,
+            code: HttpStatusCode.BAD_REQUEST
+        }
+    }
+    if (marketOrder.status !== marketSellContant.STATUS_ORDER.PENDING) {
+        return {
+            error: true,
+            message: "Đơn hàng đã được xác nhận. Vui lòng không sửa thông tin đơn hàng",
+            code: HttpStatusCode.BAD_REQUEST
+        }
+    }
+    const addressExists = await models.Address.findOne({
+        where: {
+            id: addressId,
+            branchId: marketOrder.branchId
+        }
+    });
+    if (!addressExists) {
+        return {
+            error: true,
+            message: `Không tồn tại địa chỉ có id = ${addressId}`,
+            code: HttpStatusCode.BAD_REQUEST
+        }
+    }
+    const t = await models.sequelize.transaction(async (t) => {
+        if (addressId !== marketOrder.addressId) {
+            await models.MarketOrder.update({
+                addressId,
+                address: addressExists.address,
+                phone: addressExists.phone,
+                wardId: addressExists.wardId,
+                districtId: addressExists.districtId,
+                provinceId: addressExists.provinceId
+            }, {
+                where: {
+                    id
+                },
+                transaction: t
+            });
+        }
+        await models.MarketOrder.update({
+            note
+        },{
+            where:{
+                id
+            },
+            transaction:t
+        });
+        let listMarketOrderProductId = listProduct.filter(item=>{
+            return item.marketOrderProductId !== undefined
+        }).map(item=>{
+            return item.marketOrderProductId;
+        });
+        console.log(listMarketOrderProductId);
+        await models.MarketOrderProduct.destroy({
+            where:{
+                id:{
+                    [Op.notIn]: listMarketOrderProductId
+                },
+                marketOrderId: id
+            }
+        });
+        for(const product of listProduct){
+            if(product.marketOrderProductId){
+                await models.MarketOrderProduct.update({
+                    quantity: product.quantity,
+                    price:product.price
+                },{
+                    where:{
+                        id:product.marketOrderProductId
+                    },
+                    transaction: t
+                });
+            }else{
+                await models.MarketOrderProduct.create({
+                    quantity: product.quantity,
+                    price: product.price,
+                    marketOrderId: id,
+                    marketProductId: product.marketProductId
+                },{
+                    transaction: t
+                });
+            }
+        }
+    })
+    return{
+        success:true,
+        data:null
     }
 }
 
