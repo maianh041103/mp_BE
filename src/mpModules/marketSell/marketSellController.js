@@ -295,6 +295,26 @@ module.exports.changeStatusMarketOrder = async (req,res)=>{
     }
 }
 
+//[PATCH] mp/api/market/sell/market-order/update-order/:id
+module.exports.updateOrder = async (req,res)=>{
+    try {
+        const { loginUser = {} } = req;
+        const {id} = req.params;
+        const result = await marketSellService.updateOrderService(
+            {
+                storeId: loginUser.storeId,
+                loginUser,
+                id,
+                ...req.body
+            }
+        );
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (e) {
+        res.json(respondWithClientError(e))
+    }
+}
+
 //[GET] mp/api/market/sell/product-private
 module.exports.getProductPrivate = async(req,res)=>{
     try {

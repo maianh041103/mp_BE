@@ -12,6 +12,7 @@ const customerContant = require("../customer/customerConstant");
 const transactionContant = require("../transaction/transactionContant");
 const transactionService = require("../transaction/transactionService");
 const {createOrderPayment} = require("../order/OrderPaymentService");
+const {customerType, customerStatus} = require("../customer/customerConstant");
 
 const marketProductInclude = [
     {
@@ -222,6 +223,206 @@ const marketOrderAttributes = [
     FROM market_order_products
     WHERE MarketOrder.id = market_order_products.marketOrderId )`), 'totalPrice'],
 ]
+
+const handlerCreateCustomer = async ({branchExists,t})=>{
+    const newCustomer = await models.Customer.create({
+        fullName: branchExists.name,
+        phone: branchExists.phone,
+        code:branchExists.code,
+        address: branchExists.address1,
+        type: customerType.Agency,
+        status: branchExists.status === 1 ? customerStatus.ACTIVE : customerStatus.INACTIVE,
+        wardId: branchExists.wardId,
+        districtId: branchExists.districtId,
+        provinceId: branchExists.provinceId,
+        createdAt: new Date(),
+        storeId:branchExists.storeId,
+        branchId:branchExists.id
+    },{
+        transaction:t
+    });
+    const code = generateCode("KH",customer.id);
+    await models.Customer.update({
+        code,
+    },{
+        where:{
+            id:customer.id
+        },
+        transaction:t
+    });
+    newCustomer.code = code;
+    return newCustomer;
+}
+
+const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser, branchId,paid,t})=>{
+    const marketOrderExists = await handleGetDetailMarketOrder({id:marketOrderId,branchId});
+    if(!marketOrderExists){
+        throw new Error(`Không tìm thấy đơn hàng có id = ${marketOrderId} của chi nhánh id = ${branchId}`)
+    }
+    let customer = await models.Customer.findOne({
+        where:{
+            branchId:marketOrderExists.branchId,
+            type:customerContant.customerType.Agency
+        }
+    });
+
+    const branchExists = await models.Branch.findOne({
+        where:{
+            id:marketOrderExists.branchId
+        }
+    });
+    if(!branchExists){
+        throw new Error(`Không tồn tại chi nhánh có id = ${marketOrderExists.branchId}`);
+    }
+
+    let addressExists = await models.Address.findOne({
+        where:{
+            branchId:marketOrderExists.branchId
+        }
+    });
+
+    if(!customer){
+        customer = await handlerCreateCustomer({branchExists,t});
+    }
+
+    if(!addressExists){
+        addressExists = await models.Address.create({
+            fullName: branchExists.name,
+            phone: branchExists.phone,
+            wardId: branchExists.wardId,
+            districtId: branchExists.districtId,
+            provinceId: branchExists.provinceId,
+            address:branchExists.address1,
+            isDefaultAddress:true,
+            branchId:branchExists.id,
+            createdAt:new Date()
+        },{
+            transaction:t
+        })
+    }
+
+    await models.MarketOrder.update({
+        isPayment:true
+    },{
+        where:{
+            id:marketOrderId
+        },
+        transaction:t
+    });
+
+    // Tạo hóa đơn
+    const newOrder = await models.Order.create(
+        {
+            code: marketOrderExists.code,
+            description: marketOrderExists.note,
+            customerId: customer.id,
+            totalPrice: marketOrderExists.dataValues.totalPrice,
+            paymentType: (paid < marketOrderExists.dataValues.totalPrice)? "DEBT" : "BANK",
+            cashOfCustomer: paid,
+            customerOwes: marketOrderExists.dataValues.totalPrice - paid,
+            refund: 0,
+            discount: 0,
+            status: orderStatuses.SUCCEED,
+            userId:loginUser.id,
+            storeId: loginUser.storeId,
+            createdBy: loginUser.id,
+            branchId: branchId
+        },
+        { transaction: t }
+    );
+    for (const item of marketOrderExists.products) {
+        const productUnit = await models.ProductUnit.findOne({
+            where: {
+                id: item?.marketProduct?.productUnit?.id
+            }
+        });
+
+        const orderProduct = await models.OrderProduct.create(
+            {
+                orderId: newOrder.id,
+                productId: item?.marketProduct?.product?.id,
+                productUnitId: item?.marketProduct?.productUnit?.id,
+                isDiscount: false,
+                itemPrice: item?.price,
+                discountPrice:0,
+                productUnitData: JSON.stringify(productUnit),
+                price: +item.price * +item.quantity,
+                quantityBaseUnit: +item?.marketProduct?.productUnit?.exchangeValue * +item.quantity,
+                quantity: item?.quantity,
+                discount: 0,
+                primePrice: item?.marketProduct?.product?.primePrice,
+                customerId: newOrder.customerId,
+                createdBy: newOrder.createdBy,
+                updatedBy: newOrder.createdBy,
+                createdAt: new Date(),
+                comboId: null,
+                quantityLast: null,
+                userId:loginUser.id,
+                point: 0
+            },
+            { transaction: t }
+        )
+
+        if (item?.orderBatches) {
+            for (const _batch of item?.orderBatches) {
+                await models.OrderProductBatch.create(
+                    {
+                        orderProductId: orderProduct.id,
+                        batchId: _batch.batchId,
+                        quantity: _batch.quantity
+                    },
+                    { transaction: t }
+                )
+            }
+        }
+    }
+    // End tạo hóa đơn
+    // Nợ
+    if(newOrder.customerOwes > 0){
+        await models.CustomerDebt.create(
+            {
+                totalAmount: newOrder.totalPrice,
+                debtAmount: newOrder.customerOwes,
+                customerId: newOrder.customerId,
+                orderId: newOrder.id,
+                type: 'ORDER'
+            },
+            { transaction: t }
+        )
+    }
+    // End nợ
+    //Tạo transaction
+    const idString = newOrder.id.toString()
+    const typeTransaction =
+        await transactionService.generateTypeTransactionOrder(loginUser.storeId)
+    const newTransaction = await models.Transaction.create(
+        {
+            code: `TTHD${idString.padStart(9, '0')}`,
+            paymentDate: new Date(),
+            ballotType: transactionContant.BALLOTTYPE.INCOME,
+            typeId: typeTransaction,
+            value:
+                newOrder.totalPrice <= newOrder.cashOfCustomer
+                    ? newOrder.totalPrice
+                    : newOrder.cashOfCustomer,
+            createdBy: loginUser.id,
+            target: transactionContant.TARGET.CUSTOMER,
+            targetId: customer.id,
+            isDebt: true,
+            branchId: newOrder.branchId,
+            isPaymentOrder: true,
+            userId: loginUser.id
+        },
+        {
+            transaction: t
+        }
+    )
+    //End tạo transaction
+    newOrder.transactionId = newTransaction.id;
+    //Tạo payment
+    await createOrderPayment(newOrder, t);
+    //End taọ payment
+}
 
 module.exports.createAddressService = async (result) => {
     try {
@@ -1179,6 +1380,9 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                 transaction: t
             });
             //Processing : Tạo mã seri và chon lô cho sản phẩm bán
+            if(status === marketSellContant.STATUS_ORDER.DONE && marketOrderExists.isPayment === false){
+                await handlerCreateOrderPayment({marketOrderId : id, storeId:loginUser.storeId,loginUser, branchId:marketOrderExists.toBranchId, paid : 0,t})
+            }
             if(status === marketSellContant.STATUS_ORDER.PROCESSING){
                 for (const item of products) {
                     let series = item?.listSeri.map(seri=>{
@@ -1403,7 +1607,7 @@ module.exports.changeStatusMarketOrderService = async (result) => {
         })
         return {
             success: true,
-            data: marketOrderExists
+            data: null
         }
     } catch (e) {
         return {
@@ -1411,6 +1615,111 @@ module.exports.changeStatusMarketOrderService = async (result) => {
             code: HttpStatusCode.BAD_REQUEST,
             message: `${e}`
         }
+    }
+}
+
+module.exports.updateOrderService = async (result) => {
+    const {id, addressId, listProduct, branchId, note} = result;
+    const marketOrder = await models.MarketOrder.findOne({
+        where: {
+            id,
+            [Op.or]: {
+                branchId,
+                toBranchId: branchId
+            }
+        }
+    });
+    if (!marketOrder) {
+        return {
+            error: true,
+            message: `Không tồn tại đơn hàng có id = ${id}`,
+            code: HttpStatusCode.BAD_REQUEST
+        }
+    }
+    if (marketOrder.status !== marketSellContant.STATUS_ORDER.PENDING) {
+        return {
+            error: true,
+            message: "Đơn hàng đã được xác nhận. Vui lòng không sửa thông tin đơn hàng",
+            code: HttpStatusCode.BAD_REQUEST
+        }
+    }
+    const addressExists = await models.Address.findOne({
+        where: {
+            id: addressId,
+            branchId: marketOrder.branchId
+        }
+    });
+    if (!addressExists) {
+        return {
+            error: true,
+            message: `Không tồn tại địa chỉ có id = ${addressId}`,
+            code: HttpStatusCode.BAD_REQUEST
+        }
+    }
+    const t = await models.sequelize.transaction(async (t) => {
+        if (addressId !== marketOrder.addressId) {
+            await models.MarketOrder.update({
+                addressId,
+                address: addressExists.address,
+                phone: addressExists.phone,
+                wardId: addressExists.wardId,
+                districtId: addressExists.districtId,
+                provinceId: addressExists.provinceId
+            }, {
+                where: {
+                    id
+                },
+                transaction: t
+            });
+        }
+        await models.MarketOrder.update({
+            note
+        },{
+            where:{
+                id
+            },
+            transaction:t
+        });
+        let listMarketOrderProductId = listProduct.filter(item=>{
+            return item.marketOrderProductId !== undefined
+        }).map(item=>{
+            return item.marketOrderProductId;
+        });
+        console.log(listMarketOrderProductId);
+        await models.MarketOrderProduct.destroy({
+            where:{
+                id:{
+                    [Op.notIn]: listMarketOrderProductId
+                },
+                marketOrderId: id
+            }
+        });
+        for(const product of listProduct){
+            if(product.marketOrderProductId){
+                await models.MarketOrderProduct.update({
+                    quantity: product.quantity,
+                    price:product.price
+                },{
+                    where:{
+                        id:product.marketOrderProductId
+                    },
+                    transaction: t
+                });
+            }else{
+                await models.MarketOrderProduct.create({
+                    quantity: product.quantity,
+                    price: product.price,
+                    marketOrderId: id,
+                    marketProductId: product.marketProductId
+                },{
+                    transaction: t
+                });
+            }
+        }
+    })
+    return{
+        success:true,
+        data:null
     }
 }
 
@@ -1566,6 +1875,20 @@ module.exports.updateSeriService = async (result)=>{
         const t = await models.sequelize.transaction(async (t)=>{
             for(const product of products){
                 const {marketProductId, listSeri = []} = product;
+                const listSeriIdDestroy = listSeri.filter(item=>{
+                    return item.id !== undefined
+                }).map(item=>{
+                    return item.id
+                });
+                await models.Seri.destroy({
+                    where:{
+                        id:{
+                            [Op.notIn]:listSeriIdDestroy
+                        },
+                        marketOrderId,
+                        marketProductId
+                    }
+                });
                 for(const seri of listSeri){
                     if(seri.id){
                         await models.Seri.update({
@@ -1606,158 +1929,9 @@ module.exports.updateSeriService = async (result)=>{
 module.exports.marketOrderPaymentService = async (result)=>{
     try {
         const {marketOrderId, storeId,loginUser, branchId,paid} = result;
-        const marketOrderExists = await handleGetDetailMarketOrder({id:marketOrderId,branchId});
-        if(!marketOrderExists){
-            return{
-                error:true,
-                message:`Không tìm thấy đơn hàng có id = ${marketOrderId} của chi nhánh id = ${branchId}`,
-                code:HttpStatusCode.BAD_REQUEST
-            }
-        }
-        if(paid === 0){
-            return{
-                error:true,
-                message:"Vui lòng thanh toán với số tiền lớn hơn 0",
-                code: HttpStatusCode.BAD_REQUEST
-            }
-        }
-        const customer = await models.Customer.findOne({
-            where:{
-                branchId:marketOrderExists.toBranchId,
-                type:customerContant.customerType.Agency
-            }
-        });
-
-        if(!customer){
-            return{
-                error:true,
-                message:"Không tồn tại chi nhánh trong bảng khách hàng",
-                code:HttpStatusCode.BAD_REQUEST
-            }
-        }
         const t = await models.sequelize.transaction(async (t)=>{
-            await models.MarketOrder.update({
-                isPayment:true
-            },{
-                where:{
-                    id:marketOrderId
-                },
-                transaction:t
-            });
-
-            // Tạo hóa đơn
-            const newOrder = await models.Order.create(
-                {
-                    code: marketOrderExists.code,
-                    description: marketOrderExists.note,
-                    customerId: customer.id,
-                    totalPrice: marketOrderExists.dataValues.totalPrice,
-                    paymentType: (paid < marketOrderExists.dataValues.totalPrice)? "DEBT" : "BANK",
-                    cashOfCustomer: paid,
-                    customerOwes: marketOrderExists.dataValues.totalPrice - paid,
-                    refund: 0,
-                    discount: 0,
-                    status: orderStatuses.SUCCEED,
-                    userId:loginUser.id,
-                    storeId: loginUser.storeId,
-                    createdBy: loginUser.id,
-                    branchId: branchId
-                },
-                { transaction: t }
-            );
-            for (const item of marketOrderExists.products) {
-                const productUnit = await models.ProductUnit.findOne({
-                    where: {
-                        id: item?.marketProduct?.productUnit?.id
-                    }
-                });
-
-                const orderProduct = await models.OrderProduct.create(
-                    {
-                        orderId: newOrder.id,
-                        productId: item?.marketProduct?.product?.id,
-                        productUnitId: item?.marketProduct?.productUnit?.id,
-                        isDiscount: false,
-                        itemPrice: item?.price,
-                        discountPrice:0,
-                        productUnitData: JSON.stringify(productUnit),
-                        price: +item.price * +item.quantity,
-                        quantityBaseUnit: +item?.marketProduct?.productUnit?.exchangeValue * +item.quantity,
-                        quantity: item?.quantity,
-                        discount: 0,
-                        primePrice: item?.marketProduct?.product?.primePrice,
-                        customerId: newOrder.customerId,
-                        createdBy: newOrder.createdBy,
-                        updatedBy: newOrder.createdBy,
-                        createdAt: new Date(),
-                        comboId: null,
-                        quantityLast: null,
-                        userId:loginUser.id,
-                        point: 0
-                    },
-                    { transaction: t }
-                )
-
-                if (item?.orderBatches) {
-                    for (const _batch of item?.orderBatches) {
-                        await models.OrderProductBatch.create(
-                            {
-                                orderProductId: orderProduct.id,
-                                batchId: _batch.batchId,
-                                quantity: _batch.quantity
-                            },
-                            { transaction: t }
-                        )
-                    }
-                }
-            }
-            // End tạo hóa đơn
-            // Nợ
-            if(newOrder.customerOwes > 0){
-                await models.CustomerDebt.create(
-                    {
-                        totalAmount: newOrder.totalPrice,
-                        debtAmount: newOrder.customerOwes,
-                        customerId: newOrder.customerId,
-                        orderId: newOrder.id,
-                        type: 'ORDER'
-                    },
-                    { transaction: t }
-                )
-            }
-            // End nợ
-            //Tạo transaction
-            const idString = newOrder.id.toString()
-            const typeTransaction =
-                await transactionService.generateTypeTransactionOrder(loginUser.storeId)
-            const newTransaction = await models.Transaction.create(
-                {
-                    code: `TTHD${idString.padStart(9, '0')}`,
-                    paymentDate: new Date(),
-                    ballotType: transactionContant.BALLOTTYPE.INCOME,
-                    typeId: typeTransaction,
-                    value:
-                        newOrder.totalPrice <= newOrder.cashOfCustomer
-                            ? newOrder.totalPrice
-                            : newOrder.cashOfCustomer,
-                    createdBy: loginUser.id,
-                    target: transactionContant.TARGET.CUSTOMER,
-                    targetId: customer.id,
-                    isDebt: true,
-                    branchId: newOrder.branchId,
-                    isPaymentOrder: true,
-                    userId: loginUser.id
-                },
-                {
-                    transaction: t
-                }
-            )
-            //End tạo transaction
-            newOrder.transactionId = newTransaction.id;
-            //Tạo payment
-            await createOrderPayment(newOrder, t);
-            //End taọ payment
-        });
+            await handlerCreateOrderPayment({...result,t});
+        })
         return {
             success: true,
             data: null
