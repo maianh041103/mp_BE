@@ -771,13 +771,36 @@ module.exports.createRequestAgencyService = async (result) => {
         }
     }
     // Dang nhap tk 1 : 1 follow 2 => agency: 1 , branch : 2
-    for (const item of listAgency) {
-        await models.RequestAgency.create({
-            branchId: item,
-            agencyId: branchId,
-            status: marketConfigContant.AGENCY_STATUS.PENDING
-        });
-    }
+    const t = await models.sequelize.transaction(async (t)=>{
+        for (const item of listAgency) {
+            const check = await models.RequestAgency.findOne({
+                where:{
+                    branchId: item,
+                    agencyId: branchId,
+                }
+            });
+            if(check){
+                await models.RequestAgency.update({
+                    status: marketConfigContant.AGENCY_STATUS.PENDING
+                },{
+                    where:{
+                        branchId: item,
+                        agencyId: branchId,
+                    },
+                    transaction:t
+                });
+            }
+            else{
+                await models.RequestAgency.create({
+                    branchId: item,
+                    agencyId: branchId,
+                    status: marketConfigContant.AGENCY_STATUS.PENDING
+                },{
+                    transaction:t
+                });
+            }
+        }
+    })
     return {
         success: true,
         data: null
