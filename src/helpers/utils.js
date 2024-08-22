@@ -342,11 +342,7 @@ export function checkDouble(number) {
   if (number === null || number === undefined || number === "") {
     return false;
   }
-  try {
-    if (!/^\d+(\.\d+)?$/.test(string)) {
-      return false;
-    }
-  } catch (e) {
+  if (!/^\d+(\.\d+)?$/.test(number)) {
     return false;
   }
   return true;
