@@ -169,7 +169,14 @@ module.exports.createProductService = async (result) => {
         return{
             error:true,
             code:HttpStatusCode.BAD_REQUEST,
-            message:`Không tồn tại chi nhánh co id = ${branchId} thuộc cửa hàng id = ${storeId}`
+            message:`Không tồn tại chi nhánh có id = ${branchId} thuộc cửa hàng id = ${storeId}`
+        }
+    }
+    if(branchExists.isAgency === false && marketType === marketConfigContant.MARKET_TYPE.PRIVATE){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:"Bạn không có quyền tạo sản phẩm trên chợ riêng. Vui lòng đăng ký làm đại lý"
         }
     }
     const marketProductExists = await models.MarketProduct.findOne({
