@@ -13,6 +13,7 @@ const transactionContant = require("../transaction/transactionContant");
 const transactionService = require("../transaction/transactionService");
 const {createOrderPayment} = require("../order/OrderPaymentService");
 const {customerType, customerStatus} = require("../customer/customerConstant");
+const {indexCreate} = require("../saleReturn/saleReturnService");
 
 const marketProductInclude = [
     {
@@ -224,7 +225,7 @@ const marketOrderAttributes = [
     WHERE MarketOrder.id = market_order_products.marketOrderId )`), 'totalPrice'],
 ]
 
-const handlerCreateCustomer = async ({branchExists,t})=>{
+const handlerCreateCustomer = async ({branchExists, storeSell, t})=>{
     const newCustomer = await models.Customer.create({
         fullName: branchExists.name,
         phone: branchExists.phone,
@@ -236,7 +237,7 @@ const handlerCreateCustomer = async ({branchExists,t})=>{
         districtId: branchExists.districtId,
         provinceId: branchExists.provinceId,
         createdAt: new Date(),
-        storeId:branchExists.storeId,
+        storeId: storeSell,
         branchId:branchExists.id
     },{
         transaction:t
@@ -273,30 +274,6 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser, bran
     });
     if(!branchExists){
         throw new Error(`Không tồn tại chi nhánh có id = ${marketOrderExists.branchId}`);
-    }
-
-    let addressExists = await models.Address.findOne({
-        where:{
-            branchId:marketOrderExists.branchId
-        }
-    });
-    if(!customer){
-        customer = await handlerCreateCustomer({branchExists,t});
-    }
-    if(!addressExists){
-        addressExists = await models.Address.create({
-            fullName: branchExists.name,
-            phone: branchExists.phone,
-            wardId: branchExists.wardId,
-            districtId: branchExists.districtId,
-            provinceId: branchExists.provinceId,
-            address:branchExists.address1,
-            isDefaultAddress:true,
-            branchId:branchExists.id,
-            createdAt:new Date()
-        },{
-            transaction:t
-        })
     }
 
     await models.MarketOrder.update({
@@ -500,17 +477,35 @@ module.exports.getAllAddressService = async (result) => {
         if (isDefaultAddress) {
             where.isDefaultAddress = isDefaultAddress;
         }
-        const listAddress = await models.Address.findAll({
+        let listAddress = await models.Address.findAll({
             where,
             include: marketAddressInclude,
             order: [["createdAt", "DESC"]],
             limit: parseInt(limit),
             offset: (parseInt(limit) * (parseInt(page) - 1))
         });
-        const count = await models.Address.count({
+        let count = await models.Address.count({
             where,
             attributes: ["id"]
         });
+
+        if(!listAddress || listAddress.length === 0){
+            let addressDefault = await models.Address.create({
+                fullName: branchExists.name,
+                phone: branchExists.phone,
+                wardId: branchExists.wardId,
+                districtId: branchExists.districtId,
+                provinceId: branchExists.provinceId,
+                address:branchExists.address1,
+                isDefaultAddress:true,
+                branchId:branchExists.id,
+                createdAt:new Date()
+            },{
+                transaction:t
+            });
+            listAddress = [addressDefault];
+            count = 1;
+        }
         return {
             success: true,
             data: {
@@ -1107,15 +1102,49 @@ module.exports.createMarketOrderService = async (result) => {
                 transaction: t
             });
 
+            const branchSell = await models.Branch.findOne({
+                where:{
+                    id:toBranchId
+                },
+                include:[
+                    {
+                        model:models.Store,
+                        as:"store",
+                        attributes:["id"]
+                    }
+                ]
+            });
+            if(!branchSell){
+                throw new Error("Không tồn tại chi nhánh bán");
+            }
+            let customer = await models.Customer.findOne({
+                where:{
+                    branchId:newMarketOrderBuy.branchId,
+                    type:customerContant.customerType.Agency,
+                    storeId: branchSell?.store?.id
+                }
+            });
+
+            const branchExists = await models.Branch.findOne({
+                where:{
+                    id:newMarketOrderBuy.branchId
+                }
+            });
+
+            if(!customer){
+                customer = await handlerCreateCustomer({
+                    branchExists,
+                    storeSell:branchSell?.store?.id,
+                    t
+                });
+            }
+
             for (const item of listProduct) {
                 let marketProductExists = await models.MarketProduct.findOne({
                     where: {
                         id: item.marketProductId,
                     }
                 });
-                if (!marketProductExists) {
-                    throw new Error(`Không tồn tại sản phẩm trên chợ`);
-                }
                 await models.MarketOrderProduct.create({
                     marketProductId: item.marketProductId,
                     marketOrderId: newMarketOrderBuy.id,
@@ -1131,7 +1160,7 @@ module.exports.createMarketOrderService = async (result) => {
                         branchId
                     },
                     transaction: t
-                })
+                });
             }
         })
         return {
@@ -1358,7 +1387,7 @@ module.exports.getDetailProductPrivateService = async (result)=>{
     }
 }
 
-module.exports.changeStatusMarketOrderService = async (result) => {
+module.exports.changeStatusMarketOrderService = async (result) =>   {
     try {
         let {id, status, note, products, delivery, loginUser} = result;
         const marketOrderExists = await models.MarketOrder.findOne({
@@ -1374,11 +1403,17 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                 message: "Không tìm thấy đơn hàng"
             }
         }
-        if(marketOrderExists.status === status){
+        const statusExists = await models.HistoryPurchase.findOne({
+            where:{
+                marketOrderId:id,
+                status:status
+            }
+        });
+        if(statusExists){
             return{
                 error:true,
                 code:HttpStatusCode.BAD_REQUEST,
-                message:"Bạn đang ở trạng thái này, không thể cập nhật trạng thái"
+                message:"Trạng thái này đã được cập nhật"
             }
         }
         const t = await models.sequelize.transaction(async (t) => {
@@ -1400,7 +1435,7 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                 transaction: t
             });
             //Processing : Tạo mã seri và chon lô cho sản phẩm bán
-            if(status === marketSellContant.STATUS_ORDER.DONE && marketOrderExists.isPayment == false){
+            if(status === marketSellContant.STATUS_ORDER.DONE && marketOrderExists.isPayment === false){
                 await handlerCreateOrderPayment({marketOrderId : id, storeId:loginUser.storeId,loginUser, branchId:marketOrderExists.toBranchId, paid : 0,t})
             }
             if(status === marketSellContant.STATUS_ORDER.PROCESSING){
@@ -1505,7 +1540,8 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                     },{
                         transaction:t
                     })
-                } else {
+                }
+                else {
                     number = 1;
                     await models.Seri.destroy({
                         where:{
@@ -1514,6 +1550,54 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                     },{
                         transaction:t
                     });
+
+                    //Trả hàng
+                    if(marketOrderExists.isPayment === true){
+                        const order = await models.Order.findOne({
+                            where:{
+                                code: marketOrderExists?.code
+                            },
+                            include:[
+                                {
+                                    model:models.OrderProduct,
+                                    as:"orderProducts",
+                                    include:[{
+                                        model:models.OrderProductBatch,
+                                        as:"batches"
+                                    }]
+                                }
+                            ]
+                        });
+
+                        if(order){
+                            const products = order.orderProducts.map(item=>{
+                                const batches = item.batches.map(batch=>{
+                                    return {
+                                        id:batch.id,
+                                        quantity:batch.quantity
+                                    }
+                                })
+                                return{
+                                    productId: item.productId,
+                                    productUnitId: item.productUnitId,
+                                    quantity: item.quantity,
+                                    price: item.price,
+                                    batches
+                                }
+                            })
+                            const saleReturn = {
+                                paymentType: "DEBT",
+                                paid: 0,
+                                userId: order.userId,
+                                customerId: order.customerId,
+                                products,
+                                orderId: order.id,
+                                branchId: order.branchId
+                            }
+                            await indexCreate(saleReturn,loginUser)
+                        }
+                    }
+
                 }
                 for (const item of marketOrderExists.products) {
                     await models.MarketProduct.increment({
