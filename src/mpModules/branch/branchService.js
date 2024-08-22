@@ -22,6 +22,7 @@ const attributes = [
   "isDefaultBranch",
   "status",
   "createdAt",
+    "isAgency"
 ];
 
 const include = [
