@@ -17,9 +17,7 @@ const createSchema = Joi.object().keys({
   taxCode: Joi.string().allow(null).allow(""),
   avatarId: Joi.number().integer().allow(null).allow(""),
   // password: Joi.string().required(),
-  groupCustomerId: Joi.array().items(
-      Joi.number().integer().allow(null).allow("")
-  ).allow(null).allow(""),
+  groupCustomerId: Joi.any(),
   address: Joi.string().allow(null).allow(""),
   position: Joi.number().integer().allow(null).allow(""),
   note: Joi.string().allow(null).allow(""),
@@ -80,9 +78,7 @@ const updateSchema = Joi.object().keys({
   gender: Joi.string().valid(["male", "female", "other"]),
   taxCode: Joi.string().allow(null).allow(""),
   avatarId: Joi.number().integer().allow(null).allow(""),
-  groupCustomerId: Joi.array().items(
-      Joi.number().integer().allow(null).allow("")
-  ).allow(null).allow(""),
+  groupCustomerId: Joi.any(),
   address: Joi.string().allow(null).allow(""),
   position: Joi.number().integer().allow(null).allow(""),
   note: Joi.string().allow(null).allow(""),

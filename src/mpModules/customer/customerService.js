@@ -434,6 +434,10 @@ export async function updateCustomer(id, payload, loginUser) {
         payload.code = `${generateCustomerCode(findCustomer.id)}`;
     }
     const t = await models.sequelize.transaction(async (t)=>{
+        payload.groupCustomerId = payload.groupCustomerId ? payload.groupCustomerId : [];
+        if(!Array.isArray(payload.groupCustomerId)){
+            payload.groupCustomerId = [payload.groupCustomerId];
+        }
         await models.CustomerGroupCustomer.destroy({
             where:{
                 customerId:id,
@@ -509,6 +513,9 @@ export async function createCustomer(payload, loginUser) {
 
     const t = await models.sequelize.transaction(async (t)=>{
         let groupCustomers = payload.groupCustomerId || [];
+        if(!Array.isArray(groupCustomers)){
+            groupCustomers = [groupCustomers];
+        }
         delete payload.groupCustomerId;
 
         newCustomer = await models.Customer.create(payload,{
