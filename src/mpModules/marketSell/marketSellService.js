@@ -114,32 +114,6 @@ const branchInclude = [
         }]
     }
 ];
-const cartInclude = [
-    {
-        model: models.MarketProduct,
-        as: "marketProduct",
-        include: [{
-            model: models.Product,
-            as: "product",
-            attributes: ["id", "name"]
-        }, {
-            model: models.ProductUnit,
-            as: "productUnit",
-            attributes: ["id", "exchangeValue", "unitName"]
-        }, {
-            model: models.Store,
-            as: "store",
-            attributes: ["id", "name"]
-        }, {
-            model: models.Image,
-            as: "imageCenter"
-        }, {
-            model: models.Branch,
-            as: "branch",
-            attributes: ["id", "name"]
-        }]
-    }
-];
 const marketOrderInclude = [
     {
         model: models.MarketOrderProduct,
@@ -935,12 +909,64 @@ module.exports.getProductInCartService = async (result) => {
         let where = {
             branchId
         };
+        let include =  [{
+            model: models.MarketProduct,
+            as: "marketProduct",
+            include: [
+                {
+                    model: models.Product,
+                    as: "product",
+                    attributes: ["id", "name"]
+                }, {
+                    model: models.ProductUnit,
+                    as: "productUnit",
+                    attributes: ["id", "exchangeValue", "unitName"]
+                }, {
+                    model: models.Store,
+                    as: "store",
+                    attributes: ["id", "name"]
+                }, {
+                    model: models.Image,
+                    as: "imageCenter"
+                }, {
+                    model: models.Branch,
+                    as: "branch",
+                    include: [{
+                        model: models.RequestAgency,
+                        as: "agencys",
+                        where: {
+                            agencyId: branchId,
+                            status: marketConfigContant.AGENCY_STATUS.ACTIVE
+                        }
+                    }]
+                },
+                {
+                    model: models.MarketProductAgency,
+                    as: "agencys",
+                    where: Sequelize.literal('(`marketProduct->agencys`.`agencyId` = `marketProduct->branch->agencys`.`id` ' +
+                        'OR `marketProduct->agencys`.`groupAgencyId` = `marketProduct->branch->agencys`.`groupAgencyId`) ' +
+                        'AND `marketProduct->agencys`.`marketProductId` = `marketProduct`.`id`'),
+                    required: false
+                }
+            ]
+        }];
         const listProductInCart = await models.Cart.findAll({
             where,
-            include: cartInclude
+            include
         });
         let listProductGroupByBranch = [];
         for (let item of listProductInCart) {
+            //Cập nhật giá cho đại lý
+            if (item?.marketProduct?.agencys?.length > 0) {
+                let index = item?.marketProduct?.agencys?.findIndex(tmp => {
+                    return tmp.agencyId !== null;
+                });
+                if (index === -1) index = 0;
+                item.dataValues.price = item.marketProduct.dataValues.agencys[index].discountPrice === 0 ?
+                    item.marketProduct.dataValues.agencys[index].price :
+                    item.marketProduct.dataValues.agencys[index].discountPrice;
+            }
+            //End cập nhật giá cho đại lý
             let images = (item?.marketProduct?.images || "").split("/");
             if (images.length > 0) {
                 item.dataValues.image = (await models.Image.findOne({
@@ -1149,7 +1175,7 @@ module.exports.createMarketOrderService = async (result) => {
                     marketProductId: item.marketProductId,
                     marketOrderId: newMarketOrderBuy.id,
                     quantity: item.quantity,
-                    price: marketProductExists.discountPrice
+                    price: item.price
                 }, {
                     transaction: t
                 });
