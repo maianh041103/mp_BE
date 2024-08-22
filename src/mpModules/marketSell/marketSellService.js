@@ -241,12 +241,12 @@ const handlerCreateCustomer = async ({branchExists,t})=>{
     },{
         transaction:t
     });
-    const code = generateCode("KH",customer.id);
+    const code = generateCode("KH",newCustomer.id);
     await models.Customer.update({
         code,
     },{
         where:{
-            id:customer.id
+            id:newCustomer.id
         },
         transaction:t
     });
@@ -280,11 +280,9 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser, bran
             branchId:marketOrderExists.branchId
         }
     });
-
     if(!customer){
         customer = await handlerCreateCustomer({branchExists,t});
     }
-
     if(!addressExists){
         addressExists = await models.Address.create({
             fullName: branchExists.name,
@@ -1376,7 +1374,13 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                 message: "Không tìm thấy đơn hàng"
             }
         }
-
+        if(marketOrderExists.status === status){
+            return{
+                error:true,
+                code:HttpStatusCode.BAD_REQUEST,
+                message:"Bạn đang ở trạng thái này, không thể cập nhật trạng thái"
+            }
+        }
         const t = await models.sequelize.transaction(async (t) => {
             await models.MarketOrder.update({
                 status
@@ -1396,7 +1400,7 @@ module.exports.changeStatusMarketOrderService = async (result) => {
                 transaction: t
             });
             //Processing : Tạo mã seri và chon lô cho sản phẩm bán
-            if(status === marketSellContant.STATUS_ORDER.DONE && marketOrderExists.isPayment === false){
+            if(status === marketSellContant.STATUS_ORDER.DONE && marketOrderExists.isPayment == false){
                 await handlerCreateOrderPayment({marketOrderId : id, storeId:loginUser.storeId,loginUser, branchId:marketOrderExists.toBranchId, paid : 0,t})
             }
             if(status === marketSellContant.STATUS_ORDER.PROCESSING){
