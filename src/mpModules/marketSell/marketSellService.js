@@ -729,13 +729,28 @@ module.exports.getDetailProductService = async (result) => {
 
 module.exports.getAllBranchService = async (result) => {
     try {
-        const {branchId, limit = 10, page = 1} = result;
+        const {branchId, limit = 10, page = 1, isPrivateMarket} = result;
         if(!branchId){
             return{
                 error:true,
                 code:HttpStatusCode.BAD_REQUEST,
                 message:"Vui lòng nhập thông tin chi nhánh"
             }
+        }
+        let include = [...branchInclude];
+        let includeCount = [];
+        if(isPrivateMarket){
+            const requestAgencyModel = {
+                model:models.RequestAgency,
+                as: "agencys",
+                where: {
+                    agencyId: branchId,
+                    status: marketConfigContant.AGENCY_STATUS.ACTIVE
+                },
+                attributes: []
+            }
+            include.push(requestAgencyModel);
+            includeCount.push(requestAgencyModel);
         }
         const listBranch = await models.Branch.findAll({
             where: {
@@ -750,7 +765,7 @@ module.exports.getAllBranchService = async (result) => {
                 [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
     WHERE market_products.branchId = Branch.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
             ],
-            include: branchInclude,
+            include,
             limit: parseInt(limit),
             offset: (parseInt(page) - 1) * parseInt(limit)
         });
@@ -767,6 +782,7 @@ module.exports.getAllBranchService = async (result) => {
                 AND market_products.deletedAt IS NULL
             )`)
             },
+            include:includeCount
         })
         for (let item of listBranch) {
             item.dataValues.totalProduct = parseInt(item.dataValues.totalProduct);
