@@ -7,7 +7,7 @@ const tripContant = require("./tripContant");
 const { generateCode } = require("../../helpers/codeGenerator");
 const { client } = require("../../../redis/redisConnect");
 const config = require("../../../config/default.json");
-const {checkDouble} = require("../../helpers/utils");
+const {checkDouble, checkCoordinates} = require("../../helpers/utils");
 
 const tripAttributes = [
     "id",
@@ -383,8 +383,6 @@ const getDistance = async (listPoint, currentIndex) => {
     let points = listPoint.join("&point=");
     let API_KEY = tripContant.KEY.API_KEY;
     points = "point=" + points;
-    console.log(listPoint);
-    console.log(currentIndex);
     const apiUrl = `https://maps.vietmap.vn/api/matrix?api-version=1.1&apikey=${API_KEY}&${points}&sources=${currentIndex}`;
     const response = await axios.get(apiUrl);
     const data = response.data;
@@ -746,61 +744,70 @@ module.exports.reverse = async (params) => {
 }
 
 module.exports.geofencing = async (params) => {
-    const { radius, storeId, limit = 10, page = 1 } = params;
+    const { radius, storeId, limit = 200, page = 1 } = params;
     const lng = (params.lng).toString().trim();
     const lat = (params.lat).toString().trim();
-    const listCustomer = await models.Customer.findAll({
-        attributes: ["id", "lng", "lat"],
-        where: {
-            storeId,
-            lat: {
-                [Op.ne]: null
-            },
-            lng: {
-                [Op.ne]: null
-            }
-        }
-    });
-    const listCustomerConvert = listCustomer.map(item => {
-        return {
-            id: `${item.id}`,
-            long: (item.lng).toString().trim(),
-            lat: (item.lat).toString().trim()
-        }
-    }).filter(item => checkDouble(item.lat) && checkDouble(item.long));
-    let API_KEY = tripContant.KEY.API_KEY;
-    const body = {
-        geometryCenters: listCustomerConvert,
-        radius,
-        long: lng,
-        lat:lat
-    }
-    const apiUrl = `https://maps.vietmap.vn/api/geofencing?apikey=${API_KEY}`;
-    const response = await axios.post(apiUrl, body);
-    const data = response.data.data;
-    const listCustomerIdInside = (data.filter(item => item.inside == true))
-        .map(item => item.id);
-
-    const listCustomerInside = await models.Customer.findAll({
-        where: {
-            id: {
-                [Op.in]: listCustomerIdInside
-            }
+    const where = {
+        storeId,
+        lat: {
+            [Op.ne]: null
         },
-        attributes: ["id", "code", "fullName", "phone", "address", "lat", "lng", "status"],
-        limit: parseInt(limit),
-        offset: (parseInt(page) - 1) * parseInt(limit)
-    });
-
-    const listPoint = listCustomerInside.map(item => `${(item.lat).trim()},${(item.lng).trim()}`);
-    listPoint.unshift(`${lat},${lng}`);
-    let distances = (await getDistance(listPoint, 0)).distances[0];
-    const result = listCustomerInside.map((item, index) => {
-        return {
-            ...item.dataValues,
-            distance: distances[index + 1]
+        lng: {
+            [Op.ne]: null
         }
-    })
+    }
+    const totalItem = await models.Customer.count({
+        where
+    });
+    let API_KEY = tripContant.KEY.API_KEY;
+    let result = [];
+    for(let i = 0 ; i < Math.ceil(totalItem/parseInt(limit));i++){
+        const listCustomer = await models.Customer.findAll({
+            attributes: ["id", "lng", "lat"],
+            where,
+            limit:parseInt(limit),
+            offset: i * parseInt(limit)
+        });
+        const listCustomerConvert = listCustomer.map(item => {
+            return {
+                id: `${item.id}`,
+                long: (item.lng).toString().trim(),
+                lat: (item.lat).toString().trim()
+            }
+        }).filter(item => checkDouble(item.lat) && checkDouble(item.long));
+
+        const body = {
+            geometryCenters: listCustomerConvert,
+            radius,
+            long: lng,
+            lat:lat
+        }
+        const apiUrl = `https://maps.vietmap.vn/api/geofencing?apikey=${API_KEY}`;
+        const response = await axios.post(apiUrl, body);
+        const data = response.data.data;
+        const listCustomerIdInside = (data.filter(item => item.inside == true))
+            .map(item => item.id);
+
+        const listCustomerInside = await models.Customer.findAll({
+            where: {
+                id: {
+                    [Op.in]: listCustomerIdInside
+                }
+            },
+            attributes: ["id", "code", "fullName", "phone", "address", "lat", "lng", "status"]
+        });
+
+        const listPoint = listCustomerInside.map(item => `${(item.lat).trim()},${(item.lng).trim()}`);
+        listPoint.unshift(`${lat},${lng}`);
+        let distances = (await getDistance(listPoint, 0)).distances[0];
+        let tmp = listCustomerInside.map((item, index) => {
+            return {
+                ...item.dataValues,
+                distance: distances[index + 1]
+            }
+        })
+        result = [...result,...tmp];
+    }
     return {
         success: true,
         data: result
