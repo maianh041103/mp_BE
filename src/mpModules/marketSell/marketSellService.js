@@ -1741,7 +1741,7 @@ module.exports.updateOrderService = async (result) => {
 
 module.exports.getProductPrivateService = async (result) => {
     try {
-        const {storeId,branchId, limit = 10, page = 1, keyword} = result;
+        const {storeId,branchId, limit = 10, page = 1, keyword, toBranchId} = result;
         if(!branchId){
             return{
                 error:true,
@@ -1753,6 +1753,9 @@ module.exports.getProductPrivateService = async (result) => {
             {
                 model: models.Branch,
                 as: "branch",
+                where:{
+                    id:toBranchId
+                },
                 include: [{
                     model: models.RequestAgency,
                     as: "agencys",
@@ -1772,8 +1775,7 @@ module.exports.getProductPrivateService = async (result) => {
         let where = {
             branchId: {
                 [Op.ne]: branchId
-            },
-            marketType: marketConfigContant.MARKET_TYPE.PRIVATE,
+            }
         };
         if (keyword && keyword.trim() !== "") {
             include.push({
