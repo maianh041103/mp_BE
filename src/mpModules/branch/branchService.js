@@ -280,11 +280,7 @@ export async function readBranch(id, loginUser) {
     },
   });
   if (!findBranch) {
-    return {
-      error: true,
-      code: HttpStatusCode.NOT_FOUND,
-      message: "Branch không tồn tại",
-    };
+    throw new Error("Branch không tồn tại");
   }
   return {
     success: true,

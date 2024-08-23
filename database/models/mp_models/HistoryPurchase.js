@@ -54,11 +54,6 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: "marketOrderId",
             targetKey: "id",
         });
-        HistoryPurchase.belongsTo(models.MarketProduct, {
-            as: "marketProduct",
-            foreignKey: "marketProductId",
-            targetKey: "id"
-        });
         HistoryPurchase.belongsTo(models.User,{
             as:"userCreated",
             foreignKey: "createdBy",

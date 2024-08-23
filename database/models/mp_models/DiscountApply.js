@@ -32,7 +32,7 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey: "discountId",
             sourceKey: 'id',
         }),
-            DiscountApply.hasOne(models.Order, {
+            DiscountApply.belongsTo(models.Order, {
                 as: "order",
                 foreignKey: "orderId",
                 sourceKey: 'id',

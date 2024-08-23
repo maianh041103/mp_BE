@@ -73,6 +73,16 @@ module.exports = (sequelize, DataTypes) => {
                 type:DataTypes.BOOLEAN,
                 defaultValue:false
             },
+            totalPrice:{
+                allowNull:true,
+                type:DataTypes.INTEGER(10).UNSIGNED,
+                defaultValue:0
+            },
+            deliveryFee:{
+                allowNull:true,
+                type:DataTypes.INTEGER(10).UNSIGNED,
+                defaultValue:0
+            },
             createdAt: {
                 allowNull: true,
                 type: DataTypes.DATE,

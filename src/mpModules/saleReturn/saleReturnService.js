@@ -104,11 +104,7 @@ function calculateTotalItemPrice(products) {
 
 export async function indexCreate(saleReturn, loginUser) {
   if (!saleReturn.products || !saleReturn.products.length) {
-    return {
-      error: true,
-      code: HttpStatusCode.BAD_REQUEST,
-      message: `Bạn cần chọn sản phẩm để tiến hành trả hàng`
-    }
+    throw new Error(`Bạn cần chọn sản phẩm để tiến hành trả hàng`);
   }
 
   // Validate thông tin nhà cung cấp, nhân viên, chi nhánh
@@ -345,6 +341,16 @@ export async function indexCreate(saleReturn, loginUser) {
         },
         { transaction: t }
       )
+
+      await models.CustomerDebt.create({
+        totalAmount: item.quantity * item.price,
+        customerId: saleReturn.customerId,
+        orderId:saleReturn.orderId,
+        debtAmount: -(item.quantity * item.price - saleReturn.paid),
+        type: "ORDER"
+      },{
+        transaction:t
+      })
 
       if (findProduct.isBatchExpireControl) {
         for (const _batch of item.batches) {

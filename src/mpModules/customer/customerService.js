@@ -359,16 +359,11 @@ export async function readCustomer(id, loginUser) {
         attributes: customerAttributes,
         include: customerIncludes,
         where: {
-            id,
-            storeId: loginUser.storeId,
+            id
         },
     });
     if (!findCustomer) {
-        return {
-            error: true,
-            code: HttpStatusCode.NOT_FOUND,
-            message: "Khách hàng không tồn tại",
-        };
+        throw new Error("Khách hàng không tồn tại");
     }
     findCustomer.dataValues.totalOrder = parseInt(findCustomer.dataValues.totalOrder);
 
