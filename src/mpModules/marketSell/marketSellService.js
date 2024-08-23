@@ -465,6 +465,12 @@ module.exports.getAllAddressService = async (result) => {
             attributes: ["id"]
         });
 
+        const branchExists = await models.Branch.findOne({
+            where:{
+                id:branchId
+            }
+        });
+
         if(!listAddress || listAddress.length === 0){
             let addressDefault = await models.Address.create({
                 fullName: branchExists.name,
@@ -476,8 +482,6 @@ module.exports.getAllAddressService = async (result) => {
                 isDefaultAddress:true,
                 branchId:branchExists.id,
                 createdAt:new Date()
-            },{
-                transaction:t
             });
             listAddress = [addressDefault];
             count = 1;
@@ -1092,6 +1096,13 @@ module.exports.deleteProductInCartService = async (result) => {
 module.exports.createMarketOrderService = async (result) => {
     try {
         const {branchId, addressId, listProduct, toBranchId, loginUser} = result;
+        if (!addressId) {
+            return {
+                error: true,
+                message: `Vui lòng gửi thông tin địa chỉ giao hàng`,
+                code: HttpStatusCode.BAD_REQUEST
+            }
+        }
         const addressExists = await models.Address.findOne({
             where: {
                 id: addressId,
