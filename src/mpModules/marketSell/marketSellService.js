@@ -14,6 +14,8 @@ const transactionService = require("../transaction/transactionService");
 const {createOrderPayment} = require("../order/OrderPaymentService");
 const {customerType, customerStatus} = require("../customer/customerConstant");
 const {indexCreate} = require("../saleReturn/saleReturnService");
+const {addFilterByDate} = require("../../helpers/utils");
+const moment = require('moment');
 
 const marketProductInclude = [
     {
@@ -193,7 +195,7 @@ const marketOrderInclude = [
 ];
 const marketOrderAttributes = [
     "id","code","fullName","branchId","toBranchId","addressId","address",
-    "phone","status","note","wardId","districtId","provinceId","isPayment","createdAt",
+    "phone","status","note","wardId","districtId","provinceId","isPayment","createdAt","deliveryFee",
     [Sequelize.literal(`(SELECT SUM(market_order_products.quantity * market_order_products.price)
     FROM market_order_products
     WHERE MarketOrder.id = market_order_products.marketOrderId )`), 'totalPrice'],
@@ -1092,7 +1094,8 @@ module.exports.createMarketOrderService = async (result) => {
         const {branchId, addressId, listProduct, toBranchId, loginUser} = result;
         const addressExists = await models.Address.findOne({
             where: {
-                id: addressId
+                id: addressId,
+                branchId
             }
         });
         if (!addressExists) {
@@ -1113,21 +1116,11 @@ module.exports.createMarketOrderService = async (result) => {
                 status: marketSellContant.STATUS_ORDER.PENDING,
                 phone: addressExists.phone,
                 toBranchId: toBranchId,
-                fullName:loginUser.fullName
+                fullName:loginUser.fullName,
+                deliveryFee: 50000,
             }, {
                 transaction: t
             });
-            const code = generateCode("MK", newMarketOrderBuy.id);
-            newMarketOrderBuy.code = code;
-            await models.MarketOrder.update({
-                code
-            }, {
-                where: {
-                    id: newMarketOrderBuy.id
-                },
-                transaction: t
-            });
-
             const branchSell = await models.Branch.findOne({
                 where:{
                     id:toBranchId
@@ -1165,7 +1158,9 @@ module.exports.createMarketOrderService = async (result) => {
                 });
             }
 
+            let totalPrice = 0;
             for (const item of listProduct) {
+                totalPrice += item.price;
                 let marketProductExists = await models.MarketProduct.findOne({
                     where: {
                         id: item.marketProductId,
@@ -1188,6 +1183,19 @@ module.exports.createMarketOrderService = async (result) => {
                     transaction: t
                 });
             }
+
+            const code = generateCode("MK", newMarketOrderBuy.id);
+            newMarketOrderBuy.code = code;
+            newMarketOrderBuy.totalPrice = totalPrice;
+            await models.MarketOrder.update({
+                code,totalPrice
+            }, {
+                where: {
+                    id: newMarketOrderBuy.id
+                },
+                transaction: t
+            });
+
         })
         return {
             success: true,
@@ -1263,8 +1271,17 @@ module.exports.getDetailMarketOrderService = async (result) => {
 
 module.exports.getAllMarketOrderService = async (result) => {
     try {
-        const {limit = 10, page = 1, type, branchId, status} = result;
+        const {limit = 10, page = 1, type, branchId, status, keyword, dateNumber} = result;
         let where = {}
+        if(keyword){
+            where.code = {
+                [Op.like]:`%${keyword}%`
+            }
+        }
+        if(dateNumber){
+            const resultDate = moment().subtract(dateNumber, 'days').format('YYYY-MM-DD');
+            where.createdAt = addFilterByDate([resultDate]);
+        }
         if (type === marketSellContant.MARKET_ORDER_TYPE.BUY) {
             where.branchId = branchId;
         }
@@ -1288,11 +1305,43 @@ module.exports.getAllMarketOrderService = async (result) => {
         const count = await models.MarketOrder.count({
             where
         });
+        let filterOrderByStatus = [];
+        let statusOrder = [
+            marketSellContant.STATUS_ORDER.PENDING,
+            marketSellContant.STATUS_ORDER.CONFIRM,
+            marketSellContant.STATUS_ORDER.PROCESSING,
+            marketSellContant.STATUS_ORDER.SEND,
+            marketSellContant.STATUS_ORDER.CLOSED,
+            marketSellContant.STATUS_ORDER.CANCEL,
+            marketSellContant.STATUS_ORDER.DONE
+        ];
+        for(const item of statusOrder){
+            let where = {
+                toBranchId:branchId,
+                status:item
+            };
+            if(dateNumber){
+                const resultDate = moment().subtract(dateNumber, 'days').format('YYYY-MM-DD');
+                where.createdAt = addFilterByDate([resultDate]);
+            }
+            const sum = await models.MarketOrder.sum('totalPrice',{
+                where
+            });
+            const count = await models.MarketOrder.count({
+                where
+            });
+            filterOrderByStatus.push({
+                status:item,
+                sum : sum ? sum : 0,
+                count
+            });
+        }
         return {
             success: true,
             data: {
                 items: rows,
-                totalItem: count
+                totalItem: count,
+                filterOrderByStatus
             }
         }
     } catch (e) {
@@ -1415,7 +1464,7 @@ module.exports.getDetailProductPrivateService = async (result)=>{
 
 module.exports.changeStatusMarketOrderService = async (result) =>   {
     try {
-        let {id, status, note, products, delivery, loginUser} = result;
+        let {id, status, note, products, loginUser} = result;
         const marketOrderExists = await models.MarketOrder.findOne({
             where: {
                 id,
@@ -1555,17 +1604,17 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                         throw new Error("Vui lòng nhập hết mã seri cho đơn hàng");
                     }
                     number = -1;
-                    let endDate = new Date();
-                    endDate.setDate(endDate.getDate() + marketSellContant.TIME_SHIP.TWO);
-                    await models.Delivery.create({
-                        code:delivery.code,
-                        price:delivery.price,
-                        name:delivery.name,
-                        startDate:new Date(),
-                        endDate
-                    },{
-                        transaction:t
-                    })
+                    // let endDate = new Date();
+                    // endDate.setDate(endDate.getDate() + marketSellContant.TIME_SHIP.TWO);
+                    // await models.Delivery.create({
+                    //     code:delivery.code,
+                    //     price:delivery.price,
+                    //     name:delivery.name,
+                    //     startDate:new Date(),
+                    //     endDate
+                    // },{
+                    //     transaction:t
+                    // })
                 }
                 else {
                     number = 1;
