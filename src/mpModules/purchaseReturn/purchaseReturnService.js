@@ -439,11 +439,13 @@ export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
         },
       });
       if (!findProduct) {
-        return {
-          error: true,
-          code: HttpStatusCode.BAD_REQUEST,
-          message: `Sản phẩm có id = ${item.productId} không tồn tại`,
-        };
+        throw Error(
+            JSON.stringify({
+              error: true,
+              code: HttpStatusCode.BAD_REQUEST,
+              message: `Sản phẩm có id = ${item.productId} không tồn tại`,
+            })
+        );
       }
       const totalProductPrice =
         item.importPrice * item.totalQuantity - (item.discount || 0);
@@ -462,6 +464,21 @@ export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
         return responseReadProductUnit;
       }
       const productUnit = responseReadProductUnit.data
+      const inventory = await models.Inventory.findOne({
+        where:{
+          id: item.productId,
+          branchId: purchaseReturn.branchId
+        }
+      });
+      if(inventory < productUnit.exchangeValue * item.totalQuantity){
+        throw Error(
+            JSON.stringify({
+              error: true,
+              code: HttpStatusCode.BAD_REQUEST,
+              message:"Hàng không còn đủ số lượng để trả"
+            })
+        )
+      }
 
       await createWarehouseCard({
         code: generatePurchaseReturnCode(newPurchaseReturn.id),
