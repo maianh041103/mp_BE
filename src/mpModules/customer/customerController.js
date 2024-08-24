@@ -25,7 +25,8 @@ const {
     historyPointService,
     historyVisitedService,
     uploadFileCreateCustomer,
-    uploadFileCreateCustomerKiotVietService
+    uploadFileCreateCustomerKiotVietService,
+    deleteListCustomer
 } = require("./customerService");
 const {hashPassword} = require("../auth/authService");
 const {formatMobileToSave} = require("../../helpers/utils");
@@ -428,6 +429,20 @@ export async function createCustomerByUploadKiotvietController(req, res) {
         const data = xlsx.utils.sheet_to_json(worksheet);
 
         const result = await uploadFileCreateCustomerKiotVietService(data, loginUser);
+        if (result.success) res.json(respondItemSuccess());
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}
+
+export async function deleteListCustomerController(req, res) {
+    try {
+        const {loginUser = {}} = req;
+        const {listCustomerId} = req.body;
+        const result = await deleteListCustomer(loginUser,listCustomerId);
         if (result.success) res.json(respondItemSuccess());
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (error) {
