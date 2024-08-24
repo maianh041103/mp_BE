@@ -479,7 +479,28 @@ export async function updateProduct(id, product, loginUser) {
                 [Op.ne]: findProduct.id,
             },
         });
-        if (!checkUniqueCode) {
+        const checkUniqueCodeUnit = await checkUniqueValue("ProductUnit",{
+            code: product.code,
+            storeId: product.storeId,
+            [Op.or]:[
+                {
+                    productId: {
+                        [Op.ne]: findProduct.id,
+                    }
+                },
+                {
+                    [Op.and]:[
+                        {
+                            productId: {
+                                [Op.eq]: findProduct.id
+                            }
+                        },
+                        {isBaseUnit: false}
+                    ]
+                }
+            ]
+        });
+        if (!checkUniqueCode || !checkUniqueCodeUnit) {
             return {
                 error: true,
                 code: HttpStatusCode.BAD_REQUEST,
