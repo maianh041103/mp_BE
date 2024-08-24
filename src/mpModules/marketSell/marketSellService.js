@@ -715,7 +715,7 @@ module.exports.getDetailProductService = async (result) => {
 
 module.exports.getAllBranchService = async (result) => {
     try {
-        const {branchId, limit = 10, page = 1, isPrivateMarket} = result;
+        const {branchId, limit = 10, page = 1, isPrivateMarket, keyword} = result;
         if(!branchId){
             return{
                 error:true,
@@ -725,6 +725,11 @@ module.exports.getAllBranchService = async (result) => {
         }
         let include = [...branchInclude];
         let includeCount = [];
+        let where = {
+            id: {
+                [Op.ne]: branchId
+            }
+        }
         if(isPrivateMarket){
             const requestAgencyModel = {
                 model:models.RequestAgency,
@@ -738,12 +743,26 @@ module.exports.getAllBranchService = async (result) => {
             include.push(requestAgencyModel);
             includeCount.push(requestAgencyModel);
         }
-        const listBranch = await models.Branch.findAll({
-            where: {
-                id: {
-                    [Op.ne]: branchId
+        if(keyword){
+            const index = include.findIndex(item => item.as === "store");
+            let includeStore = {
+                model:models.Store,
+                as:"store",
+                include:[{
+                    model: models.Image,
+                    as: "logo"
+                }],
+                where:{
+                    name:{
+                        [Op.like]:`%${keyword}%`
+                    }
                 }
-            },
+            }
+            include[index] = includeStore;
+            includeCount.push(includeStore);
+        }
+        const listBranch = await models.Branch.findAll({
+            where,
             attributes: [
                 "id", "name", "phone", "address1", "address2", "wardId", "districtId", "provinceId","isAgency",
                 [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
