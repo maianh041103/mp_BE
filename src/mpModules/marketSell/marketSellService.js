@@ -401,6 +401,24 @@ module.exports.createAddressService = async (result) => {
             if (!phone) {
                 phone = store.phone;
             }
+            const districtExists = await models.District.findOne({
+                where:{
+                    id: districtId,
+                    provinceId
+                }
+            });
+            if(!districtExists){
+                throw new Error(`Huyện không hợp lệ`);
+            }
+            const wardExists = await models.Ward.findOne({
+                where:{
+                    id:wardId,
+                    districtId
+                }
+            });
+            if(!wardExists){
+                throw new Error(`Xã không hợp lệ`)
+            }
             newAddress = await models.Address.create({
                 phone, wardId, districtId, provinceId, address, branchId, isDefaultAddress,
                 fullName: loginUser.fullName
