@@ -115,7 +115,7 @@ const inboundIncludes = [
       {
         model:models.ProductUnit,
         as:"productUnit",
-        attributes: ["unitName"]
+        attributes: ["unitName","code"]
       },
       {
         model:models.InboundProductBatch,
