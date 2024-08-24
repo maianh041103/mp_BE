@@ -1925,6 +1925,19 @@ module.exports.getProductPrivateService = async (result) => {
         }
         let include = [
             {
+                model: models.Product,
+                as: "product",
+                include: [{
+                    model: models.GroupProduct,
+                    as: "groupProduct",
+                    attributes: ["id", "name"],
+                }]
+            },
+            {
+                model: models.Image,
+                as: "imageCenter"
+            },
+            {
                 model: models.Branch,
                 as: "branch",
                 where:{
@@ -1944,6 +1957,26 @@ module.exports.getProductPrivateService = async (result) => {
                 as: "agencys",
                 where: Sequelize.literal('(`agencys`.`agencyId` = `branch->agencys`.`id` OR `agencys`.`groupAgencyId` = `branch->agencys`.`groupAgencyId`) AND `agencys`.`marketProductId` = `MarketProduct`.`id`'),
                 required: false
+            },
+            {
+                model: models.User,
+                as: "userCreated",
+                attributes: ["id", "fullName"]
+            },
+            {
+                model: models.User,
+                as: "userUpdated",
+                attributes: ["id", "fullName"]
+            },
+            {
+                model: models.MarketProductBatch,
+                as: "batches",
+                attributes: ["id", "batchId", "quantity", "quantitySold"]
+            },
+            {
+                model: models.ProductUnit,
+                as: "productUnit",
+                attributes: ["id", "unitName", "exchangeValue"]
             }
         ];
         let where = {
@@ -1987,6 +2020,7 @@ module.exports.getProductPrivateService = async (result) => {
                 marketProduct.dataValues.price = marketProduct.dataValues.agencys[index].dataValues.price;
                 marketProduct.dataValues.discountPrice = marketProduct.dataValues.agencys[index].discountPrice;
             }
+            marketProduct.dataValues.images = await getImages(marketProduct.images);
         }
         return {
             success: true,
