@@ -680,12 +680,7 @@ module.exports.getDetailProductService = async (result) => {
             include: [
                 {
                     model: models.Product,
-                    as: "product",
-                    where: {
-                        name: {
-                            [Op.like]: marketProduct.product.name
-                        }
-                    }
+                    as: "product"
                 },
                 {
                     model: models.ProductUnit,
