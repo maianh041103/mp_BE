@@ -405,3 +405,22 @@ module.exports.marketOrderPayment = async (req,res)=>{
         res.json(respondWithClientError(e))
     }
 }
+
+//[GET] mp/api/market/seri/getMarketOrder/:id
+module.exports.getMarketProductBySeri = async (req,res)=>{
+    try {
+        const { loginUser = {}} = req;
+        const {code} = req.params;
+        const result = await marketSellService.getMarketProductBySeriSerive(
+            {
+                storeId: loginUser.storeId,
+                loginUser,
+                code,
+            }
+        );
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (e) {
+        res.json(respondWithClientError(e))
+    }
+}
