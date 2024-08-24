@@ -399,7 +399,7 @@ module.exports.createAddressService = async (result) => {
                 }
             });
             if (!phone) {
-                phone = store.phone;
+                throw new Error(`Vui lòng nhập số điện thoại giao hàng`);
             }
             const districtExists = await models.District.findOne({
                 where:{
