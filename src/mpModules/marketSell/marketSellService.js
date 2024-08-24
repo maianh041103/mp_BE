@@ -399,7 +399,25 @@ module.exports.createAddressService = async (result) => {
                 }
             });
             if (!phone) {
-                phone = store.phone;
+                throw new Error(`Vui lòng nhập số điện thoại giao hàng`);
+            }
+            const districtExists = await models.District.findOne({
+                where:{
+                    id: districtId,
+                    provinceId
+                }
+            });
+            if(!districtExists){
+                throw new Error(`Huyện không hợp lệ`);
+            }
+            const wardExists = await models.Ward.findOne({
+                where:{
+                    id:wardId,
+                    districtId
+                }
+            });
+            if(!wardExists){
+                throw new Error(`Xã không hợp lệ`)
             }
             newAddress = await models.Address.create({
                 phone, wardId, districtId, provinceId, address, branchId, isDefaultAddress,
@@ -662,12 +680,7 @@ module.exports.getDetailProductService = async (result) => {
             include: [
                 {
                     model: models.Product,
-                    as: "product",
-                    where: {
-                        name: {
-                            [Op.like]: marketProduct.product.name
-                        }
-                    }
+                    as: "product"
                 },
                 {
                     model: models.ProductUnit,

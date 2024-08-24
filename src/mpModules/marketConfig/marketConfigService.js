@@ -1084,7 +1084,7 @@ module.exports.getDetailGroupAgencyService = async (result) => {
 }
 
 module.exports.changeGroupAgencyService = async (result) => {
-    const {name, description, loginUser, id, branchId} = result;
+    const {description, loginUser, id, branchId} = result;
     if(!branchId){
         return{
             error:true,
@@ -1105,7 +1105,7 @@ module.exports.changeGroupAgencyService = async (result) => {
         }
     }
     await models.GroupAgency.update({
-        name, description,
+        description,
         updatedBy: loginUser.id
     }, {
         where: {

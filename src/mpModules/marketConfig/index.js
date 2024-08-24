@@ -3,6 +3,7 @@ const router = express.Router();
 const controller = require("./marketConfigController");
 const {authenticate} = require("../../middlewares/auth");
 const {authorize} = require("../../middlewares/authorize");
+const {createValidator} = require("./groupAgencyValidator");
 
 router.post("/product", authenticate, (req, res, next) => {
     req.apiRole = [];
@@ -64,10 +65,15 @@ router.delete("/agency/:id", authenticate, (req, res, next) => {
     next();
 }, authorize, controller.deleteAgency);
 
-router.post("/group-agency", authenticate, (req, res, next) => {
+router.post("/group-agency",
+    authenticate,
+    (req, res, next) => {
     req.apiRole = [];
     next();
-}, authorize, controller.createGroupAgency);
+},
+    authorize,
+    createValidator,
+    controller.createGroupAgency);
 
 router.get("/group-agency", authenticate, (req, res, next) => {
     req.apiRole = [];

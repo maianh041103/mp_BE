@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: true,
             },
             phone: {
-                allowNull: true,
+                allowNull: false,
                 type: Sequelize.STRING(15)
             },
             wardId: {

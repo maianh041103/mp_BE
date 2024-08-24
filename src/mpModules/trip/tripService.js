@@ -808,6 +808,9 @@ module.exports.geofencing = async (params) => {
         })
         result = [...result,...tmp];
     }
+    result = result.sort((a,b)=>{
+        return a.distance - b.distance;
+    })
     return {
         success: true,
         data: result

@@ -1203,3 +1203,57 @@ export async function uploadFileCreateCustomerKiotVietService(data, loginUser) {
         }
     }
 }
+
+export async function deleteListCustomer(loginUser,listCustomerId) {
+    const listCustomer = await models.Customer.findAll({
+        where:{
+            id:{
+                [Op.in]:listCustomerId
+            },
+            storeId:loginUser.storeId
+        }
+    })
+    if (!listCustomer || listCustomer.length !== listCustomerId.length) {
+        return {
+            error: true,
+            code: HttpStatusCode.NOT_FOUND,
+            message: "Tồn tại khách hàng không thuộc cửa hàng",
+        };
+    }
+    const t = await models.sequelize.transaction(async (t)=>{
+        await models.CustomerGroupCustomer.destroy({
+            where:{
+                customerId:{
+                    [Op.in]:listCustomerId
+                }
+            },
+            transaction:t
+        });
+        await models.Customer.destroy({
+            where: {
+                id:{
+                    [Op.in]:listCustomerId
+                }
+            },
+            transaction:t
+        });
+    });
+
+    for(const customer of listCustomer){
+        createUserTracking({
+            accountId: loginUser.id,
+            type: accountTypes.USER,
+            objectId: customer.id,
+            action: logActions.customer_delete.value,
+            data: {
+                id:customer.id,
+                fullName: customer.fullName,
+                phone: customer.phone,
+            },
+        });
+    }
+
+    return {
+        success: true,
+    };
+}

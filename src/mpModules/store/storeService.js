@@ -44,6 +44,10 @@ const include = [
     as: "ward",
     attributes: ["id", "name"],
   },
+  {
+    model: models.Image,
+    as:"logo"
+  }
 ];
 
 function processQuery(params) {

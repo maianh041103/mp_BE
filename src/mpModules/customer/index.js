@@ -14,7 +14,8 @@ const {
   createCustomerByUploadController,
     exportCustomerController,
     exportCustomerExampleController,
-    createCustomerByUploadKiotvietController
+    createCustomerByUploadKiotvietController,
+    deleteListCustomerController
 } = require("./customerController");
 const {
   updateValidator,
@@ -219,6 +220,17 @@ router.post(
     },
     authorize,
     createCustomerByUploadKiotvietController
+);
+
+router.delete(
+    "/",
+    authenticate,
+    (req, res, next) => {
+        req.apiRole = ["customer_delete"];
+        next();
+    },
+    authorize,
+    deleteListCustomerController
 );
 
 module.exports = router;
