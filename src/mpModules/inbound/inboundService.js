@@ -636,7 +636,7 @@ export async function handleCreateInbound(inbound, loginUser) {
           productId: item.productId,
           branchId: inbound.branchId,
           changeQty: item.totalQuantity * productUnit.exchangeValue,
-          remainQty: await getInventory(inbound.branchId, item.productId) + item.totalQuantity * productUnit.exchangeValue,
+          remainQty: parseInt(await getInventory(inbound.branchId, item.productId)) + parseInt(item.totalQuantity * productUnit.exchangeValue),
           createdAt: new Date(),
           updatedAt: new Date()
         }, t)

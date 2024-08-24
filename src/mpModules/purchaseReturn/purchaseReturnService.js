@@ -487,7 +487,7 @@ export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
         productId: item.productId,
         branchId: purchaseReturn.branchId,
         changeQty: -item.totalQuantity * productUnit.exchangeValue,
-        remainQty: await getInventory(purchaseReturn.branchId, item.productId) - item.totalQuantity * productUnit.exchangeValue,
+        remainQty: parseInt(await getInventory(purchaseReturn.branchId, item.productId)) - parseInt(item.totalQuantity * productUnit.exchangeValue),
         createdAt: new Date(),
         updatedAt: new Date()
       }, t)
