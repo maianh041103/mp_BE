@@ -5,6 +5,8 @@ const {
     readController,
     createController,
     receiveController,
+    exportMoveController,
+    exportMoveDetailController
 } = require("./moveController");
 const { createValidator, receiveValidator} = require("./moveValidator");
 
@@ -68,5 +70,15 @@ router.patch(
 //     updateStatusValidator,
 //     updateStatus
 // );
+
+router.get("/export/excel", authenticate,(req, res, next) => {
+    req.apiRole = ["customer_read"];
+    next();
+},authorize, exportMoveController);
+
+router.get("/export-detail/excel", authenticate,(req, res, next) => {
+    req.apiRole = ["customer_read"];
+    next();
+},authorize, exportMoveDetailController);
 
 module.exports = router;

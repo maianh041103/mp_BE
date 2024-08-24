@@ -327,7 +327,7 @@ export async function exportCustomerController(req, res) {
             {header: "Điểm tích lũy", key: "point", width: 10},
             {header: "Nợ", key: "debt", width: 10},
         ];
-        const result = await indexCustomers({storeId, page, limit});
+        const result = await indexCustomers({storeId, page, limit : 10**10});
         result.data.items.forEach(item => {
             let location = ""
             if(item.lat && item.lat !== ""){
@@ -336,26 +336,41 @@ export async function exportCustomerController(req, res) {
             if(item.lng && item.lng !== ""){
                 location += item.lng;
             }
+            if(item.type === 1){
+                item.type = "Khách hàng thường";
+            }else if(item.type === 2){
+                item.type = "Công ty";
+            }else if(item.type === 3){
+                item.type = "Nhà thuốc"
+            }else if(item.type === 4){
+                item.type = "Phòng khám"
+            }else{
+                item.type = "Đại lý"
+            }
+            let listGroupCustomerName = item?.listGroupCustomer?.length > 0 ?
+                item.listGroupCustomer.map(item=>item?.groupCustomer?.name || "") : [];
             worksheet.addRow({
                 name: item.fullName,
                 phone: item.phone,
                 code: item.code,
                 email: item.email,
                 facebook:item.facebook,
-                gender: item.gender == "female" ? item.gender = 0 : (item.gender == "male" ? item.gender = 1 : item.gender = 2),
+                gender: item.gender == "female" ? item.gender = 'Nữ' :
+                    (item.gender == "male" ? item.gender = 'Nam' : item.gender = 'Khác'),
                 birthday: item.birthday,
                 taxCode: item.taxCode,
-                groupCustomerName: item?.groupCustomer?.name,
+                groupCustomerName: listGroupCustomerName.join("|"),
                 wardName: item?.ward?.name2,
                 districtName: item?.district?.name2,
                 provinceName: item?.province?.name,
                 address: item?.address,
                 note: item?.note,
-                type: item?.type,
-                status: item?.status == "draft" ? item.status = 2 : (item?.status == "inactive" ? item.status = 0 : item.status = 1),
+                type: item.type,
+                status: item?.status == "draft" ? item.status = 2 :
+                    (item?.status == "inactive" ? item.status = 0 : item.status = 1),
                 location,
                 point: item?.point,
-                debt: item?.debt
+                debt: item?.dataValues.totalDebt
             });
         });
         const filePath = path.join(__dirname, `customer_store_${storeId}.xlsx`);

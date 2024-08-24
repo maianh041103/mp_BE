@@ -452,7 +452,7 @@ export async function exportProductController(req, res) {
     await workbook.xlsx.writeFile(filePath);
 
     // Sử dụng res.download để gửi file và xóa file sau khi gửi
-    res.download(filePath, `DanhSachSanPham${storeId}.xlsx`, (err) => {
+    res.download(filePath, `Danhsachsanpham.xlsx`, (err) => {
       if (err) {
         console.error('Error downloading file:', err);
         res.status(500).send('Error downloading file');
@@ -472,7 +472,7 @@ export async function exportProductExampleController(req,res){
     const tmp = path.resolve(__dirname, '../../../')
     const filePath = path.join(tmp, 'excel',`product${type}.xlsx`);
     // Sử dụng res.download để gửi file và xóa file sau khi gửi
-    res.download(filePath, `DanhSachSanPhamMau${type}.xlsx`, (err) => {
+    res.download(filePath, `Maufilesanpham${type}.xlsx`, (err) => {
       if (err) {
         console.error('Error downloading file:', err);
         res.status(500).send('Error downloading file');

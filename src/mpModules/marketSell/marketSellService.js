@@ -465,6 +465,12 @@ module.exports.getAllAddressService = async (result) => {
             attributes: ["id"]
         });
 
+        const branchExists = await models.Branch.findOne({
+            where:{
+                id:branchId
+            }
+        });
+
         if(!listAddress || listAddress.length === 0){
             let addressDefault = await models.Address.create({
                 fullName: branchExists.name,
@@ -476,8 +482,6 @@ module.exports.getAllAddressService = async (result) => {
                 isDefaultAddress:true,
                 branchId:branchExists.id,
                 createdAt:new Date()
-            },{
-                transaction:t
             });
             listAddress = [addressDefault];
             count = 1;
@@ -1092,6 +1096,13 @@ module.exports.deleteProductInCartService = async (result) => {
 module.exports.createMarketOrderService = async (result) => {
     try {
         const {branchId, addressId, listProduct, toBranchId, loginUser} = result;
+        if (!addressId) {
+            return {
+                error: true,
+                message: `Vui lòng gửi thông tin địa chỉ giao hàng`,
+                code: HttpStatusCode.BAD_REQUEST
+            }
+        }
         const addressExists = await models.Address.findOne({
             where: {
                 id: addressId,
@@ -1914,6 +1925,19 @@ module.exports.getProductPrivateService = async (result) => {
         }
         let include = [
             {
+                model: models.Product,
+                as: "product",
+                include: [{
+                    model: models.GroupProduct,
+                    as: "groupProduct",
+                    attributes: ["id", "name"],
+                }]
+            },
+            {
+                model: models.Image,
+                as: "imageCenter"
+            },
+            {
                 model: models.Branch,
                 as: "branch",
                 where:{
@@ -1933,6 +1957,26 @@ module.exports.getProductPrivateService = async (result) => {
                 as: "agencys",
                 where: Sequelize.literal('(`agencys`.`agencyId` = `branch->agencys`.`id` OR `agencys`.`groupAgencyId` = `branch->agencys`.`groupAgencyId`) AND `agencys`.`marketProductId` = `MarketProduct`.`id`'),
                 required: false
+            },
+            {
+                model: models.User,
+                as: "userCreated",
+                attributes: ["id", "fullName"]
+            },
+            {
+                model: models.User,
+                as: "userUpdated",
+                attributes: ["id", "fullName"]
+            },
+            {
+                model: models.MarketProductBatch,
+                as: "batches",
+                attributes: ["id", "batchId", "quantity", "quantitySold"]
+            },
+            {
+                model: models.ProductUnit,
+                as: "productUnit",
+                attributes: ["id", "unitName", "exchangeValue"]
             }
         ];
         let where = {
@@ -1976,6 +2020,7 @@ module.exports.getProductPrivateService = async (result) => {
                 marketProduct.dataValues.price = marketProduct.dataValues.agencys[index].dataValues.price;
                 marketProduct.dataValues.discountPrice = marketProduct.dataValues.agencys[index].discountPrice;
             }
+            marketProduct.dataValues.images = await getImages(marketProduct.images);
         }
         return {
             success: true,
