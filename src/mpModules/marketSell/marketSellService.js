@@ -2217,7 +2217,8 @@ module.exports.updateSeriService = async (result)=>{
                         },
                         marketOrderId,
                         marketProductId
-                    }
+                    },
+                    transaction:t
                 });
                 for(const seri of listSeri){
                     if(seri.id){
