@@ -200,6 +200,69 @@ const marketOrderAttributes = [
     FROM market_order_products
     WHERE MarketOrder.id = market_order_products.marketOrderId )`), 'totalPrice'],
 ]
+const seriInclude = [
+    {
+        model:models.MarketOrder,
+        as:"marketOrder",
+        include:[
+            {
+                model:models.Branch,
+                as:"branch",
+                attributes: ["name","phone","code","storeId"],
+                include:[
+                    {
+                        model:models.Store,
+                        as:"store",
+                        attributes: ["name"]
+                    }
+                ]
+            },
+            {
+                model:models.Branch,
+                as:"toBranch",
+                attributes: ["name","phone","code","storeId"],
+                include:[
+                    {
+                        model:models.Store,
+                        as:"store",
+                        attributes: ["name"]
+                    }
+                ]
+            },
+            {
+                model:models.MarketOrderProduct,
+                as:"products",
+                include:[
+                    {
+                        model:models.MarketOrderBatch,
+                        as:"orderBatches",
+                        attributes: ["id","quantity","batchId"]
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        model:models.MarketProduct,
+        as:"marketProduct",
+        include:[
+            {
+                model:models.Product,
+                as:"product",
+                attributes: ["id","name","code","price","primePrice"]
+            },
+            {
+                model:models.Image,
+                as:"imageCenter"
+            }
+        ]
+    },
+    {
+        model:models.User,
+        as:"userCreated",
+        attributes: ["username","phone","fullName"]
+    }
+];
 
 const handlerCreateCustomer = async ({branchExists, storeSell, t})=>{
     const newCustomer = await models.Customer.create({
@@ -715,7 +778,7 @@ module.exports.getDetailProductService = async (result) => {
 
 module.exports.getAllBranchService = async (result) => {
     try {
-        const {branchId, limit = 10, page = 1, isPrivateMarket} = result;
+        const {branchId, limit = 10, page = 1, isPrivateMarket, keyword} = result;
         if(!branchId){
             return{
                 error:true,
@@ -725,6 +788,11 @@ module.exports.getAllBranchService = async (result) => {
         }
         let include = [...branchInclude];
         let includeCount = [];
+        let where = {
+            id: {
+                [Op.ne]: branchId
+            }
+        }
         if(isPrivateMarket){
             const requestAgencyModel = {
                 model:models.RequestAgency,
@@ -738,12 +806,26 @@ module.exports.getAllBranchService = async (result) => {
             include.push(requestAgencyModel);
             includeCount.push(requestAgencyModel);
         }
-        const listBranch = await models.Branch.findAll({
-            where: {
-                id: {
-                    [Op.ne]: branchId
+        if(keyword){
+            const index = include.findIndex(item => item.as === "store");
+            let includeStore = {
+                model:models.Store,
+                as:"store",
+                include:[{
+                    model: models.Image,
+                    as: "logo"
+                }],
+                where:{
+                    name:{
+                        [Op.like]:`%${keyword}%`
+                    }
                 }
-            },
+            }
+            include[index] = includeStore;
+            includeCount.push(includeStore);
+        }
+        const listBranch = await models.Branch.findAll({
+            where,
             attributes: [
                 "id", "name", "phone", "address1", "address2", "wardId", "districtId", "provinceId","isAgency",
                 [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
@@ -2174,6 +2256,38 @@ module.exports.marketOrderPaymentService = async (result)=>{
         return {
             success: true,
             data: null
+        }
+    } catch (e) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Loi ${e}`
+        }
+    }
+}
+
+module.exports.getMarketProductBySeriSerive = async (result)=>{
+    try {
+        const {storeId,loginUser,code} = result;
+        const seri = await models.Seri.findOne({
+            where:{
+                code
+            },
+            include:seriInclude
+        });
+        if(!seri){
+            return{
+                error:true,
+                message:"Mã seri không tồn tại",
+                code:HttpStatusCode.BAD_REQUEST
+            }
+        }
+        seri.dataValues.marketOrderProduct = seri?.marketOrder?.products?.find(item=>item.marketProductId === seri?.marketProductId);
+        return {
+            success: true,
+            data: {
+                item:seri
+            }
         }
     } catch (e) {
         return {
