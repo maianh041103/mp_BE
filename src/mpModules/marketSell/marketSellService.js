@@ -1630,18 +1630,38 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
             }
             if(status === marketSellContant.STATUS_ORDER.PROCESSING){
                 for (const item of products) {
-                    let series = item?.listSeri.map(seri=>{
-                        return{
-                            code:seri,
+                    const listSeriId = item?.listSeri?.filter(item=>item.id !== undefined)
+                        .map(item=>item.id);
+                    await models.Seri.destroy({
+                        where:{
                             marketOrderId:id,
                             marketProductId:item?.marketProductId,
-                            createdBy:loginUser.id
-                        }
+                            id:{
+                                [Op.notIn]:listSeriId
+                            }
+                        },
+                        transaction:t
                     });
-                    if (Array.isArray(series) && series.length > 0) {
-                        await models.Seri.bulkCreate(series, {
-                            transaction: t
-                        })
+                    for(const seri of item?.listSeri){
+                        if(seri.id){
+                            await models.Seri.update({
+                                code:seri.code
+                            },{
+                                where: {
+                                    id: seri.id
+                                },
+                                transaction:t
+                            })
+                        }else{
+                            await models.Seri.create({
+                                code:seri.code,
+                                marketOrderId:id,
+                                marketProductId:item?.marketProductId,
+                                createdBy:loginUser.id
+                            },{
+                                transaction:t
+                            })
+                        }
                     }
                     // if(item?.batches && item?.batches.length > 0) {
                     //     for (const batch of item?.batches) {
