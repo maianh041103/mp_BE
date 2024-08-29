@@ -96,7 +96,7 @@ const marketProductInclude = [
     {
         model:models.ProductUnit,
         as:"productUnit",
-        attributes: ["id","unitName","exchangeValue"]
+        attributes: ["id","unitName","exchangeValue","code"]
     }
 ]
 
@@ -721,6 +721,18 @@ module.exports.deleteProductService = async (result) => {
             error: true,
             code: HttpStatusCode.BAD_REQUEST,
             message: `Không tồn tại sản phẩm trên chợ có id = ${id}`
+        }
+    }
+    const findProductMarketOrder = await models.MarketOrderProduct.findOne({
+        where:{
+            marketProductId: id,
+        }
+    });
+    if(findProductMarketOrder){
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Sản phẩm đã được đặt hàng, không thể xóa`
         }
     }
     const t = await models.sequelize.transaction(async (t) => {
