@@ -849,6 +849,33 @@ export async function deleteProductById(id, loginUser) {
         };
     }
 
+    // Kiểm tra trong đơn hàng trên chợ
+    const findProductMarket = await models.MarketProduct.findOne({
+        where:{
+            productId:id
+        }
+    });
+
+    if(findProductMarket) {
+        const findProductMarketOrder = await models.MarketOrderProduct.findOne({
+            where:{
+                marketProductId: findProductMarket.id,
+            }
+        });
+        if (findProductMarketOrder) {
+            return {
+                error: true,
+                code: HttpStatusCode.BAD_REQUEST,
+                message: "Sản phẩm đang được sử dụng ở hóa đơn trên chợ, không thể xóa",
+            };
+        }
+        await models.MarketProduct.destroy({
+            where:{
+                productId:id
+            }
+        })
+    }
+
     await Promise.all([
         models.Product.destroy({where: {id}}),
         models.ProductUnit.destroy({where: {productId: id}}),

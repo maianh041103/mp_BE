@@ -199,7 +199,26 @@ export async function createBranch(payload) {
       message: `Store có id = ${payload.storeId} không tồn tại`,
     };
   }
-  const newBranch = await models.Branch.create(payload);
+  let newBranch;
+  const t = await models.sequelize.transaction(async (t)=>{
+    newBranch = await models.Branch.create(payload,{
+      transaction:t
+    });
+    if(payload.isDefaultBranch === true){
+      await models.Branch.update({
+        isDefaultBranch:false
+      },{
+        where:{
+          storeId: payload.storeId,
+          isDefaultBranch:true,
+          id:{
+            [Op.ne]:newBranch.id
+          }
+        },
+        transaction:t
+      })
+    }
+  })
   createUserTracking({
     accountId: newBranch.createdBy,
     type: accountTypes.USER,
@@ -235,27 +254,29 @@ export async function updateBranch(id, payload) {
     };
   }
 
-  if (payload.isDefaultBranch) {
-    await models.Branch.update(
-      {
-        isDefaultBranch: false,
+  const t = await models.sequelize.transaction(async (t)=>{
+    await models.Branch.update(payload, {
+      where: {
+        id,
       },
-      {
-        where: {
-          id: {
-            [Op.ne]: id,
-          },
-          storeId: findBranch.storeId,
-        },
-      }
-    );
-  }
+      transaction:t
+    });
 
-  await models.Branch.update(payload, {
-    where: {
-      id,
-    },
-  });
+    if(payload.isDefaultBranch === true){
+      await models.Branch.update({
+        isDefaultBranch:false
+      },{
+        where:{
+          storeId: payload.storeId,
+          isDefaultBranch:true,
+          id:{
+            [Op.ne]:id
+          }
+        },
+        transaction:t
+      })
+    }
+  })
 
   createUserTracking({
     accountId: payload.updatedBy,
