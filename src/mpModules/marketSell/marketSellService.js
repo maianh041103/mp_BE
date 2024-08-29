@@ -1377,16 +1377,25 @@ module.exports.getDetailMarketOrderService = async (result) => {
 
 module.exports.getAllMarketOrderService = async (result) => {
     try {
-        const {limit = 10, page = 1, type, branchId, status, keyword, dateNumber} = result;
+        const {
+            limit = 10,
+            page = 1,
+            type,
+            branchId,
+            status,
+            keyword,
+            dateNumber,
+            startDate,
+            endDate
+        } = result;
         let where = {}
         if(keyword){
             where.code = {
                 [Op.like]:`%${keyword}%`
             }
         }
-        if(dateNumber){
-            const resultDate = moment().subtract(dateNumber, 'days').format('YYYY-MM-DD');
-            where.createdAt = addFilterByDate([resultDate]);
+        if(startDate || endDate){
+            where.createdAt = addFilterByDate([startDate,endDate]);
         }
         if (type === marketSellContant.MARKET_ORDER_TYPE.BUY) {
             where.branchId = branchId;

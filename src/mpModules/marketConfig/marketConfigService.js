@@ -96,7 +96,7 @@ const marketProductInclude = [
     {
         model:models.ProductUnit,
         as:"productUnit",
-        attributes: ["id","unitName","exchangeValue"]
+        attributes: ["id","unitName","exchangeValue","code"]
     }
 ]
 
