@@ -736,6 +736,30 @@ export async function getProductDetail(id) {
     };
 }
 
+export async function getProductBySeri(id) {
+    const instance = await models.Product.findOne({
+        include: productIncludes,
+        attributes: productAttributes,
+        where: {
+            id: id
+        },
+    });
+
+    if (!instance) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: "Không tồn tại sản phẩm",
+        };
+    }
+
+    return {
+        success: true,
+        data: instance,
+    };
+}
+
+
 export async function readProduct(id, loginUser) {
     const instance = await models.Product.findOne({
         include: productIncludes,

@@ -114,8 +114,6 @@ router.patch("/seri",authenticate,(req,res,next)=>{
     next();
 },authorize,controller.updateSeri);
 
-router.get("/seri/getMarketOrder/:code",authenticate,(req,res,next)=>{
-    req.apiRole = [];
-    next();
-},authorize,controller.getMarketProductBySeri);
+router.get("/seri/getMarketOrder/:code",controller.getMarketProductBySeri);
+
 module.exports = router;

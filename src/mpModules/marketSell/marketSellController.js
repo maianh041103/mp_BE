@@ -409,12 +409,9 @@ module.exports.marketOrderPayment = async (req,res)=>{
 //[GET] mp/api/market/seri/getMarketOrder/:id
 module.exports.getMarketProductBySeri = async (req,res)=>{
     try {
-        const { loginUser = {}} = req;
         const {code} = req.params;
         const result = await marketSellService.getMarketProductBySeriSerive(
             {
-                storeId: loginUser.storeId,
-                loginUser,
                 code,
             }
         );

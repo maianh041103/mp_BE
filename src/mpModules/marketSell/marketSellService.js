@@ -16,7 +16,7 @@ const {customerType, customerStatus} = require("../customer/customerConstant");
 const {indexCreate} = require("../saleReturn/saleReturnService");
 const {addFilterByDate} = require("../../helpers/utils");
 const moment = require('moment');
-const {readProduct} = require("../product/productService");
+const {readProduct, getProductBySeri} = require("../product/productService");
 
 const marketProductInclude = [
     {
@@ -2235,7 +2235,7 @@ module.exports.marketOrderPaymentService = async (result)=>{
 
 module.exports.getMarketProductBySeriSerive = async (result)=>{
     try {
-        const {storeId,loginUser,code} = result;
+        const {code} = result;
         const seri = await models.Seri.findOne({
             where:{
                 code
@@ -2263,7 +2263,7 @@ module.exports.getMarketProductBySeriSerive = async (result)=>{
                 code:HttpStatusCode.BAD_REQUEST
             }
         }
-        const product = await readProduct(productId,loginUser);
+        const product = await getProductBySeri(productId);
         return {
             success: true,
             data: {
