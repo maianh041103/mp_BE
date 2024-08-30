@@ -19,6 +19,10 @@ module.exports = (sequelize, Sequelize) => {
             allowNull: false,
             type:Sequelize.INTEGER(10).UNSIGNED
         },
+        storeId:{
+            allowNull:false,
+            type:Sequelize.INTEGER(10).UNSIGNED
+        },
         createdBy:{
             allowNull: true,
             type:Sequelize.INTEGER(10).UNSIGNED,
@@ -44,6 +48,11 @@ module.exports = (sequelize, Sequelize) => {
             foreignKey: 'createdBy',
             targetKey: 'id',
         });
+        Seri.belongsTo(models.Store,{
+            as: 'store',
+            foreignKey: 'storeId',
+            targetKey: 'id',
+        })
     };
     return Seri;
 };

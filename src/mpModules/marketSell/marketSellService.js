@@ -16,6 +16,7 @@ const {customerType, customerStatus} = require("../customer/customerConstant");
 const {indexCreate} = require("../saleReturn/saleReturnService");
 const {addFilterByDate} = require("../../helpers/utils");
 const moment = require('moment');
+const {readProduct} = require("../product/productService");
 
 const marketProductInclude = [
     {
@@ -200,69 +201,6 @@ const marketOrderAttributes = [
     FROM market_order_products
     WHERE MarketOrder.id = market_order_products.marketOrderId )`), 'totalPrice'],
 ]
-const seriInclude = [
-    {
-        model:models.MarketOrder,
-        as:"marketOrder",
-        include:[
-            {
-                model:models.Branch,
-                as:"branch",
-                attributes: ["name","phone","code","storeId"],
-                include:[
-                    {
-                        model:models.Store,
-                        as:"store",
-                        attributes: ["name"]
-                    }
-                ]
-            },
-            {
-                model:models.Branch,
-                as:"toBranch",
-                attributes: ["name","phone","code","storeId"],
-                include:[
-                    {
-                        model:models.Store,
-                        as:"store",
-                        attributes: ["name"]
-                    }
-                ]
-            },
-            {
-                model:models.MarketOrderProduct,
-                as:"products",
-                include:[
-                    {
-                        model:models.MarketOrderBatch,
-                        as:"orderBatches",
-                        attributes: ["id","quantity","batchId"]
-                    }
-                ]
-            }
-        ]
-    },
-    {
-        model:models.MarketProduct,
-        as:"marketProduct",
-        include:[
-            {
-                model:models.Product,
-                as:"product",
-                attributes: ["id","name","code","price","primePrice"]
-            },
-            {
-                model:models.Image,
-                as:"imageCenter"
-            }
-        ]
-    },
-    {
-        model:models.User,
-        as:"userCreated",
-        attributes: ["username","phone","fullName"]
-    }
-];
 
 const handlerCreateCustomer = async ({branchExists, storeSell, t})=>{
     const newCustomer = await models.Customer.create({
@@ -1630,39 +1568,13 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
             }
             if(status === marketSellContant.STATUS_ORDER.PROCESSING){
                 for (const item of products) {
-                    const listSeriId = item?.listSeri?.filter(item=>item.id !== undefined)
-                        .map(item=>item.id);
-                    await models.Seri.destroy({
-                        where:{
-                            marketOrderId:id,
-                            marketProductId:item?.marketProductId,
-                            id:{
-                                [Op.notIn]:listSeriId
-                            }
-                        },
+                    await updateSeri({
+                        marketProductId:item.marketProductId,
+                        listSeri: item.listSeri,
+                        marketOrderId:id,
+                        loginUser,
                         transaction:t
                     });
-                    for(const seri of item?.listSeri){
-                        if(seri.id){
-                            await models.Seri.update({
-                                code:seri.code
-                            },{
-                                where: {
-                                    id: seri.id
-                                },
-                                transaction:t
-                            })
-                        }else{
-                            await models.Seri.create({
-                                code:seri.code,
-                                marketOrderId:id,
-                                marketProductId:item?.marketProductId,
-                                createdBy:loginUser.id
-                            },{
-                                transaction:t
-                            })
-                        }
-                    }
                     // if(item?.batches && item?.batches.length > 0) {
                     //     for (const batch of item?.batches) {
                     //         await models.MarketOrderBatch.create({
@@ -2219,49 +2131,74 @@ module.exports.getSeriService = async (result) => {
     }
 }
 
+const updateSeri = async ({marketProductId, listSeri,marketOrderId,loginUser,transaction})=>{
+    const listSeriIdDestroy = listSeri.filter(item=>{
+        return item.id !== undefined
+    }).map(item=>{
+        return item.id
+    });
+    await models.Seri.destroy({
+        where:{
+            id:{
+                [Op.notIn]:listSeriIdDestroy
+            },
+            marketOrderId,
+            marketProductId
+        },
+        transaction
+    });
+
+    for(const seri of listSeri){
+        //Check unique code
+        let where = {
+            code:seri.code,
+            storeId:loginUser.storeId,
+        }
+        if(seri.id){
+            where.id = {
+                [Op.ne]:seri.id,
+            }
+        }
+        const seriExists = await models.Seri.findOne({
+            where,
+            transaction
+        });
+
+        if(seriExists){
+            throw new Error(`Mã seri ${seri.code} đã tồn tại`)
+        }
+        //End
+        if(seri.id){
+            await models.Seri.update({
+                code:seri.code
+            },{
+                where:{
+                    id:seri.id
+                },
+                transaction
+            });
+        }
+        else{
+            await models.Seri.create({
+                code:seri.code,
+                marketOrderId,
+                marketProductId,
+                createdBy:loginUser.id,
+                storeId:loginUser.storeId
+            },{
+                transaction
+            });
+        }
+    }
+}
+
 module.exports.updateSeriService = async (result)=>{
     try {
         const {marketOrderId,products = [],loginUser} = result;
         const t = await models.sequelize.transaction(async (t)=>{
             for(const product of products){
                 const {marketProductId, listSeri = []} = product;
-                const listSeriIdDestroy = listSeri.filter(item=>{
-                    return item.id !== undefined
-                }).map(item=>{
-                    return item.id
-                });
-                await models.Seri.destroy({
-                    where:{
-                        id:{
-                            [Op.notIn]:listSeriIdDestroy
-                        },
-                        marketOrderId,
-                        marketProductId
-                    },
-                    transaction:t
-                });
-                for(const seri of listSeri){
-                    if(seri.id){
-                        await models.Seri.update({
-                            code:seri.code
-                        },{
-                            where:{
-                                id:seri.id
-                            },
-                            transaction:t
-                        });
-                    }
-                    else{
-                        await models.Seri.create({
-                            code:seri.code,
-                            marketOrderId,
-                            marketProductId,
-                            createdBy:loginUser.id
-                        },{
-                            transaction:t
-                        });
-                    }
-                }
+                await updateSeri({marketProductId, listSeri,marketOrderId,loginUser,t});
             }
         });
         return {
@@ -2303,7 +2240,13 @@ module.exports.getMarketProductBySeriSerive = async (result)=>{
             where:{
                 code
             },
-            include:seriInclude
+            include:[
+                {
+                    model:models.MarketProduct,
+                    as:"marketProduct",
+                    attributes:["id","productId"]
+                }
+            ]
         });
         if(!seri){
             return{
@@ -2312,11 +2255,19 @@ module.exports.getMarketProductBySeriSerive = async (result)=>{
                 code:HttpStatusCode.BAD_REQUEST
             }
         }
-        seri.dataValues.marketOrderProduct = seri?.marketOrder?.products?.find(item=>item.marketProductId === seri?.marketProductId);
+        const productId = seri?.marketProduct?.productId;
+        if(!productId){
+            return{
+                error:true,
+                message:"Sản phẩm không còn tồn tại",
+                code:HttpStatusCode.BAD_REQUEST
+            }
+        }
+        const product = await readProduct(productId,loginUser);
         return {
             success: true,
             data: {
-                item:seri
+                item:product
             }
         }
     } catch (e) {
