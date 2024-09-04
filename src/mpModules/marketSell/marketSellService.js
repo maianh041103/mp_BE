@@ -130,12 +130,12 @@ const marketOrderInclude = [
                     {
                         model: models.Product,
                         as: "product",
-                        attributes: ["id", "name","primePrice"]
+                        attributes: ["id", "name","primePrice","code"]
                     },
                     {
                         model: models.ProductUnit,
                         as: "productUnit",
-                        attributes: ["id", "unitName", "exchangeValue"]
+                        attributes: ["id", "unitName", "exchangeValue","code"]
                     },
                     {
                         model: models.Image,
