@@ -67,7 +67,9 @@ const sortMap = async (listPoint) => {
     const apiUrl = `https://maps.vietmap.vn/api/matrix?api-version=1.1&apikey=${API_KEY}&${points}`;
     const response = await axios.get(apiUrl);
     const data = response.data;
-    let res = travel(data);
+    // let res = travel(data);
+    let res = tsp(data.distances);
+    console.log("Done")
     res.shift();
     res.shift();
     console.log(res);
@@ -75,56 +77,125 @@ const sortMap = async (listPoint) => {
 }
 
 const travel = (data) => {
-    let X = []; //X[i] là số thứ tự thành phố thứ i đi qua 
-    let d = 0; //Tính khoảng cách đi lại
-    let ans = 999999999; //lưu chi phí đường đi tối ưu
-    let cmin = 999999999; //lưu chi phí 1 quãng đường ngắn nhất
-    X[1] = 1;
-    let c = data.distances; //Mảng giá trị
-    c.unshift([0]);
-    for (let i = 0; i < c.length; i++) {
-        c[i].unshift(0);
-    }
-    for (const row of c) {
-        for (const col of row) {
-            if (col != 0) {
-                cmin = Math.min(cmin, col);
-            }
-        }
-    }
-    let n = c.length; //n thành phố
-    let visited = Array(n).fill(0); //mảng đánh dấu
-    n -= 2;
-    visited[1] = 1;
-    let X_best = []; //Lưu kết quả đi tốt nhất
+    // console.log(data.distances);
+    // let X = []; //X[i] là số thứ tự thành phố thứ i đi qua
+    // let d = 0; //Tính khoảng cách đi lại
+    // let ans = 999999999; //lưu chi phí đường đi tối ưu
+    // let cmin = 999999999; //lưu chi phí 1 quãng đường ngắn nhất
+    // X[1] = 1;
+    // let c = data.distances; //Mảng giá trị
+    // c.unshift([0]);
+    // for (let i = 0; i < c.length; i++) {
+    //     c[i].unshift(0);
+    // }
+    // for (const row of c) {
+    //     for (const col of row) {
+    //         if (col != 0) {
+    //             cmin = Math.min(cmin, col);
+    //         }
+    //     }
+    // }
+    // let n = c.length; //n thành phố
+    // let visited = Array(n).fill(0); //mảng đánh dấu
+    // n -= 2;
+    // visited[1] = 1;
+    // let X_best = []; //Lưu kết quả đi tốt nhất
+    //
+    // const Try = (i) => {
+    //     for (let j = 2; j <= n; j++) {
+    //         if (visited[j] == 0) {
+    //             visited[j] = 1;
+    //             X[i] = j;
+    //             d += c[X[i - 1]][X[i]];
+    //             if (i == n) {
+    //                 console.log("d + cuoi " + (d + c[X[i]][n + 1]))
+    //                 if (ans > d + c[X[i]][n + 1]) {
+    //                     ans = d + c[X[i]][n + 1];
+    //                     console.log("CAP NHAT ANS " + ans);
+    //                     X_best = [...X];
+    //                     console.log(("CAP NHAT X_BEST " + X_best));
+    //                 }
+    //             }
+    //             else if (d + (n - i + 1) * cmin < ans) {
+    //                 Try(i + 1);
+    //             }
+    //             //backtrack
+    //             visited[j] = 0;
+    //             d -= c[X[i - 1]][X[i]];
+    //         }
+    //     }
+    // }
+    // Try(2);
+    // return X_best;
+    console.log(data.distances);
+    const n = data.distances.length; // Số lượng thành phố
+    const INF = Infinity;
 
-    const Try = (i) => {
-        for (let j = 2; j <= n; j++) {
-            if (visited[j] == 0) {
-                visited[j] = 1;
-                X[i] = j;
-                d += c[X[i - 1]][X[i]];
-                if (i == n) {
-                    console.log("d + cuoi " + (d + c[X[i]][n + 1]))
-                    if (ans > d + c[X[i]][n + 1]) {
-                        ans = d + c[X[i]][n + 1];
-                        console.log("CAP NHAT ANS " + ans);
-                        X_best = [...X];
-                        console.log(("CAP NHAT X_BEST " + X_best));
+    // dp[mask][i] sẽ là chi phí tối thiểu để đi qua tất cả các thành phố trong `mask` và kết thúc ở thành phố `i`
+    let dp = Array(1 << n).fill(null).map(() => Array(n).fill(INF));
+
+    // Bắt đầu từ thành phố 0, chi phí là 0
+    dp[1][0] = 0;
+
+    // Duyệt qua tất cả các tập hợp (mask) của các thành phố đã thăm
+    for (let mask = 1; mask < (1 << n); mask++) {
+        for (let u = 0; u < n; u++) {
+            // Nếu thành phố `u` đã được thăm trong tập hợp `mask`
+            if (mask & (1 << u)) {
+                for (let v = 0; v < n; v++) {
+                    // Nếu thành phố `v` chưa được thăm trong tập hợp `mask`
+                    if (!(mask & (1 << v))) {
+                        let nextMask = mask | (1 << v); // Cập nhật tập hợp mới sau khi thăm thành phố `v`
+                        dp[nextMask][v] = Math.min(dp[nextMask][v], dp[mask][u] + data.distances[u][v]);
                     }
                 }
-                else if (d + (n - i + 1) * cmin < ans) {
-                    Try(i + 1);
-                }
-                //backtrack
-                visited[j] = 0;
-                d -= c[X[i - 1]][X[i]];
             }
         }
     }
-    Try(2);
-    return X_best;
+
+    // Tìm chi phí tối thiểu để quay lại thành phố 0 từ tất cả các thành phố khác
+    let ans = INF;
+    for (let i = 1; i < n; i++) {
+        ans = Math.min(ans, dp[(1 << n) - 1][i] + data.distances[i][0]);
+    }
+
+    return ans;
 }
+
+const tsp = (distances) => {
+    const n = distances.length; // Number of cities
+    const visited = new Array(n).fill(false); // Track visited cities
+    const path = [0]; // Start at city 0
+    let totalDistance = 0;
+
+    visited[0] = true; // Mark the starting city as visited
+
+    for (let i = 1; i < n; i++) {
+        let lastCity = path[path.length - 1];
+        let nearestCity = -1;
+        let nearestDistance = Infinity;
+
+        // Find the nearest unvisited city
+        for (let j = 0; j < n; j++) {
+            if (!visited[j] && distances[lastCity][j] < nearestDistance) {
+                nearestCity = j;
+                nearestDistance = distances[lastCity][j];
+            }
+        }
+
+        // Move to the nearest city
+        path.push(nearestCity);
+        visited[nearestCity] = true;
+        totalDistance += nearestDistance;
+    }
+
+    // Return to the starting city
+    totalDistance += distances[path[path.length - 1]][0];
+    path.push(0);
+    return path;
+};
+
+
 
 module.exports.createTrip = async (params) => {
     const { name, lat, lng, time, latEnd, lngEnd, userId, note, listCustomer, createdBy, storeId, status = tripContant.TRIPSTATUS.PENDING } = params;
