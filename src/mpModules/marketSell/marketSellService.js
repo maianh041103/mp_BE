@@ -202,20 +202,25 @@ const marketOrderAttributes = [
     WHERE MarketOrder.id = market_order_products.marketOrderId )`), 'totalPrice'],
 ]
 
-const handlerCreateCustomer = async ({branchExists, storeSell, t})=>{
+const handlerCreateCustomer = async ({branchBuy, storeSell, t})=>{
+    const storeBuy = await models.Store.findOne({
+        where:{
+            id:branchBuy.storeId
+        }
+    });
     const newCustomer = await models.Customer.create({
-        fullName: branchExists.name,
-        phone: branchExists.phone,
-        code:branchExists.code,
-        address: branchExists.address1,
+        fullName: `${storeBuy?.name}-${branchBuy.name}`,
+        phone: branchBuy.phone,
+        code:branchBuy.code,
+        address: branchBuy.address1,
         type: customerType.Agency,
-        status: branchExists.status === 1 ? customerStatus.ACTIVE : customerStatus.INACTIVE,
-        wardId: branchExists.wardId,
-        districtId: branchExists.districtId,
-        provinceId: branchExists.provinceId,
+        status: branchBuy.status === 1 ? customerStatus.ACTIVE : customerStatus.INACTIVE,
+        wardId: branchBuy.wardId,
+        districtId: branchBuy.districtId,
+        provinceId: branchBuy.provinceId,
         createdAt: new Date(),
         storeId: storeSell,
-        branchId:branchExists.id
+        branchId: branchBuy.id,
     },{
         transaction:t
     });
@@ -1150,6 +1155,13 @@ module.exports.createMarketOrderService = async (result) => {
                 code: HttpStatusCode.BAD_REQUEST
             }
         }
+        if(!listProduct || listProduct.length === 0){
+            return {
+                error: true,
+                message: `Vui lòng mua ít nhất 1 sản phẩm`,
+                code: HttpStatusCode.BAD_REQUEST
+            }
+        }
         let newMarketOrderBuy;
         const t = await models.sequelize.transaction(async (t) => {
             newMarketOrderBuy = await models.MarketOrder.create({
@@ -1197,15 +1209,14 @@ module.exports.createMarketOrderService = async (result) => {
 
             if(!customer){
                 customer = await handlerCreateCustomer({
-                    branchExists,
-                    storeSell:branchSell?.store?.id,
-                    t
+                    branchBuy:branchExists,
+                    storeSell:branchSell?.store?.id
                 });
             }
 
             let totalPrice = 0;
             for (const item of listProduct) {
-                totalPrice += item.price;
+                totalPrice += item.price * item.quantity;
                 let marketProductExists = await models.MarketProduct.findOne({
                     where: {
                         id: item.marketProductId,
