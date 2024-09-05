@@ -999,17 +999,15 @@ module.exports.getProductInCartService = async (result) => {
         let listProductGroupByBranch = [];
         for (let item of listProductInCart) {
             //Cập nhật giá cho đại lý
-            item.dataValues.price = item.dataValues.marketProduct.dataValues.discountPrice === 0 ?
-                item.dataValues.marketProduct.dataValues.price:
-                item.dataValues.marketProduct.dataValues.discountPrice;
+            item.dataValues.price = item.dataValues.marketProduct.dataValues.price;
+            item.dataValues.discountPrice = item.dataValues.marketProduct.dataValues.discountPrice;
             if (item?.marketProduct?.agencys?.length > 0) {
                 let index = item?.marketProduct?.agencys?.findIndex(tmp => {
                     return tmp.agencyId !== null;
                 });
                 if (index === -1) index = 0;
-                item.dataValues.price = item.marketProduct.dataValues.agencys[index].discountPrice === 0 ?
-                    item.marketProduct.dataValues.agencys[index].price :
-                    item.marketProduct.dataValues.agencys[index].discountPrice;
+                item.dataValues.price = item.marketProduct.dataValues.agencys[index].price;
+                item.dataValues.discountPrice = item.marketProduct.dataValues.agencys[index].discountPrice;
             }
             //End cập nhật giá cho đại lý
             let images = (item?.marketProduct?.images || "").split("/");
