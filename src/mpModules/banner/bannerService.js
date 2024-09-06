@@ -9,6 +9,13 @@ const {
   logActions,
 } = require("../../helpers/choices");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
+const include = [
+      {
+        model: models.Image,
+        as: "image",
+        attributes: ["id", "originalName", "fileName", "filePath", "path"],
+      },
+    ];
 
 function processQuery(params) {
   const {
@@ -17,13 +24,7 @@ function processQuery(params) {
     keyword = "",
     type,
     status,
-    include = [
-      {
-        model: models.Image,
-        as: "image",
-        attributes: ["id", "originalName", "fileName", "filePath", "path"],
-      },
-    ],
+    include,
   } = params;
   const query = {
     include,
@@ -74,46 +75,41 @@ export async function indexBanners(params) {
 }
 
 export async function createBanner(params) {
-  const newBanner = await models.Banner.create(params);
-  createUserTracking({
-    accountId: newBanner.createdBy,
-    type: accountTypes.USER,
-    objectId: newBanner.id,
-    action: logActions.banner_create.value,
-    data: { ...params },
-  });
+  await models.Banner.bulkCreate(params);
   return {
     success: true,
-    data: newBanner,
+    data: params,
   };
 }
 
-export async function updateBanner(id, params) {
-  const foundBanner = await models.Banner.findByPk(id, {
-    attributes: ["id"],
-  });
-
-  if (!foundBanner) {
-    return {
-      error: true,
-      code: HttpStatusCode.NOT_FOUND,
-      message: "Banner không tồn tại",
-    };
-  }
-
-  await models.Banner.update(params, {
-    where: {
-      id,
-    },
-  });
-
-  createUserTracking({
-    accountId: params.updatedBy,
-    type: accountTypes.USER,
-    objectId: id,
-    action: logActions.banner_update.value,
-    data: { ...params },
-  });
+export async function updateBanner(params) {
+  const listBannerId = params.filter(item=>item.id !== undefined && item.id !== null)
+      .map(item => item.id);
+  const t = await models.sequelize.transaction(async (t)=>{
+    await models.Banner.destroy({
+      where:{
+        id:{
+          [Op.notIn]: listBannerId,
+        }
+      },
+      transaction:t
+    });
+    for(const banner of params){
+      if(banner.id){
+        await models.Banner.update(banner, {
+          where: {
+            id:banner.id,
+          },
+          transaction:t
+        });
+      }
+      else{
+        await models.Banner.create(banner,{
+          transaction:t
+        });
+      }
+    }
+  })
 
   return {
     success: true,
@@ -123,15 +119,16 @@ export async function updateBanner(id, params) {
 export async function readBanner(id) {
   return {
     success: true,
-    data: await models.Banner.findByPk(id, {
-      where: {
-        id: id,
+    data: await models.Banner.findOne({
+      where:{
+        id
       },
-    }),
+      include
+    })
   };
 }
 
-export async function deleteBanner(id, loginUser) {
+export async function deleteBanner(id) {
   const instance = await models.Banner.findByPk(id, {
     attributes: ["id", "title"],
   });
@@ -148,14 +145,6 @@ export async function deleteBanner(id, loginUser) {
     where: {
       id,
     },
-  });
-
-  createUserTracking({
-    accountId: loginUser.id,
-    type: accountTypes.USER,
-    objectId: instance.id,
-    action: logActions.banner_delete.value,
-    data: { id, title: instance.title },
   });
 
   return {

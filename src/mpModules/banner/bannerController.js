@@ -24,20 +24,24 @@ export async function getList(req, res) {
 
 export async function create(req, res) {
   try {
-    const banner = {
-      title: _.get(req, "body.title", ""),
-      alt: _.get(req, "body.alt", ""),
-      imageId: _.get(req, "body.imageId", null),
-      displayOrder: _.get(req, "body.displayOrder", ""),
-      link: _.get(req, "body.link", ""),
-      type: _.get(req, "body.type", ""),
-      description: _.get(req, "body.description", ""),
-      sponsor: _.get(req, "body.sponsor", ""),
-      status: _.get(req, "body.status", null),
-      createdBy: _.get(req, "loginUser.id", null),
-      createdAt: new Date(),
-    };
-    const result = await createBanner(banner);
+    console.log(req.body);
+    let listBanner = [];
+    for(const item of req.body){
+      const banner = {
+        title: _.get(item, "title", ""),
+        alt: _.get(item, "alt", ""),
+        imageId: _.get(item, "imageId", null),
+        displayOrder: _.get(item, "displayOrder", ""),
+        link: _.get(item, "link", ""),
+        type: _.get(item, "type", ""),
+        description: _.get(item, "description", ""),
+        sponsor: _.get(item, "sponsor", ""),
+        status: _.get(item, "status", null),
+        createdAt: new Date(),
+      };
+      listBanner.push(banner);
+    }
+    const result = await createBanner(listBanner);
     if (result.success) res.json(respondItemSuccess(result.data));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
@@ -58,21 +62,25 @@ export async function getDetail(req, res) {
 
 export async function update(req, res) {
   try {
-    const { id } = req.params;
-    const banner = {
-      title: _.get(req, "body.title", ""),
-      alt: _.get(req, "body.alt", ""),
-      imageId: _.get(req, "body.imageId", null),
-      displayOrder: _.get(req, "body.displayOrder", ""),
-      link: _.get(req, "body.link", ""),
-      type: _.get(req, "body.type", ""),
-      description: _.get(req, "body.description", ""),
-      sponsor: _.get(req, "body.sponsor", ""),
-      status: _.get(req, "body.status", null),
-      updatedBy: _.get(req, "loginUser.id", null),
-      updatedAt: new Date(),
-    };
-    const result = await updateBanner(id, banner);
+    const listBanner = [];
+    for(const item of req.body){
+      const banner = {
+        id: _.get(item, "id", null),
+        title: _.get(item, "title", ""),
+        alt: _.get(item, "alt", ""),
+        imageId: _.get(item, "imageId", null),
+        displayOrder: _.get(item, "displayOrder", ""),
+        link: _.get(item, "link", ""),
+        type: _.get(item, "type", ""),
+        description: _.get(item, "description", ""),
+        sponsor: _.get(item, "sponsor", ""),
+        status: _.get(item, "status", null),
+        createdAt: new Date(),
+      };
+      listBanner.push(banner);
+    }
+
+    const result = await updateBanner(listBanner);
     if (result.success) res.json(respondItemSuccess());
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
@@ -83,8 +91,7 @@ export async function update(req, res) {
 export async function deleteController(req, res) {
   try {
     const { id } = req.params;
-    const { loginUser = {} } = req;
-    const result = await deleteBanner(id, loginUser);
+    const result = await deleteBanner(id);
     if (result.success) res.json(respondItemSuccess());
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
