@@ -274,10 +274,10 @@ export async function indexCreate(saleReturn, loginUser) {
           partner: customer.fullName,
           productId: item.productId,
           branchId: saleReturn.branchId,
-          changeQty: item.quantity * productUnit.exchangeValue,
-          remainQty:
+          changeQty: parseInt(item.quantity * productUnit.exchangeValue),
+          remainQty:parseInt(
             (await getInventory(saleReturn.branchId, item.productId)) +
-            item.quantity * productUnit.exchangeValue,
+            item.quantity * productUnit.exchangeValue),
           createdAt: new Date(),
           updatedAt: new Date()
         },
