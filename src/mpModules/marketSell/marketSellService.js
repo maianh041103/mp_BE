@@ -245,7 +245,8 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser, bran
     let customer = await models.Customer.findOne({
         where:{
             branchId:marketOrderExists.branchId,
-            type:customerContant.customerType.Agency
+            type:customerContant.customerType.Agency,
+            storeId
         }
     });
 
