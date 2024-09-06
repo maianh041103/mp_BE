@@ -202,20 +202,25 @@ const marketOrderAttributes = [
     WHERE MarketOrder.id = market_order_products.marketOrderId )`), 'totalPrice'],
 ]
 
-const handlerCreateCustomer = async ({branchExists, storeSell, t})=>{
+const handlerCreateCustomer = async ({branchBuy, storeSell, t})=>{
+    const storeBuy = await models.Store.findOne({
+        where:{
+            id:branchBuy.storeId
+        }
+    });
     const newCustomer = await models.Customer.create({
-        fullName: branchExists.name,
-        phone: branchExists.phone,
-        code:branchExists.code,
-        address: branchExists.address1,
+        fullName: `${storeBuy?.name}-${branchBuy.name}`,
+        phone: branchBuy.phone,
+        code:branchBuy.code,
+        address: branchBuy.address1,
         type: customerType.Agency,
-        status: branchExists.status === 1 ? customerStatus.ACTIVE : customerStatus.INACTIVE,
-        wardId: branchExists.wardId,
-        districtId: branchExists.districtId,
-        provinceId: branchExists.provinceId,
+        status: branchBuy.status === 1 ? customerStatus.ACTIVE : customerStatus.INACTIVE,
+        wardId: branchBuy.wardId,
+        districtId: branchBuy.districtId,
+        provinceId: branchBuy.provinceId,
         createdAt: new Date(),
         storeId: storeSell,
-        branchId:branchExists.id
+        branchId: branchBuy.id,
     },{
         transaction:t
     });
@@ -994,17 +999,15 @@ module.exports.getProductInCartService = async (result) => {
         let listProductGroupByBranch = [];
         for (let item of listProductInCart) {
             //Cập nhật giá cho đại lý
-            item.dataValues.price = item.dataValues.marketProduct.dataValues.discountPrice === 0 ?
-                item.dataValues.marketProduct.dataValues.price:
-                item.dataValues.marketProduct.dataValues.discountPrice;
+            item.dataValues.price = item.dataValues.marketProduct.dataValues.price;
+            item.dataValues.discountPrice = item.dataValues.marketProduct.dataValues.discountPrice;
             if (item?.marketProduct?.agencys?.length > 0) {
                 let index = item?.marketProduct?.agencys?.findIndex(tmp => {
                     return tmp.agencyId !== null;
                 });
                 if (index === -1) index = 0;
-                item.dataValues.price = item.marketProduct.dataValues.agencys[index].discountPrice === 0 ?
-                    item.marketProduct.dataValues.agencys[index].price :
-                    item.marketProduct.dataValues.agencys[index].discountPrice;
+                item.dataValues.price = item.marketProduct.dataValues.agencys[index].price;
+                item.dataValues.discountPrice = item.marketProduct.dataValues.agencys[index].discountPrice;
             }
             //End cập nhật giá cho đại lý
             let images = (item?.marketProduct?.images || "").split("/");
@@ -1150,6 +1153,13 @@ module.exports.createMarketOrderService = async (result) => {
                 code: HttpStatusCode.BAD_REQUEST
             }
         }
+        if(!listProduct || listProduct.length === 0){
+            return {
+                error: true,
+                message: `Vui lòng mua ít nhất 1 sản phẩm`,
+                code: HttpStatusCode.BAD_REQUEST
+            }
+        }
         let newMarketOrderBuy;
         const t = await models.sequelize.transaction(async (t) => {
             newMarketOrderBuy = await models.MarketOrder.create({
@@ -1197,15 +1207,14 @@ module.exports.createMarketOrderService = async (result) => {
 
             if(!customer){
                 customer = await handlerCreateCustomer({
-                    branchExists,
-                    storeSell:branchSell?.store?.id,
-                    t
+                    branchBuy:branchExists,
+                    storeSell:branchSell?.store?.id
                 });
             }
 
             let totalPrice = 0;
             for (const item of listProduct) {
-                totalPrice += item.price;
+                totalPrice += item.price * item.quantity;
                 let marketProductExists = await models.MarketProduct.findOne({
                     where: {
                         id: item.marketProductId,
