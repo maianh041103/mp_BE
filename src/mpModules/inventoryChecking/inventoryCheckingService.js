@@ -295,8 +295,8 @@ module.exports.create = async (params) => {
                     partner: "",
                     productId: product.id,
                     branchId: branchId,
-                    changeQty: totalRealQuantityBaseUnit - inventory.quantity,
-                    remainQty: totalRealQuantityBaseUnit,
+                    changeQty: parseInt(totalRealQuantityBaseUnit) - parseInt(inventory.quantity),
+                    remainQty: parseInt(totalRealQuantityBaseUnit),
                     createdAt: new Date(),
                     updatedAt: new Date()
                 }, {
