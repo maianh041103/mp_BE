@@ -117,8 +117,8 @@ async function createMoveItem(move, productsReq, loginUser, t) {
             partner: "",
             productId: item.productId,
             branchId: move.fromBranchId,
-            changeQty: -totalQuantity,
-            remainQty: inventory - totalQuantity,
+            changeQty: parseInt(-totalQuantity),
+            remainQty: +inventory - +totalQuantity,
             createdAt: new Date(),
             updatedAt: new Date()
         }, t)
