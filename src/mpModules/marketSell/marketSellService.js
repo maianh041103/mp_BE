@@ -301,7 +301,7 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser, bran
                 productId: item?.marketProduct?.product?.id,
                 productUnitId: item?.marketProduct?.productUnit?.id,
                 isDiscount: false,
-                itemPrice: 0,
+                itemPrice: item?.price * item?.quantity,
                 discountPrice:0,
                 productUnitData: JSON.stringify(productUnit),
                 price: +item.price * +item.quantity,
