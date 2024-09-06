@@ -1758,9 +1758,17 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                         },
                         transaction: t
                     });
+                    const customer = await models.Customer.findOne({
+                        where:{
+                            branchId:marketOrderExists.branchId,
+                            storeId:loginUser.storeId,
+                            type:customerContant.customerType.Agency
+                        }
+                    });
                     await models.WarehouseCard.create({
                             code: marketOrderExists.code,
                             type: warehouseStatus.SALE_MARKET,
+                            partner: customer?.fullName,
                             productId: item?.marketProduct?.product?.id,
                             branchId: marketOrderExists.toBranchId,
                             changeQty: item.quantity * number * item?.marketProduct?.productUnit?.exchangeValue,
