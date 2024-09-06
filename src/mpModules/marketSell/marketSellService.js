@@ -1909,20 +1909,12 @@ module.exports.updateOrderService = async (result) => {
                 transaction: t
             });
         }
-        await models.MarketOrder.update({
-            note
-        },{
-            where:{
-                id
-            },
-            transaction:t
-        });
         let listMarketOrderProductId = listProduct.filter(item=>{
             return item.marketOrderProductId !== undefined
         }).map(item=>{
             return item.marketOrderProductId;
         });
-        console.log(listMarketOrderProductId);
+
         await models.MarketOrderProduct.destroy({
             where:{
                 id:{
@@ -1931,7 +1923,9 @@ module.exports.updateOrderService = async (result) => {
                 marketOrderId: id
             }
         });
+        let totalPrice = 0;
         for(const product of listProduct){
+            totalPrice += product.price * product.quantity;
             if(product.marketOrderProductId){
                 await models.MarketOrderProduct.update({
                     quantity: product.quantity,
@@ -1953,6 +1947,14 @@ module.exports.updateOrderService = async (result) => {
                 });
             }
         }
+        await models.MarketOrder.update({
+            note,totalPrice
+        },{
+            where:{
+                id
+            },
+            transaction:t
+        });
     })
     return{
         success:true,
