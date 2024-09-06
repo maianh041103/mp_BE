@@ -125,7 +125,6 @@ const marketOrderInclude = [
             {
                 model: models.MarketProduct,
                 as: "marketProduct",
-                attributes: ["id","thumbnail"],
                 include: [
                     {
                         model: models.Product,
