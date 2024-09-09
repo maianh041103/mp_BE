@@ -204,6 +204,24 @@ module.exports.updateQuantityProductInCart = async (req,res)=>{
     }
 }
 
+//[PATCH] mp/api/market/sell/cart
+module.exports.updateProductInCart = async (req,res)=>{
+    try {
+        const { loginUser = {} } = req;
+        const {ids,branchId} = req.body;
+        const result = await marketSellService.updateProductInCartService(
+            {
+                storeId: loginUser.storeId,
+                ids,branchId
+            }
+        );
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (e) {
+        res.json(respondWithClientError(e))
+    }
+}
+
 //[DELETE] mp/api/market/sell/cart/:id
 module.exports.deleteProductInCart = async (req,res)=>{
     try {

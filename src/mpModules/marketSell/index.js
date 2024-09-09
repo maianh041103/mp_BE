@@ -54,6 +54,11 @@ router.get("/cart",authenticate,(req,res,next)=>{
     next();
 },authorize,controller.getProductInCart);
 
+router.patch("/cart",authenticate,(req,res,next)=>{
+    req.apiRole = [];
+    next();
+},authorize,controller.updateProductInCart);
+
 router.patch("/cart/:id/:quantity",authenticate,(req,res,next)=>{
     req.apiRole = [];
     next();
