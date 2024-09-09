@@ -1101,6 +1101,60 @@ module.exports.updateQuantityProductInCartService = async (result) => {
     }
 }
 
+module.exports.updateProductInCartService = async (result) => {
+    try {
+        const {ids, storeId, branchId} = result;
+        const branchExists = await models.Branch.findOne({
+            where:{
+                id:branchId,
+                storeId
+            }
+        });
+        if(!branchExists){
+            return{
+                error:true,
+                message:`Không tồn tại chi nhánh có id = ${branchId} thuộc cửa hàng ${storeId}`,
+                code:HttpStatusCode.BAD_REQUEST
+            }
+        }
+        const t = await models.sequelize.transaction(async (t)=>{
+            await models.Cart.update({
+                isSelected:false
+            },{
+                where:{
+                    id:{
+                        [Op.notIn]:ids
+                    },
+                    branchId
+                },
+                transaction:t
+            });
+
+            await models.Cart.update({
+                isSelected:true
+            },{
+                where:{
+                    id:{
+                        [Op.in]:ids
+                    },
+                    branchId
+                },
+                transaction:t
+            })
+        })
+        return {
+            success: true,
+            data: null
+        }
+    } catch (e) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Lỗi ${e}`
+        }
+    }
+}
+
 module.exports.deleteProductInCartService = async (result) => {
     try {
         const {id} = result;

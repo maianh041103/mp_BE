@@ -1,4 +1,5 @@
 'use strict';
+const Sequelize = require("sequelize");
 module.exports = (sequelize, DataTypes) => {
     const Cart = sequelize.define('Cart', {
         id: {
@@ -22,6 +23,11 @@ module.exports = (sequelize, DataTypes) => {
         quantity:{
             allowNull:false,
             type:DataTypes.INTEGER(10).UNSIGNED
+        },
+        isSelected:{
+            allowNull:true,
+            type:Sequelize.BOOLEAN,
+            defaultValue:false
         },
         createdAt:{
             allowNull: true,
