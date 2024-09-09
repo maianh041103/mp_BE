@@ -1733,7 +1733,6 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                 }
                 for (const item of marketOrderExists.products) {
                     await models.MarketProduct.increment({
-                        quantity: item.quantity * number,
                         quantitySold: item.quantity * number * (-1)
                     }, {
                         where: {
@@ -1823,7 +1822,6 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                         }
                         for (const batch of batches) {
                             await models.MarketProductBatch.increment({
-                                quantity: batch.quantity * number,
                                 quantitySold: batch.quantity * number * (-1)
                             }, {
                                 where: {
