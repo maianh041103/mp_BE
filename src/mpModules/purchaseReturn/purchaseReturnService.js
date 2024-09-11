@@ -466,7 +466,7 @@ export async function handleCreatePurchaseReturn(purchaseReturn, loginUser) {
       const productUnit = responseReadProductUnit.data
       const inventory = await models.Inventory.findOne({
         where:{
-          id: item.productId,
+          productId: item.productId,
           branchId: purchaseReturn.branchId
         }
       });
