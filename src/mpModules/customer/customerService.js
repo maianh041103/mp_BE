@@ -1,12 +1,7 @@
-import moment from "moment";
-import {orderStatuses} from "../order/orderConstant";
 import {formatMobileToSave} from "../../helpers/utils";
 
 const {hashPassword} = require("../auth/authService");
 const {createUserTracking} = require("../behavior/behaviorService");
-// const {
-//   sendNotificationThroughSms,
-// } = require("../notification/smsIntegrationService");
 const _ = require("lodash");
 const Sequelize = require("sequelize");
 const {Op} = Sequelize;
@@ -743,10 +738,16 @@ export async function indexPaymentCustomer(params, loginUser) {
         },
         order: [["id", "DESC"]],
         where
-    })
+    });
+    const count = await models.Payment.count({
+        where
+    });
     return {
         success: true,
-        data: payments
+        data: {
+            items:payments,
+            totalItem: count
+        }
     }
 }
 
