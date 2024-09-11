@@ -1216,20 +1216,6 @@ module.exports.createMarketOrderService = async (result) => {
         }
         let newMarketOrderBuy;
         const t = await models.sequelize.transaction(async (t) => {
-            newMarketOrderBuy = await models.MarketOrder.create({
-                branchId, addressId,
-                address: addressExists.address,
-                districtId:addressExists.districtId,
-                wardId:addressExists.wardId,
-                provinceId:addressExists.provinceId,
-                status: marketSellContant.STATUS_ORDER.PENDING,
-                phone: addressExists.phone,
-                toBranchId: toBranchId,
-                fullName:loginUser.fullName,
-                deliveryFee: 50000,
-            }, {
-                transaction: t
-            });
             const branchSell = await models.Branch.findOne({
                 where:{
                     id:toBranchId
@@ -1245,9 +1231,10 @@ module.exports.createMarketOrderService = async (result) => {
             if(!branchSell){
                 throw new Error("Không tồn tại chi nhánh bán");
             }
+
             let customer = await models.Customer.findOne({
                 where:{
-                    branchId:newMarketOrderBuy.branchId,
+                    branchId: branchId,
                     type:customerContant.customerType.Agency,
                     storeId: branchSell?.store?.id
                 }
@@ -1255,7 +1242,7 @@ module.exports.createMarketOrderService = async (result) => {
 
             const branchExists = await models.Branch.findOne({
                 where:{
-                    id:newMarketOrderBuy.branchId
+                    id:branchId
                 }
             });
 
@@ -1265,6 +1252,21 @@ module.exports.createMarketOrderService = async (result) => {
                     storeSell:branchSell?.store?.id
                 });
             }
+
+            newMarketOrderBuy = await models.MarketOrder.create({
+                branchId, addressId,
+                address: addressExists.address,
+                districtId:addressExists.districtId,
+                wardId:addressExists.wardId,
+                provinceId:addressExists.provinceId,
+                status: marketSellContant.STATUS_ORDER.PENDING,
+                phone: addressExists.phone,
+                toBranchId: toBranchId,
+                fullName:customer.fullName,
+                deliveryFee: 50000,
+            }, {
+                transaction: t
+            });
 
             let totalPrice = 0;
             for (const item of listProduct) {
