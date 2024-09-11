@@ -383,7 +383,7 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser, bran
 
 module.exports.createAddressService = async (result) => {
     try {
-        let {phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress, branchId, loginUser} = result;
+        let {phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress, branchId, loginUser, fullName} = result;
         let newAddress;
         const branchExists = await models.Branch.findOne({
             where: {
@@ -426,7 +426,7 @@ module.exports.createAddressService = async (result) => {
             }
             newAddress = await models.Address.create({
                 phone, wardId, districtId, provinceId, address, branchId, isDefaultAddress,
-                fullName: loginUser.fullName
+                fullName
             }, {
                 transaction: t
             });
@@ -558,7 +558,7 @@ module.exports.getDetailAddressService = async (result) => {
 
 module.exports.updateAddressService = async (result) => {
     try {
-        let {id, storeId, phone, wardId, districtId, provinceId, address, isDefaultAddress, branchId, loginUser} = result;
+        let {id, storeId, phone, wardId, districtId, provinceId, address, isDefaultAddress, branchId, loginUser, fullName} = result;
         const addressExists = await models.Address.findOne({
             where: {
                 id
@@ -588,7 +588,7 @@ module.exports.updateAddressService = async (result) => {
         }
         await models.Address.update({
             phone, wardId, districtId, provinceId, address, isDefaultAddress,
-            fullName:loginUser.fullName
+            fullName
         }, {
             where: {
                 id
