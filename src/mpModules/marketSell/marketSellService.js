@@ -383,7 +383,7 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser, bran
 
 module.exports.createAddressService = async (result) => {
     try {
-        let {phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress, branchId, loginUser} = result;
+        let {phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress, branchId, loginUser, fullName} = result;
         let newAddress;
         const branchExists = await models.Branch.findOne({
             where: {
@@ -426,7 +426,7 @@ module.exports.createAddressService = async (result) => {
             }
             newAddress = await models.Address.create({
                 phone, wardId, districtId, provinceId, address, branchId, isDefaultAddress,
-                fullName: loginUser.fullName
+                fullName
             }, {
                 transaction: t
             });
@@ -558,7 +558,7 @@ module.exports.getDetailAddressService = async (result) => {
 
 module.exports.updateAddressService = async (result) => {
     try {
-        let {id, storeId, phone, wardId, districtId, provinceId, address, isDefaultAddress, branchId, loginUser} = result;
+        let {id, storeId, phone, wardId, districtId, provinceId, address, isDefaultAddress, branchId, loginUser, fullName} = result;
         const addressExists = await models.Address.findOne({
             where: {
                 id
@@ -588,7 +588,7 @@ module.exports.updateAddressService = async (result) => {
         }
         await models.Address.update({
             phone, wardId, districtId, provinceId, address, isDefaultAddress,
-            fullName:loginUser.fullName
+            fullName
         }, {
             where: {
                 id
@@ -1216,20 +1216,6 @@ module.exports.createMarketOrderService = async (result) => {
         }
         let newMarketOrderBuy;
         const t = await models.sequelize.transaction(async (t) => {
-            newMarketOrderBuy = await models.MarketOrder.create({
-                branchId, addressId,
-                address: addressExists.address,
-                districtId:addressExists.districtId,
-                wardId:addressExists.wardId,
-                provinceId:addressExists.provinceId,
-                status: marketSellContant.STATUS_ORDER.PENDING,
-                phone: addressExists.phone,
-                toBranchId: toBranchId,
-                fullName:loginUser.fullName,
-                deliveryFee: 50000,
-            }, {
-                transaction: t
-            });
             const branchSell = await models.Branch.findOne({
                 where:{
                     id:toBranchId
@@ -1245,9 +1231,10 @@ module.exports.createMarketOrderService = async (result) => {
             if(!branchSell){
                 throw new Error("Không tồn tại chi nhánh bán");
             }
+
             let customer = await models.Customer.findOne({
                 where:{
-                    branchId:newMarketOrderBuy.branchId,
+                    branchId: branchId,
                     type:customerContant.customerType.Agency,
                     storeId: branchSell?.store?.id
                 }
@@ -1255,7 +1242,7 @@ module.exports.createMarketOrderService = async (result) => {
 
             const branchExists = await models.Branch.findOne({
                 where:{
-                    id:newMarketOrderBuy.branchId
+                    id:branchId
                 }
             });
 
@@ -1265,6 +1252,21 @@ module.exports.createMarketOrderService = async (result) => {
                     storeSell:branchSell?.store?.id
                 });
             }
+
+            newMarketOrderBuy = await models.MarketOrder.create({
+                branchId, addressId,
+                address: addressExists.address,
+                districtId:addressExists.districtId,
+                wardId:addressExists.wardId,
+                provinceId:addressExists.provinceId,
+                status: marketSellContant.STATUS_ORDER.PENDING,
+                phone: addressExists.phone,
+                toBranchId: toBranchId,
+                fullName:customer.fullName,
+                deliveryFee: 50000,
+            }, {
+                transaction: t
+            });
 
             let totalPrice = 0;
             for (const item of listProduct) {
