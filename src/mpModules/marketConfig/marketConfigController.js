@@ -132,10 +132,13 @@ module.exports.changeStatusAgency = async (req, res) => {
     try {
         const { loginUser = {} } = req;
         const { id, status } = req.params;
+        const {groupAgencyId} = req.body;
+        const {branchId} = req.query;
         const result = await marketConfigService.changeStatusAgencyService(
             {
-                id, status,
-                storeId: loginUser.storeId
+                id, status,groupAgencyId,
+                storeId: loginUser.storeId,
+                branchId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));

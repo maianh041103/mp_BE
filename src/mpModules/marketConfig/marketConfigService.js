@@ -827,10 +827,10 @@ module.exports.createRequestAgencyService = async (result) => {
 }
 
 module.exports.changeStatusAgencyService = async (result) => {
-    const {id, storeId, status} = result;
+    const {id, storeId, status, groupAgencyId, branchId} = result;
     const requestAgency = await models.RequestAgency.findOne({
         where: {
-            id
+            id, branchId
         }
     });
     if (!requestAgency) {
@@ -840,8 +840,24 @@ module.exports.changeStatusAgencyService = async (result) => {
             code: HttpStatusCode.BAD_REQUEST
         };
     }
+    if(groupAgencyId){
+        const groupAgency = await models.GroupAgency.findOne({
+            where:{
+                id:groupAgencyId,
+                branchId:branchId
+            }
+        });
+        if(!groupAgency) {
+            return {
+                error: true,
+                message: "Không tìm thấy nhóm đại lý",
+                code: HttpStatusCode.BAD_REQUEST
+            };
+        }
+    }
     await models.RequestAgency.update({
-        status: status
+        status: status,
+        groupAgencyId:groupAgencyId
     }, {
         where: {
             id
