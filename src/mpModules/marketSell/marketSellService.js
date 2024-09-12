@@ -1692,11 +1692,11 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                                     marketOrderId: id,
                                     marketOrderProductId: item.marketOrderProductId,
                                     batchId: batch.batchId,
-                                    quantity: quantity <= batch.quantity ? quantity : quantity - batch.quantity
+                                    quantity: quantity <= batch.quantity ? quantity : batch.quantity
                                 }, {
                                     transaction: t
                                 });
-                                quantity -= newMarketOrderBatch;
+                                quantity -= batch.quantity;
                             }
                         }
                     }
