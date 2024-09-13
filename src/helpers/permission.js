@@ -162,6 +162,10 @@ export const modelPermissions = [
   {
     name: "market_confirm",
     text: "Xác nhận đơn hàng"
+  },
+  {
+    name:"market_agency",
+    text: "Duyệt làm đại lý"
   }
 ];
 
