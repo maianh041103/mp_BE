@@ -25,8 +25,7 @@ const attributes = [
 const include = [
   {
     model: models.Image,
-    as: "businessRegistrationImage",
-    attributes: ["id", "path"],
+    as: "businessRegistrationImage"
   },
 
   {
@@ -44,10 +43,6 @@ const include = [
     as: "ward",
     attributes: ["id", "name"],
   },
-  {
-    model: models.Image,
-    as:"logo"
-  }
 ];
 
 function processQuery(params) {
@@ -114,7 +109,7 @@ export async function storeFilter(params) {
 
 export async function indexStores(params) {
   const { rows, count } = await models.Store.findAndCountAll(
-    processQuery(params)
+      processQuery(params)
   );
   return {
     success: true,
@@ -141,7 +136,7 @@ export async function listStore(params) {
     data: {
       items: rows,
       totalItem: count,
-     
+
       totalPages: Math.ceil(count / limit),
       currentPage: page
     },
@@ -166,33 +161,21 @@ const StoreInclude = [
   },
   {
     model: models.Image,
-    as: "businessRegistrationImage",
-    attributes: ["id", "path"],
+    as: "businessRegistrationImage"
   },
   {
     model: models.User,
     as: "users",
     attributes: ["id", "username", "email", "phone", "position"],
+  },
+  {
+    model: models.Branch,
+    as: "branches"
   }
 ];
 
 
 export async function createStore(payload) {
-  console.log(payload)
-  if(payload.phone){
-    const existsPhoneStore = await models.Store.findOne({
-      where:{
-        phone:payload.phone
-      }
-    });
-    if(existsPhoneStore){
-      return{
-        error:true,
-        message:`Số điện thoại ${payload.phone} đã tồn tại`,
-        code:HttpStatusCode.BAD_REQUEST
-      }
-    }
-  }
   const newStore = await models.Store.create(payload);
   await insertNewCode(newStore.id);
   const createBranchInput = {

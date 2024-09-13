@@ -3,6 +3,8 @@ import {addInventory, getInventory, newInventory} from "../inventory/inventorySe
 import {raiseBadRequestError} from "../../helpers/exception";
 import {createWarehouseCard} from "../warehouse/warehouseService";
 import {warehouseStatus} from "../warehouse/constant";
+import {MARKET_TYPE} from "../marketConfig/marketConfigContant";
+import {STATUS_ORDER} from "../marketSell/marketSellContant";
 
 const moment = require("moment");
 const {
@@ -42,6 +44,7 @@ const {accountTypes, logActions} = require("../../helpers/choices");
 const {productIncludes, productAttributes} = require("./constant")
 const {queryFilter} = require("./filter")
 const generateCode = require("../../helpers/codeGenerator");
+const now = moment();
 
 export async function productFilter(params) {
     try {
@@ -1190,6 +1193,38 @@ export async function indexInventory(id, storeId, branchId, productUnitId) {
             }
         });
         inventories[0].dataValues.quantityProductUnit = parseInt(Math.floor(inventories[0].quantity / productUnit.exchangeValue));
+    }
+    const marketProduct = await models.MarketProduct.findOne({
+        where:{
+            productId: id
+        }
+    });
+    if(marketProduct){
+        // Tính số lượng khách hàng đặt
+        const totalProduct = await models.MarketOrderProduct.count({
+            where:{
+                marketProductId:marketProduct.id
+            },
+            include:[{
+                model:models.MarketOrder,
+                as:"marketOrder",
+                where:{
+                    [Op.or]:[
+                        {status:STATUS_ORDER.PENDING,},
+                        {status:STATUS_ORDER.CONFIRM}
+                    ]
+                }
+            }]
+        });
+        inventories[0].dataValues.customerOrders = totalProduct;
+        // Dự kiến hết hàng
+        const timeBuy = now.diff(moment(marketProduct.createdAt), 'days');
+        inventories[0].dataValues.stockout = parseInt(+timeBuy * +inventories[0].quantity /+totalProduct);
+
+    }
+    else{
+        inventories[0].dataValues.customerOrders = 0;
+        inventories[0].dataValues.stockout = 0;
     }
     return {
         success: true,
