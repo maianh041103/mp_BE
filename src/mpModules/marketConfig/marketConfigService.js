@@ -508,6 +508,13 @@ module.exports.changeProductService = async (result) => {
             code:HttpStatusCode.BAD_REQUEST
         }
     }
+    if(branchExists.isAgency === false && marketType === marketConfigContant.MARKET_TYPE.PRIVATE){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:"Bạn không có quyền tạo sản phẩm trên chợ riêng. Vui lòng đăng ký làm đại lý"
+        }
+    }
     const product = await models.Product.findOne({
         where: {
             id: productId,
