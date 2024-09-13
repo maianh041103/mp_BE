@@ -654,7 +654,14 @@ module.exports.deleteAddressService = async (result) => {
 
 module.exports.getDetailProductService = async (result) => {
     try {
-        const {id, storeId} = result;
+        const {id, storeId, branchId} = result;
+        if(!branchId){
+            return{
+                error:true,
+                code:HttpStatusCode.BAD_REQUEST,
+                message:"Vui lòng truyền thông tin chi nhánh"
+            }
+        }
         const marketProduct = await models.MarketProduct.findOne({
             where: {
                 id,
@@ -668,6 +675,15 @@ module.exports.getDetailProductService = async (result) => {
                 message: `Không tìm thấy sản phẩm có id = ${id} trên chợ`
             }
         }
+
+        if(! (await isProductPermission(id, branchId))){
+            return{
+                error:true,
+                code:HttpStatusCode.BAD_REQUEST,
+                message:"Bạn không có quyền truy cập sản phẩm này"
+            }
+        }
+
         if (marketProduct.images) {
             marketProduct.dataValues.images = await getImages(marketProduct.images);
         }
@@ -1483,6 +1499,14 @@ module.exports.getDetailProductPrivateService = async (result)=>{
             }
         }
 
+        if(! (await isProductPermission(id, branchId))){
+            return{
+                error:true,
+                code:HttpStatusCode.BAD_REQUEST,
+                message:"Bạn không có quyền truy cập sản phẩm này"
+            }
+        }
+
         let include = [
             {
                 model: models.Branch,
@@ -2023,6 +2047,26 @@ module.exports.updateOrderService = async (result) => {
     }
 }
 
+const isProductPermission = async (marketProductId, branchId)=>{
+    const marketProduct = await models.MarketProduct.findOne({
+        where:{
+            id:marketProductId
+        }
+    });
+    if(marketProduct.marketType === marketConfigContant.MARKET_TYPE.PRIVATE){
+        const isAgency = await models.RequestAgency.findOne({
+            where:{
+                branchId:marketProduct.branchId,
+                agencyId:branchId
+            }
+        });
+        if(!isAgency){
+            return false;
+        }
+    }
+    return true;
+}
+
 module.exports.getProductPrivateService = async (result) => {
     try {
         const {storeId,branchId, limit = 10, page = 1, keyword, toBranchId} = result;
@@ -2059,7 +2103,8 @@ module.exports.getProductPrivateService = async (result) => {
                     where: {
                         agencyId: branchId,
                         status: marketConfigContant.AGENCY_STATUS.ACTIVE
-                    }
+                    },
+                    required:false
                 }]
             },
             {
@@ -2092,7 +2137,45 @@ module.exports.getProductPrivateService = async (result) => {
         let where = {
             branchId: {
                 [Op.ne]: branchId
-            }
+            },
+            [Op.or]: [
+                {
+                    // Trường hợp chi nhánh A là đại lý của chi nhánh B
+                    [Op.and]: [
+                        Sequelize.literal(`
+                    EXISTS (
+                        SELECT 1
+                        FROM request_agency 
+                        WHERE agencyId = ${branchId} 
+                          AND branchId = ${toBranchId}
+                          AND deletedAt IS NULL 
+                          AND status = '${marketConfigContant.AGENCY_STATUS.ACTIVE}'
+                    )
+                `),
+                        {
+                            [Op.or]: [
+                                { marketType: marketConfigContant.MARKET_TYPE.PRIVATE },
+                                { marketType: marketConfigContant.MARKET_TYPE.COMMON }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    // Trường hợp chi nhánh A không phải là đại lý của chi nhánh B
+                    [Op.and]: [
+                        Sequelize.literal(`
+                    NOT EXISTS (
+                        SELECT 1 
+                        FROM request_agency 
+                        WHERE agencyId = ${branchId} 
+                          AND branchId = ${toBranchId}
+                          AND deletedAt IS NULL
+                    )
+                `),
+                        { marketType: marketConfigContant.MARKET_TYPE.COMMON }
+                    ]
+                }
+            ]
         };
         if (keyword && keyword.trim() !== "") {
             include.push({

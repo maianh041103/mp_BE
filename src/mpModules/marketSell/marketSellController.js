@@ -104,10 +104,11 @@ module.exports.getDetailProduct = async (req,res)=>{
     try {
         const { loginUser = {} } = req;
         const {id} = req.params;
+        const {branchId} = req.query;
         const result = await marketSellService.getDetailProductService(
             {
                 storeId: loginUser.storeId,
-                id
+                id, branchId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
