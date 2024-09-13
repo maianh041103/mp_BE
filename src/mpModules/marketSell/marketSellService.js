@@ -2171,6 +2171,7 @@ module.exports.getProductPrivateService = async (result) => {
                         WHERE agencyId = ${branchId} 
                           AND branchId = ${toBranchId}
                           AND deletedAt IS NULL
+                          AND status = '${marketConfigContant.AGENCY_STATUS.ACTIVE}'
                     )
                 `),
                         { marketType: marketConfigContant.MARKET_TYPE.COMMON }
