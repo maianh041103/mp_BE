@@ -128,6 +128,18 @@ module.exports = (sequelize, Sequelize) => {
       foreignKey:"storeId",
       sourceKey:"id"
     });
+
+    Store.hasMany(models.User, {
+      as: 'users',
+      foreignKey: 'storeId',
+      targetKey: 'id'
+    });
+
+    Store.hasMany(models.Branch,{
+      as:"branches",
+      foreignKey: "storeId",
+      targetKey: 'id'
+    })
   };
   return Store;
 };
