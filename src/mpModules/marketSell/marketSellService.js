@@ -2206,7 +2206,7 @@ module.exports.getProductPrivateService = async (result) => {
             where,
             include,
             limit: parseInt(limit),
-            page: (parseInt(page) - 1) * (parseInt(limit)),
+            offset: (parseInt(page) - 1) * (parseInt(limit)),
             order: [[sortBy, "DESC"]],
         });
         const index = include.findIndex(item => {
