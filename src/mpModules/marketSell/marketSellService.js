@@ -2069,7 +2069,8 @@ const isProductPermission = async (marketProductId, branchId)=>{
 
 module.exports.getProductPrivateService = async (result) => {
     try {
-        const {storeId,branchId, limit = 10, page = 1, keyword, toBranchId} = result;
+        const {storeId, branchId, limit = 10, page = 1, keyword, toBranchId,  productType} = result;
+        let { sortBy } = result;
         if(!branchId){
             return{
                 error:true,
@@ -2177,6 +2178,15 @@ module.exports.getProductPrivateService = async (result) => {
                 }
             ]
         };
+        if (productType) {
+            let index = include.findIndex((item) => item.as === 'product');
+            if(productType){
+                include[index].where = {
+                    type:productType
+                }
+            }
+        }
+
         if (keyword && keyword.trim() !== "") {
             include.push({
                 model: models.Product,
@@ -2189,11 +2199,15 @@ module.exports.getProductPrivateService = async (result) => {
                 attributes: ["name"]
             })
         }
+        if(!sortBy){
+            sortBy = "createdAt";
+        }
         const listMarketProduct = await models.MarketProduct.findAll({
             where,
             include,
             limit: parseInt(limit),
-            page: (parseInt(page) - 1) * (parseInt(limit))
+            page: (parseInt(page) - 1) * (parseInt(limit)),
+            order: [[sortBy, "DESC"]],
         });
         const index = include.findIndex(item => {
             return item.as === "agencys";
