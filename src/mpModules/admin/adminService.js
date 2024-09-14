@@ -9,6 +9,16 @@ module.exports.createAgencyService = async (result)=>{
     try {
         const {ids, storeId} = result;
         const t = await models.sequelize.transaction(async (t)=>{
+            await models.Branch.update({
+                isAgency: false
+            },{
+                where:{
+                    storeId,
+                    id:{
+                        [Op.notIn]:ids
+                    }
+                }
+            });
             for(const id of ids) {
                 const branchExists = await models.Branch.findOne({
                     where: {
