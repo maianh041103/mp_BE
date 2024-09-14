@@ -7,29 +7,30 @@ const {generateCode} = require("../../helpers/codeGenerator");
 
 module.exports.createAgencyService = async (result)=>{
     try {
-        const {id} = result;
-        const branchExists = await models.Branch.findOne({
-            where:{
-                id
-            }
-        });
-        if(!branchExists) {
-            return {
-                error: true,
-                message:`Không tìm thấy chi nhánh có id = ${id}`,
-                code:HttpStatusCode.BAD_REQUEST
-            }
-        }
+        const {ids, storeId} = result;
         const t = await models.sequelize.transaction(async (t)=>{
-            await models.Branch.update({
-                isAgency:true
-            },{
-                where:{
-                    id
-                },
-                transaction: t
-            });
+            for(const id of ids) {
+                const branchExists = await models.Branch.findOne({
+                    where: {
+                        id,
+                        storeId
+                    }
+                });
+                if (!branchExists) {
+                    throw new Error(`Không tìm thấy chi nhánh có id = ${id} thuộc cửa hàng có id = ${storeId}`);
+                }
+
+                await models.Branch.update({
+                    isAgency: true
+                }, {
+                    where: {
+                        id
+                    },
+                    transaction: t
+                });
+            }
         });
+
         return{
             success:true,
             data:null

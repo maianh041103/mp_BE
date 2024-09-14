@@ -7,7 +7,7 @@ const adminService = require("./adminService");
 
 module.exports.createAgencyController = async (req,res)=>{
     try {
-        const result = await adminService.createAgencyService({...req.params});
+        const result = await adminService.createAgencyService({...req.body});
         if (result.success)
             res.json(respondItemSuccess(result.data, result.message));
         else res.json(respondWithError(result.code, result.message, {}));
