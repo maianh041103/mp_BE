@@ -121,4 +121,14 @@ router.patch("/seri",authenticate,(req,res,next)=>{
 
 router.get("/seri/getMarketOrder/:code",controller.getMarketProductBySeri);
 
+router.get("/seri/check/:code",authenticate,(req,res,next)=>{
+    req.apiRole = [];
+    next();
+},authorize,controller.checkSeri);
+
+router.get("/notification",authenticate,(req,res,next)=>{
+    req.apiRole = [];
+    next();
+},authorize,controller.getNotification);
+
 module.exports = router;

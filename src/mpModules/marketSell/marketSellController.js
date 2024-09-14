@@ -405,6 +405,24 @@ module.exports.updateSeri = async (req,res)=>{
     }
 }
 
+//[GET] mp/api/market/sell/check/:code
+module.exports.checkSeri = async (req,res)=>{
+    try {
+        const { loginUser = {}} = req;
+        const {code} = req.params;
+        const result = await marketSellService.checkSeriService(
+            {
+                loginUser,
+                code
+            }
+        );
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    }catch(e){
+        res.json(respondWithClientError(e))
+    }
+}
+
 //[PATCH] mp/api/market/payment/:marketOrderId
 module.exports.marketOrderPayment = async (req,res)=>{
     try {
@@ -434,6 +452,22 @@ module.exports.getMarketProductBySeri = async (req,res)=>{
                 code,
             }
         );
+        if (result.success) res.json(respondItemSuccess(result.data));
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (e) {
+        res.json(respondWithClientError(e))
+    }
+}
+
+//[GET] mp/api/market/notification?branchId
+module.exports.getNotification = async (req,res)=>{
+    try {
+        const {branchId} = req.query;
+        const { loginUser = {}} = req;
+        const result = await marketSellService.getNotificationService({
+                branchId,
+                storeId:loginUser.storeId
+        });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));
     } catch (e) {

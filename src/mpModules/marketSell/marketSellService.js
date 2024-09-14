@@ -1313,6 +1313,11 @@ module.exports.createMarketOrderService = async (result) => {
             const code = generateCode("MK", newMarketOrderBuy.id);
             newMarketOrderBuy.code = code;
             newMarketOrderBuy.totalPrice = totalPrice;
+            await models.MarketNotification.create({
+                marketOrderId:newMarketOrderBuy.id
+            },{
+                transaction:t
+            });
             await models.MarketOrder.update({
                 code,totalPrice
             }, {
@@ -1483,7 +1488,7 @@ module.exports.getAllMarketOrderService = async (result) => {
         return {
             error: true,
             code: HttpStatusCode.BAD_REQUEST,
-            message: `Loi ${e}`
+            message: `Lỗi ${e}`
         }
     }
 }
@@ -2298,7 +2303,7 @@ module.exports.getSeriService = async (result) => {
         return {
             error: true,
             code: HttpStatusCode.BAD_REQUEST,
-            message: `Loi ${e}`
+            message: `Lỗi ${e}`
         }
     }
 }
@@ -2381,7 +2386,35 @@ module.exports.updateSeriService = async (result)=>{
         return {
             error: true,
             code: HttpStatusCode.BAD_REQUEST,
-            message: `Loi ${e}`
+            message: `Lỗi ${e}`
+        }
+    }
+}
+
+module.exports.checkSeriService = async (result)=>{
+    try {
+        const {loginUser, code} = result;
+        const seriExists = await models.Seri.findOne({
+            where:{
+                code
+            }
+        });
+        if(seriExists){
+            return{
+                error:true,
+                message:`Mã seri ${code} đã tồn tại`,
+                code:HttpStatusCode.BAD_REQUEST
+            }
+        }
+        return{
+            success:true,
+            data:null
+        }
+    }catch (e) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Lỗi ${e}`
         }
     }
 }
@@ -2446,7 +2479,63 @@ module.exports.getMarketProductBySeriSerive = async (result)=>{
         return {
             error: true,
             code: HttpStatusCode.BAD_REQUEST,
-            message: `Loi ${e}`
+            message: `Lỗi ${e}`
+        }
+    }
+}
+
+module.exports.getNotificationService = async (result)=>{
+    try{
+        const {branchId, storeId} = result;
+        if(!branchId){
+            return{
+                error:true,
+                message:"Vui lòng truyền lên thông tin chi nhánh",
+                code:HttpStatusCode.BAD_REQUEST
+            }
+        }
+        const branchExists = await models.Branch.findOne({
+            where:{
+                id:branchId,
+                storeId
+            }
+        });
+        if(!branchExists){
+            return{
+                error:true,
+                message:`Không tồn tại chi nhánh có id = ${branchId} trong cửa hàng của bạn`,
+                code:HttpStatusCode.BAD_REQUEST
+            }
+        }
+        const notification = await models.MarketNotification.findAll({
+            include:[
+                {
+                    model:models.MarketOrder,
+                    as:"marketOrder",
+                    where:{
+                        toBranchId:branchId
+                    },
+                    include:[{
+                        model:models.Branch,
+                        as:"branch",
+                        include:[{
+                            model:models.Store,
+                            as:"store",
+                            attributes:["id","name"]
+                        }]
+                    }]
+                }
+            ]
+        });
+        return{
+            success:true,
+            data:notification
+        }
+    }catch(e){
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Lỗi ${e}`
         }
     }
 }
