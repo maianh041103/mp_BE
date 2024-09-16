@@ -299,12 +299,14 @@ module.exports.changeStatusMarketOrder = async (req,res)=>{
     try {
         const { loginUser = {} } = req;
         const {id} = req.params;
+        const {branchId} = req.query;
         const result = await marketSellService.changeStatusMarketOrderService(
             {
                 storeId: loginUser.storeId,
                 loginUser,
                 id,
-                ...req.body
+                ...req.body,
+                branchId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -410,10 +412,12 @@ module.exports.checkSeri = async (req,res)=>{
     try {
         const { loginUser = {}} = req;
         const {code} = req.params;
+        const {branchId} = req.query;
         const result = await marketSellService.checkSeriService(
             {
                 loginUser,
-                code
+                code,
+                branchId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
