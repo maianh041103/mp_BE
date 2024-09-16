@@ -19,7 +19,7 @@ module.exports = (sequelize, Sequelize) => {
             allowNull: false,
             type:Sequelize.INTEGER(10).UNSIGNED
         },
-        storeId:{
+        branchId:{
             allowNull:false,
             type:Sequelize.INTEGER(10).UNSIGNED
         },
@@ -48,9 +48,9 @@ module.exports = (sequelize, Sequelize) => {
             foreignKey: 'createdBy',
             targetKey: 'id',
         });
-        Seri.belongsTo(models.Store,{
-            as: 'store',
-            foreignKey: 'storeId',
+        Seri.belongsTo(models.Branch,{
+            as: 'branch',
+            foreignKey: 'branchId',
             targetKey: 'id',
         })
     };

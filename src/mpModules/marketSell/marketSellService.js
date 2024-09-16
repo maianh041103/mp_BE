@@ -1612,7 +1612,7 @@ module.exports.getDetailProductPrivateService = async (result)=>{
 
 module.exports.changeStatusMarketOrderService = async (result) =>   {
     try {
-        let {id, status, note, products, loginUser} = result;
+        let {id, status, note, products, loginUser, branchId} = result;
         const marketOrderExists = await models.MarketOrder.findOne({
             where: {
                 id,
@@ -1667,7 +1667,7 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                         marketProductId:item.marketProductId,
                         listSeri: item.listSeri,
                         marketOrderId:id,
-                        loginUser,
+                        loginUser, branchId,
                         transaction:t
                     });
                     // if(item?.batches && item?.batches.length > 0) {
@@ -2308,7 +2308,7 @@ module.exports.getSeriService = async (result) => {
     }
 }
 
-const updateSeri = async ({marketProductId, listSeri,marketOrderId,loginUser,transaction})=>{
+const updateSeri = async ({marketProductId, listSeri,marketOrderId,loginUser,branchId,transaction})=>{
     const listSeriIdDestroy = listSeri.filter(item=>{
         return item.id !== undefined
     }).map(item=>{
@@ -2329,7 +2329,7 @@ const updateSeri = async ({marketProductId, listSeri,marketOrderId,loginUser,tra
         //Check unique code
         let where = {
             code:seri.code,
-            storeId:loginUser.storeId,
+            branchId,
         }
         if(seri.id){
             where.id = {
@@ -2361,7 +2361,7 @@ const updateSeri = async ({marketProductId, listSeri,marketOrderId,loginUser,tra
                 marketOrderId,
                 marketProductId,
                 createdBy:loginUser.id,
-                storeId:loginUser.storeId
+                branchId
             },{
                 transaction
             });
@@ -2371,11 +2371,18 @@ const updateSeri = async ({marketProductId, listSeri,marketOrderId,loginUser,tra
 
 module.exports.updateSeriService = async (result)=>{
     try {
-        const {marketOrderId,products = [],loginUser} = result;
+        const {marketOrderId,products = [],loginUser, branchId} = result;
+        if(!branchId){
+            return{
+                error:true,
+                message:"Vui lòng truyền thông tin chi nhánh",
+                code:HttpStatusCode.BAD_REQUEST
+            }
+        }
         const t = await models.sequelize.transaction(async (t)=>{
             for(const product of products){
                 const {marketProductId, listSeri = []} = product;
-                await updateSeri({marketProductId, listSeri,marketOrderId,loginUser,t});
+                await updateSeri({marketProductId, listSeri,marketOrderId,loginUser,branchId,t});
             }
         });
         return {
@@ -2393,22 +2400,28 @@ module.exports.updateSeriService = async (result)=>{
 
 module.exports.checkSeriService = async (result)=>{
     try {
-        const {loginUser, code} = result;
-        const seriExists = await models.Seri.findOne({
-            where:{
-                code
-            }
-        });
-        if(seriExists){
+        const {loginUser, code, branchId} = result;
+        if(!branchId){
             return{
                 error:true,
-                message:`Mã seri ${code} đã tồn tại`,
+                message:"Vui lòng truyền thông tin chi nhánh",
                 code:HttpStatusCode.BAD_REQUEST
             }
         }
+        const seriExists = await models.Seri.findOne({
+            where:{
+                code,branchId
+            }
+        });
+        let isExists = false;
+        if(seriExists){
+            isExists = true
+        }
         return{
             success:true,
-            data:null
+            data:{
+                isExists
+            }
         }
     }catch (e) {
         return {
