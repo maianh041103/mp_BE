@@ -6,44 +6,6 @@ const marketConfigContant = require("./marketConfigContant");
 const utils = require("../../helpers/utils");
 const {getImages} = require("../../helpers/getImages");
 
-const requestAgencyInclude = [
-    {
-        model: models.GroupAgency,
-        as: "groupAgency",
-        include: [
-            {
-                model: models.User,
-                as: "userCreated",
-                attributes: ["id", "fullName"],
-            },
-            {
-                model: models.User,
-                as: "userUpdated",
-                attributes: ["id", "fullName"],
-            },
-            {
-                model:models.Branch,
-                as:"branch"
-            }
-        ],
-    },
-    {
-        model:models.Branch,
-        as:"branch",
-        include:[{
-            model:models.Store,
-            as:"store"
-        }]
-    },
-    {
-        model:models.Branch,
-        as:"agency",
-        include:[{
-            model:models.Store,
-            as:"store"
-        }]
-    }
-]
 const marketProductInclude = [
     {
         model: models.Product,
@@ -877,7 +839,46 @@ module.exports.changeStatusAgencyService = async (result) => {
 }
 
 module.exports.getListAgencyService = async (query) => {
-    const {status, limit = 10, page = 1, storeId, branchId} = query;
+    let requestAgencyInclude = [
+        {
+            model: models.GroupAgency,
+            as: "groupAgency",
+            include: [
+                {
+                    model: models.User,
+                    as: "userCreated",
+                    attributes: ["id", "fullName"],
+                },
+                {
+                    model: models.User,
+                    as: "userUpdated",
+                    attributes: ["id", "fullName"],
+                },
+                {
+                    model:models.Branch,
+                    as:"branch"
+                }
+            ],
+        },
+        {
+            model:models.Branch,
+            as:"branch",
+            include:[{
+                model:models.Store,
+                as:"store"
+            }]
+        },
+        {
+            model:models.Branch,
+            as:"agency",
+            include:[{
+                model:models.Store,
+                as:"store"
+            }]
+        }
+    ]
+
+    const {status, limit = 10, page = 1, storeId, branchId, keyword} = query;
     if(!branchId){
         return{
             error:true,
@@ -890,6 +891,14 @@ module.exports.getListAgencyService = async (query) => {
     };
     if (status) {
         where.status = status;
+    }
+    if(keyword){
+        const index = requestAgencyInclude.findIndex(item=>item.as === "agency");
+        requestAgencyInclude[index].where = {
+            name: {
+                [Op.like]: `%${keyword.trim()}%`
+            }
+        }
     }
 
     const {rows, count} = (await models.RequestAgency.findAndCountAll({
