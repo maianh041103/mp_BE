@@ -154,9 +154,6 @@ module.exports.createProductService = async (result) => {
             message:`Sản phẩm đã tồn tại trên chợ`
         }
     }
-    if(!discountPrice || discountPrice <= 0){
-        discountPrice = price;
-    }
     let newMarketProduct;
     const t = await models.sequelize.transaction(async (t) => {
         const imageString = images.join("/");
