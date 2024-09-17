@@ -28,7 +28,11 @@ const marketProductInclude = [
             include:[{
                 model:models.Branch,
                 as:"branch",
-                attributes:["name","phone"]
+                attributes:["name","phone"],
+                include:[{
+                    model:models.Store,
+                    as:"store"
+                }]
             }]
         },{
             model:models.GroupAgency,
@@ -891,9 +895,29 @@ module.exports.getListAgencyService = async (query) => {
     }
     if(keyword){
         const index = requestAgencyInclude.findIndex(item=>item.as === "agency");
-        requestAgencyInclude[index].where = {
-            name: {
-                [Op.like]: `%${keyword.trim()}%`
+
+        requestAgencyInclude[index] = {
+            model: models.Branch,
+            as: "agency",
+            include: [{
+                model: models.Store,
+                as: "store",
+                attributes: ["id","name"],
+                where: {
+                    [Op.or]: [
+                        { name: { [Op.like]: `%${keyword.trim()}%` } },           // Tìm theo tên branch
+                        { '$agency.name$': { [Op.like]: `%${keyword.trim()}%` } }  // Tìm theo tên store
+                    ],
+                    id:{
+                        [Op.ne]:null
+                    }
+                },
+                required:true
+            }],
+            where:{
+                id:{
+                    [Op.ne]:null
+                }
             }
         }
     }
