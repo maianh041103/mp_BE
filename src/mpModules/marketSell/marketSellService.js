@@ -18,67 +18,6 @@ const {addFilterByDate} = require("../../helpers/utils");
 const moment = require('moment');
 const {readProduct, getProductBySeri} = require("../product/productService");
 
-const marketProductInclude = [
-    {
-        model: models.Product,
-        as: "product",
-        include: [{
-            model: models.GroupProduct,
-            as: "groupProduct",
-            attributes: ["id", "name"],
-        }]
-    },
-    {
-        model: models.Image,
-        as: "imageCenter"
-    },
-    {
-        model: models.MarketProductAgency,
-        as: "agencys",
-        attributes: ["id", "agencyId", "groupAgencyId", "price", "discountPrice"],
-    },
-    {
-        model: models.User,
-        as: "userCreated",
-        attributes: ["id", "fullName"]
-    },
-    {
-        model: models.User,
-        as: "userUpdated",
-        attributes: ["id", "fullName"]
-    },
-    {
-        model: models.MarketProductBatch,
-        as: "batches",
-        attributes: ["id", "batchId", "quantity", "quantitySold"]
-    },
-    {
-        model: models.Branch,
-        as: "branch",
-        attributes: [
-            "id", "name", "phone", "address1", "address2", "wardId", "districtId", "provinceId",
-            [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
-    WHERE market_products.branchId = branch.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
-            [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
-    WHERE market_products.branchId = branch.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
-        ],
-        include: [{
-            model:models.Store,
-            as:"store",
-            include:[
-                {
-                    model: models.Image,
-                    as: "logo"
-                }
-            ]
-        }]
-    },
-    {
-        model: models.ProductUnit,
-        as: "productUnit",
-        attributes: ["id", "unitName", "exchangeValue","code"]
-    }
-];
 const marketAddressInclude = [
     {
         model: models.Ward,
@@ -662,11 +601,83 @@ module.exports.getDetailProductService = async (result) => {
                 message:"Vui lòng truyền thông tin chi nhánh"
             }
         }
+        const marketProductDetailInclude = [
+            {
+                model: models.Product,
+                as: "product",
+                include: [{
+                    model: models.GroupProduct,
+                    as: "groupProduct",
+                    attributes: ["id", "name"],
+                }]
+            },
+            {
+                model: models.Image,
+                as: "imageCenter"
+            },
+            {
+                model: models.Branch,
+                as: "branch",
+                attributes: [
+                    "id", "name", "phone", "address1", "address2", "wardId", "districtId", "provinceId",
+                    [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
+    WHERE market_products.branchId = branch.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
+                    [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
+    WHERE market_products.branchId = branch.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
+                ],
+                include: [
+                    {
+                        model: models.Store,
+                        as: "store",
+                        include: [
+                            {
+                                model: models.Image,
+                                as: "logo"
+                            }
+                        ]
+                    },
+                    {
+                        model: models.RequestAgency,
+                        as: "agencys",
+                        where: {
+                            agencyId: branchId,
+                            status: marketConfigContant.AGENCY_STATUS.ACTIVE
+                        }
+                    }]
+            },
+            {
+                model: models.MarketProductAgency,
+                as: "agencys",
+                attributes: ["id", "agencyId", "groupAgencyId", "price", "discountPrice"],
+                where: Sequelize.literal('(`agencys`.`agencyId` = `branch->agencys`.`id` OR `agencys`.`groupAgencyId` = `branch->agencys`.`groupAgencyId`) AND `agencys`.`marketProductId` = `MarketProduct`.`id`'),
+                required: false
+            },
+            {
+                model: models.User,
+                as: "userCreated",
+                attributes: ["id", "fullName"]
+            },
+            {
+                model: models.User,
+                as: "userUpdated",
+                attributes: ["id", "fullName"]
+            },
+            {
+                model: models.MarketProductBatch,
+                as: "batches",
+                attributes: ["id", "batchId", "quantity", "quantitySold"]
+            },
+            {
+                model: models.ProductUnit,
+                as: "productUnit",
+                attributes: ["id", "unitName", "exchangeValue", "code"]
+            }
+        ];
         const marketProduct = await models.MarketProduct.findOne({
             where: {
                 id,
             },
-            include: marketProductInclude,
+            include: marketProductDetailInclude,
         });
         if (!marketProduct) {
             return {
@@ -675,7 +686,6 @@ module.exports.getDetailProductService = async (result) => {
                 message: `Không tìm thấy sản phẩm có id = ${id} trên chợ`
             }
         }
-
         if(! (await isProductPermission(id, branchId))){
             return{
                 error:true,
@@ -683,13 +693,21 @@ module.exports.getDetailProductService = async (result) => {
                 message:"Bạn không có quyền truy cập sản phẩm này"
             }
         }
-
         if (marketProduct.images) {
             marketProduct.dataValues.images = await getImages(marketProduct.images);
         }
+        if (marketProduct.agencys.length > 0) {
+            let index = marketProduct.agencys.findIndex(item => {
+                return item.agencyId !== null;
+            });
+            if (index === -1) index = 0;
+            marketProduct.dataValues.price = marketProduct.dataValues.agencys[index].dataValues.price;
+            marketProduct.dataValues.discountPrice = marketProduct.dataValues.agencys[index].discountPrice;
+        }
+
+        //Tìm sản phẩm liên quan
         const listProduct = await models.MarketProduct.findAll({
             where: {
-                marketType: marketConfigContant.MARKET_TYPE.COMMON,
                 branchId: {
                     [Op.eq]: marketProduct.branchId
                 },
@@ -697,23 +715,24 @@ module.exports.getDetailProductService = async (result) => {
                     [Op.ne]:marketProduct.id
                 }
             },
-            include: [
-                {
-                    model: models.Product,
-                    as: "product"
-                },
-                {
-                    model: models.ProductUnit,
-                    as: "productUnit",
-                    attributes: ["id", "exchangeValue", "unitName"]
-                },
-                {
-                    model: models.Image,
-                    as: "imageCenter"
-                }
-            ]
+            include: marketProductDetailInclude,
         });
         marketProduct.dataValues.productWillCare = listProduct;
+
+        for(const product of listProduct){
+            if (product.agencys.length > 0) {
+                let index = product.agencys.findIndex(item => {
+                    return item.agencyId !== null;
+                });
+                if (index === -1) index = 0;
+                product.dataValues.price = product.dataValues.agencys[index].dataValues.price;
+                product.dataValues.discountPrice = product.dataValues.agencys[index].discountPrice;
+            }
+            if (marketProduct.images) {
+                marketProduct.dataValues.images = await getImages(marketProduct.images);
+            }
+        }
+
         if (marketProduct.branch) {
             marketProduct.dataValues.branch.dataValues.totalProduct = parseInt(marketProduct.dataValues.branch.dataValues.totalProduct);
             marketProduct.dataValues.branch.dataValues.totalQuantitySold = parseInt(marketProduct.dataValues.branch.dataValues.totalQuantitySold);
