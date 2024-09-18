@@ -728,8 +728,8 @@ module.exports.getDetailProductService = async (result) => {
                 product.dataValues.price = product.dataValues.agencys[index].dataValues.price;
                 product.dataValues.discountPrice = product.dataValues.agencys[index].discountPrice;
             }
-            if (marketProduct.images) {
-                marketProduct.dataValues.images = await getImages(marketProduct.images);
+            if (product.images && product.images !== "") {
+                product.dataValues.images = await getImages(product.images);
             }
         }
 
