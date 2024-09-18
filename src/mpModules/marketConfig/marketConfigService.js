@@ -28,7 +28,11 @@ const marketProductInclude = [
             include:[{
                 model:models.Branch,
                 as:"branch",
-                attributes:["name","phone"],
+                attributes:["id","name","phone"],
+            },{
+                model:models.Branch,
+                as:"agency",
+                attributes: ["id","name","phone"],
                 include:[{
                     model:models.Store,
                     as:"store"
