@@ -1221,136 +1221,130 @@ module.exports.deleteProductInCartService = async (result) => {
 
 module.exports.createMarketOrderService = async (result) => {
     try {
-        const {branchId, addressId, listProduct, toBranchId, loginUser} = result;
-        if (!addressId) {
-            return {
-                error: true,
-                message: `Vui lòng gửi thông tin địa chỉ giao hàng`,
-                code: HttpStatusCode.BAD_REQUEST
-            }
-        }
-        const addressExists = await models.Address.findOne({
-            where: {
-                id: addressId,
-                branchId
-            }
-        });
-        if (!addressExists) {
-            return {
-                error: true,
-                message: `Không tồn tại địa chỉ giao hàng có id = ${addressId}`,
-                code: HttpStatusCode.BAD_REQUEST
-            }
-        }
-        if(!listProduct || listProduct.length === 0){
-            return {
-                error: true,
-                message: `Vui lòng mua ít nhất 1 sản phẩm`,
-                code: HttpStatusCode.BAD_REQUEST
-            }
-        }
-        let newMarketOrderBuy;
+        const {orders, loginUser} = result;
+        const listNewMarketOrderBuy = [];
         const t = await models.sequelize.transaction(async (t) => {
-            const branchSell = await models.Branch.findOne({
-                where:{
-                    id:toBranchId
-                },
-                include:[
-                    {
-                        model:models.Store,
-                        as:"store",
-                        attributes:["id"]
-                    }
-                ]
-            });
-            if(!branchSell){
-                throw new Error("Không tồn tại chi nhánh bán");
-            }
-
-            let customer = await models.Customer.findOne({
-                where:{
-                    branchId: branchId,
-                    type:customerContant.customerType.Agency,
-                    storeId: branchSell?.store?.id
+            for (const order of orders) {
+                const {branchId, addressId, listProduct, toBranchId} = order;
+                if (!addressId) {
+                    throw new Error(`Vui lòng gửi thông tin địa chỉ giao hàng`)
                 }
-            });
-
-            const branchExists = await models.Branch.findOne({
-                where:{
-                    id:branchId
-                }
-            });
-
-            if(!customer){
-                customer = await handlerCreateCustomer({
-                    branchBuy:branchExists,
-                    storeSell:branchSell?.store?.id
-                });
-            }
-
-            newMarketOrderBuy = await models.MarketOrder.create({
-                branchId, addressId,
-                address: addressExists.address,
-                districtId:addressExists.districtId,
-                wardId:addressExists.wardId,
-                provinceId:addressExists.provinceId,
-                status: marketSellContant.STATUS_ORDER.PENDING,
-                phone: addressExists.phone,
-                toBranchId: toBranchId,
-                fullName:customer.fullName,
-                deliveryFee: 50000,
-            }, {
-                transaction: t
-            });
-
-            let totalPrice = 0;
-            for (const item of listProduct) {
-                totalPrice += item.price * item.quantity;
-                let marketProductExists = await models.MarketProduct.findOne({
+                const addressExists = await models.Address.findOne({
                     where: {
-                        id: item.marketProductId,
+                        id: addressId,
+                        branchId
                     }
                 });
-                await models.MarketOrderProduct.create({
-                    marketProductId: item.marketProductId,
-                    marketOrderId: newMarketOrderBuy.id,
-                    quantity: item.quantity,
-                    price: item.price
+                if (!addressExists) {
+                    throw new Error(`Không tồn tại địa chỉ giao hàng có id = ${addressId}`);
+                }
+                if (!listProduct || listProduct.length === 0) {
+                    throw new Error(`Vui lòng mua ít nhất 1 sản phẩm`);
+                }
+                let newMarketOrderBuy;
+                const branchSell = await models.Branch.findOne({
+                    where: {
+                        id: toBranchId
+                    },
+                    include: [
+                        {
+                            model: models.Store,
+                            as: "store",
+                            attributes: ["id"]
+                        }
+                    ]
+                });
+                if (!branchSell) {
+                    throw new Error("Không tồn tại chi nhánh bán");
+                }
+
+                let customer = await models.Customer.findOne({
+                    where: {
+                        branchId: branchId,
+                        type: customerContant.customerType.Agency,
+                        storeId: branchSell?.store?.id
+                    }
+                });
+
+                const branchExists = await models.Branch.findOne({
+                    where: {
+                        id: branchId
+                    }
+                });
+
+                if (!customer) {
+                    customer = await handlerCreateCustomer({
+                        branchBuy: branchExists,
+                        storeSell: branchSell?.store?.id
+                    });
+                }
+
+                newMarketOrderBuy = await models.MarketOrder.create({
+                    branchId, addressId,
+                    address: addressExists.address,
+                    districtId: addressExists.districtId,
+                    wardId: addressExists.wardId,
+                    provinceId: addressExists.provinceId,
+                    status: marketSellContant.STATUS_ORDER.PENDING,
+                    phone: addressExists.phone,
+                    toBranchId: toBranchId,
+                    fullName: customer.fullName,
+                    deliveryFee: 50000,
                 }, {
                     transaction: t
                 });
 
-                await models.Cart.destroy({
-                    where: {
+                let totalPrice = 0;
+                for (const item of listProduct) {
+                    totalPrice += item.price * item.quantity;
+                    let marketProductExists = await models.MarketProduct.findOne({
+                        where: {
+                            id: item.marketProductId,
+                        }
+                    });
+                    await models.MarketOrderProduct.create({
                         marketProductId: item.marketProductId,
-                        branchId
+                        marketOrderId: newMarketOrderBuy.id,
+                        quantity: item.quantity,
+                        price: item.price
+                    }, {
+                        transaction: t
+                    });
+
+                    await models.Cart.destroy({
+                        where: {
+                            marketProductId: item.marketProductId,
+                            branchId
+                        },
+                        transaction: t
+                    });
+                }
+
+                const code = generateCode("MK", newMarketOrderBuy.id);
+                newMarketOrderBuy.code = code;
+                newMarketOrderBuy.totalPrice = totalPrice;
+                await models.MarketNotification.create({
+                    marketOrderId: newMarketOrderBuy.id
+                }, {
+                    transaction: t
+                });
+                await models.MarketOrder.update({
+                    code, totalPrice
+                }, {
+                    where: {
+                        id: newMarketOrderBuy.id
                     },
                     transaction: t
                 });
+
+                listNewMarketOrderBuy.push(newMarketOrderBuy);
             }
-
-            const code = generateCode("MK", newMarketOrderBuy.id);
-            newMarketOrderBuy.code = code;
-            newMarketOrderBuy.totalPrice = totalPrice;
-            await models.MarketNotification.create({
-                marketOrderId:newMarketOrderBuy.id
-            },{
-                transaction:t
-            });
-            await models.MarketOrder.update({
-                code,totalPrice
-            }, {
-                where: {
-                    id: newMarketOrderBuy.id
-                },
-                transaction: t
-            });
-
         })
+
         return {
             success: true,
             data: {
-                item: newMarketOrderBuy
+                item: listNewMarketOrderBuy
             }
         }
     } catch (e) {
