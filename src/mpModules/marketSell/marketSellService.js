@@ -713,7 +713,8 @@ module.exports.getDetailProductService = async (result) => {
                 },
                 id:{
                     [Op.ne]:marketProduct.id
-                }
+                },
+                status: marketConfigContant.PRODUCT_MARKET_STATUS.ACTIVE
             },
             include: marketProductDetailInclude,
         });
@@ -1579,7 +1580,8 @@ module.exports.getDetailProductPrivateService = async (result)=>{
                 },
                 id:{
                     [Op.ne]:marketProduct.id
-                }
+                },
+                status:marketConfigContant.PRODUCT_MARKET_STATUS.ACTIVE
             },
             include
         });
