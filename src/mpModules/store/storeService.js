@@ -43,6 +43,10 @@ const include = [
     as: "ward",
     attributes: ["id", "name"],
   },
+  {
+    model: models.Image,
+    as: "logo"
+  }
 ];
 
 function processQuery(params) {
@@ -171,6 +175,10 @@ const StoreInclude = [
   {
     model: models.Branch,
     as: "branches"
+  },
+  {
+    model:models.Image,
+    as:"logo"
   }
 ];
 
