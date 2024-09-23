@@ -93,7 +93,7 @@ export async function createPaymentAndTransaction(payment) {
     const order = await getOrder(payment.orderId)
     await models.sequelize.transaction(async (t) => {
         await models.Order.update({
-            cashOfCustomer: order.cashOfCustomer + payment.amount
+            cashOfCustomer: +order.cashOfCustomer + +payment.amount
         }, { where: { id: order.id }, transaction: t })
 
         const idString = (order.id).toString();
