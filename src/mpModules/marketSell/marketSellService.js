@@ -1225,7 +1225,7 @@ module.exports.createMarketOrderService = async (result) => {
         const listNewMarketOrderBuy = [];
         const t = await models.sequelize.transaction(async (t) => {
             for (const order of orders) {
-                const {branchId, addressId, listProduct, toBranchId} = order;
+                const {branchId, addressId, listProduct, toBranchId, note} = order;
                 if (!addressId) {
                     throw new Error(`Vui lòng gửi thông tin địa chỉ giao hàng`)
                 }
@@ -1290,6 +1290,7 @@ module.exports.createMarketOrderService = async (result) => {
                     toBranchId: toBranchId,
                     fullName: customer.fullName,
                     deliveryFee: 50000,
+                    note
                 }, {
                     transaction: t
                 });
