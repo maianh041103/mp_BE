@@ -709,7 +709,7 @@ export async function deleteInbound(id, loginUser) {
     return {
       error: true,
       code: HttpStatusCode.NOT_FOUND,
-      message: "Không tìm thấy nhập saản phẩm",
+      message: "Không tìm thấy nhập sản phẩm",
     };
   }
   await models.Inbound.destroy({
