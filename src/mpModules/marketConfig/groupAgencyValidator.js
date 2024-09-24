@@ -9,8 +9,7 @@ const { ERROR_CODE_INVALID_PARAMETER } = require("../../helpers/errorCodes");
 
 const createSchema = Joi.object().keys({
     name: Joi.string().trim().required(),
-    description: Joi.string().allow(null).allow(""),
-    branchId: Joi.number().integer().min(0).required()
+    description: Joi.string().allow(null).allow("")
 });
 
 export function createValidator(req, res, next) {

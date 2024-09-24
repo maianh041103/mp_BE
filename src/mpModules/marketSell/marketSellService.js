@@ -35,12 +35,12 @@ const marketAddressInclude = [
         attributes: ["id", "name", "name2"]
     },
     {
-        model: models.Branch,
-        as: "branch",
+        model: models.Store,
+        as: "store",
         attributes: ["id", "name"]
     }
 ];
-const branchInclude = [
+const storeInclude = [
     {
         model: models.MarketProduct,
         as: "marketProduct",
@@ -48,12 +48,8 @@ const branchInclude = [
         required: true
     },
     {
-        model:models.Store,
-        as:"store",
-        include:[{
-            model: models.Image,
-            as: "logo"
-        }]
+        model: models.Image,
+        as: "logo"
     }
 ];
 const marketOrderInclude = [
@@ -88,28 +84,14 @@ const marketOrderInclude = [
         ]
     },
     {
-        model: models.Branch,
-        as: "branch",
-        attributes: ["id", "name", "phone", "address1", "address2"],
-        include: [
-            {
-                model: models.Store,
-                as: "store",
-                attributes: ["id", "name"]
-            }
-        ]
+        model: models.Store,
+        as: "store",
+        attributes: ["id", "name", "phone", "address"]
     },
     {
-        model: models.Branch,
-        as: "toBranch",
-        attributes: ["id", "name", "phone", "address1", "address2"],
-        include: [
-            {
-                model: models.Store,
-                as: "store",
-                attributes: ["id", "name"]
-            }
-        ]
+        model: models.Store,
+        as: "toStore",
+        attributes: ["id", "name", "phone", "address"],
     },
     {
         model: models.HistoryPurchase,
@@ -133,32 +115,34 @@ const marketOrderInclude = [
     },
 ];
 const marketOrderAttributes = [
-    "id","code","fullName","branchId","toBranchId","addressId","address",
+    "id","code","fullName","storeId","toStoreId","toBranchId","addressId","address",
     "phone","status","note","wardId","districtId","provinceId","isPayment","createdAt","deliveryFee",
     [Sequelize.literal(`(SELECT SUM(market_order_products.quantity * market_order_products.price)
     FROM market_order_products
     WHERE MarketOrder.id = market_order_products.marketOrderId )`), 'totalPrice'],
 ]
+const storeAttributes = [
+    "id", "name", "phone","email", "address", "wardId", "districtId", "provinceId","isAgency",
+    [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
+    WHERE market_products.storeId = Store.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
+    [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
+    WHERE market_products.storeId = Store.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
+];
 
-const handlerCreateCustomer = async ({branchBuy, storeSell, t})=>{
-    const storeBuy = await models.Store.findOne({
-        where:{
-            id:branchBuy.storeId
-        }
-    });
+const handlerCreateCustomer = async ({storeBuy, storeSell, t})=>{
     const newCustomer = await models.Customer.create({
-        fullName: `${storeBuy?.name}-${branchBuy.name}`,
-        phone: branchBuy.phone,
-        code:branchBuy.code,
-        address: branchBuy.address1,
+        fullName: `${storeBuy?.name}`,
+        phone: storeBuy.phone,
+        code:storeBuy.code,
+        address: storeBuy.address,
         type: customerType.Agency,
-        status: branchBuy.status === 1 ? customerStatus.ACTIVE : customerStatus.INACTIVE,
-        wardId: branchBuy.wardId,
-        districtId: branchBuy.districtId,
-        provinceId: branchBuy.provinceId,
+        status: storeBuy.status === 1 ? customerStatus.ACTIVE : customerStatus.INACTIVE,
+        wardId: storeBuy.wardId,
+        districtId: storeBuy.districtId,
+        provinceId: storeBuy.provinceId,
         createdAt: new Date(),
-        storeId: storeSell,
-        branchId: branchBuy.id,
+        storeId: storeSell.id,
+        customerStoreId: storeBuy.id
     },{
         transaction:t
     });
@@ -175,27 +159,18 @@ const handlerCreateCustomer = async ({branchBuy, storeSell, t})=>{
     return newCustomer;
 }
 
-const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser, branchId,paid,t})=>{
-    const marketOrderExists = await handleGetDetailMarketOrder({id:marketOrderId,branchId});
+const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser,branchId,paid,t})=>{
+    const marketOrderExists = await handleGetDetailMarketOrder({id:marketOrderId,storeId});
     if(!marketOrderExists){
-        throw new Error(`Không tìm thấy đơn hàng có id = ${marketOrderId} của chi nhánh id = ${branchId}`)
+        throw new Error(`Không tìm thấy đơn hàng có id = ${marketOrderId} của cửa hàng id = ${storeId}`)
     }
     let customer = await models.Customer.findOne({
         where:{
-            branchId:marketOrderExists.branchId,
+            customerStoreId:marketOrderExists.storeId,
             type:customerContant.customerType.Agency,
             storeId
         }
     });
-
-    const branchExists = await models.Branch.findOne({
-        where:{
-            id:marketOrderExists.branchId
-        }
-    });
-    if(!branchExists){
-        throw new Error(`Không tồn tại chi nhánh có id = ${marketOrderExists.branchId}`);
-    }
 
     await models.MarketOrder.update({
         isPayment:true
@@ -318,24 +293,13 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser, bran
     //Tạo payment
     await createOrderPayment(newOrder, t);
     //End taọ payment
+
 }
 
 module.exports.createAddressService = async (result) => {
     try {
-        let {phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress, branchId, loginUser, fullName} = result;
+        let {phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress, loginUser, fullName} = result;
         let newAddress;
-        const branchExists = await models.Branch.findOne({
-            where: {
-                id: branchId
-            }
-        });
-        if (!branchExists) {
-            return {
-                error: true,
-                message: `Không tồn tại chi nhánh có id = ${branchId}`,
-                code: HttpStatusCode.BAD_REQUEST
-            }
-        }
         const t = await models.sequelize.transaction(async (t) => {
             const store = await models.Store.findOne({
                 where: {
@@ -364,7 +328,7 @@ module.exports.createAddressService = async (result) => {
                 throw new Error(`Xã không hợp lệ`)
             }
             newAddress = await models.Address.create({
-                phone, wardId, districtId, provinceId, address, branchId, isDefaultAddress,
+                phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress,
                 fullName
             }, {
                 transaction: t
@@ -374,11 +338,11 @@ module.exports.createAddressService = async (result) => {
                     isDefaultAddress: false
                 }, {
                     where: {
-                        branchId,
                         isDefaultAddress: true,
                         id: {
                             [Op.ne]: newAddress.id
-                        }
+                        },
+                        storeId
                     },
                     transaction: t
                 });
@@ -401,16 +365,9 @@ module.exports.createAddressService = async (result) => {
 
 module.exports.getAllAddressService = async (result) => {
     try {
-        const {branchId, isDefaultAddress, limit = 20, page = 1,loginUser} = result;
-        if (!branchId) {
-            return {
-                error: true,
-                code: HttpStatusCode.BAD_REQUEST,
-                message: "Vui lòng chọn chi nhánh"
-            }
-        }
+        const {isDefaultAddress, limit = 20, page = 1,loginUser, storeId} = result;
         let where = {
-            branchId
+            storeId
         };
         if (isDefaultAddress) {
             where.isDefaultAddress = isDefaultAddress;
@@ -427,22 +384,22 @@ module.exports.getAllAddressService = async (result) => {
             attributes: ["id"]
         });
 
-        const branchExists = await models.Branch.findOne({
+        const storeExists = await models.Store.findOne({
             where:{
-                id:branchId
+                id:storeId
             }
         });
 
         if(!listAddress || listAddress.length === 0){
             let addressDefault = await models.Address.create({
-                fullName: branchExists.name,
-                phone: branchExists.phone,
-                wardId: branchExists.wardId,
-                districtId: branchExists.districtId,
-                provinceId: branchExists.provinceId,
-                address:branchExists.address1,
+                fullName: storeExists.name,
+                phone: storeExists.phone,
+                wardId: storeExists.wardId,
+                districtId: storeExists.districtId,
+                provinceId: storeExists.provinceId,
+                address:storeExists.address,
                 isDefaultAddress:true,
-                branchId:branchExists.id,
+                storeId:storeExists.id,
                 createdAt:new Date()
             });
             listAddress = [addressDefault];
@@ -466,10 +423,10 @@ module.exports.getAllAddressService = async (result) => {
 
 module.exports.getDetailAddressService = async (result) => {
     try {
-        const {id, branchId} = result;
+        const {id, storeId} = result;
         const addressExists = await models.Address.findOne({
             where: {
-                id, branchId
+                id, storeId
             },
             include: marketAddressInclude
         });
@@ -497,27 +454,12 @@ module.exports.getDetailAddressService = async (result) => {
 
 module.exports.updateAddressService = async (result) => {
     try {
-        let {id, storeId, phone, wardId, districtId, provinceId, address, isDefaultAddress, branchId, loginUser, fullName} = result;
+        let {id, storeId, phone, wardId, districtId, provinceId, address, isDefaultAddress, loginUser, fullName} = result;
         const addressExists = await models.Address.findOne({
             where: {
-                id
+                id, storeId
             }
         });
-        if (!branchId) {
-            branchId = addressExists.branchId;
-        }
-        const branchExists = await models.Branch.findOne({
-            where: {
-                id: branchId
-            }
-        });
-        if (!branchExists) {
-            return {
-                error: true,
-                message: `Không tồn tại chi nhánh có id = ${branchId}`,
-                code: HttpStatusCode.BAD_REQUEST
-            }
-        }
         if (!addressExists) {
             return {
                 error: true,
@@ -525,26 +467,55 @@ module.exports.updateAddressService = async (result) => {
                 code: HttpStatusCode.BAD_REQUEST
             }
         }
-        await models.Address.update({
-            phone, wardId, districtId, provinceId, address, isDefaultAddress,
-            fullName
-        }, {
-            where: {
-                id
+        const district = await models.District.findOne({
+            where:{
+                id:districtId,
+                provinceId
             }
         });
-        if (isDefaultAddress) {
+        if(!district){
+            return{
+                error:true,
+                message:`Quận/ huyện không hợp lệ`,
+                code: HttpStatusCode.BAD_REQUEST
+            }
+        }
+        const ward = await models.Ward.findOne({
+            where:{
+                id:wardId,
+                districtId
+            }
+        });
+        if(!ward){
+            return{
+                error:true,
+                message:`Xã không hợp lệ`,
+                code: HttpStatusCode.BAD_REQUEST
+            }
+        }
+        const t = await models.sequelize.transaction(async (t)=>{
             await models.Address.update({
-                isDefaultAddress: false
+                phone, wardId, districtId, provinceId, address, isDefaultAddress, fullName
             }, {
                 where: {
-                    id: {
-                        [Op.ne]: id
+                    id
+                },
+                transaction:t
+            });
+            if (isDefaultAddress) {
+                await models.Address.update({
+                    isDefaultAddress: false
+                }, {
+                    where: {
+                        id: {
+                            [Op.ne]: id
+                        },
+                        storeId
                     },
-                    branchId,
-                }
-            })
-        }
+                    transaction:t
+                })
+            }
+        })
         return {
             success: true,
             data: null
@@ -560,10 +531,10 @@ module.exports.updateAddressService = async (result) => {
 
 module.exports.deleteAddressService = async (result) => {
     try {
-        const {id} = result;
+        const {id, storeId} = result;
         const addressExists = await models.Address.findOne({
             where: {
-                id
+                id, storeId
             }
         });
         if (!addressExists) {
@@ -593,14 +564,7 @@ module.exports.deleteAddressService = async (result) => {
 
 module.exports.getDetailProductService = async (result) => {
     try {
-        const {id, storeId, branchId} = result;
-        if(!branchId){
-            return{
-                error:true,
-                code:HttpStatusCode.BAD_REQUEST,
-                message:"Vui lòng truyền thông tin chi nhánh"
-            }
-        }
+        const {id, storeId} = result;
         const marketProductDetailInclude = [
             {
                 model: models.Product,
@@ -616,31 +580,19 @@ module.exports.getDetailProductService = async (result) => {
                 as: "imageCenter"
             },
             {
-                model: models.Branch,
-                as: "branch",
-                attributes: [
-                    "id", "name", "phone", "address1", "address2", "wardId", "districtId", "provinceId",
-                    [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
-    WHERE market_products.branchId = branch.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
-                    [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
-    WHERE market_products.branchId = branch.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
-                ],
+                model: models.Store,
+                as: "store",
+                attributes: storeAttributes,
                 include: [
                     {
-                        model: models.Store,
-                        as: "store",
-                        include: [
-                            {
-                                model: models.Image,
-                                as: "logo"
-                            }
-                        ]
+                        model: models.Image,
+                        as: "logo"
                     },
                     {
                         model: models.RequestAgency,
                         as: "agencys",
                         where: {
-                            agencyId: branchId,
+                            agencyId: storeId,
                             status: marketConfigContant.AGENCY_STATUS.ACTIVE
                         }
                     }]
@@ -649,7 +601,9 @@ module.exports.getDetailProductService = async (result) => {
                 model: models.MarketProductAgency,
                 as: "agencys",
                 attributes: ["id", "agencyId", "groupAgencyId", "price", "discountPrice"],
-                where: Sequelize.literal('(`agencys`.`agencyId` = `branch->agencys`.`id` OR `agencys`.`groupAgencyId` = `branch->agencys`.`groupAgencyId`) AND `agencys`.`marketProductId` = `MarketProduct`.`id`'),
+                where: Sequelize.literal('(`agencys`.`agencyId` = `store->agencys`.`id` ' +
+                    'OR `agencys`.`groupAgencyId` = `store->agencys`.`groupAgencyId`) ' +
+                    'AND `agencys`.`marketProductId` = `MarketProduct`.`id`'),
                 required: false
             },
             {
@@ -686,7 +640,7 @@ module.exports.getDetailProductService = async (result) => {
                 message: `Không tìm thấy sản phẩm có id = ${id} trên chợ`
             }
         }
-        if(! (await isProductPermission(id, branchId))){
+        if(! (await isProductPermission(id, storeId))){
             return{
                 error:true,
                 code:HttpStatusCode.BAD_REQUEST,
@@ -708,8 +662,8 @@ module.exports.getDetailProductService = async (result) => {
         //Tìm sản phẩm liên quan
         const listProduct = await models.MarketProduct.findAll({
             where: {
-                branchId: {
-                    [Op.eq]: marketProduct.branchId
+                storeId: {
+                    [Op.eq]: marketProduct.storeId
                 },
                 id:{
                     [Op.ne]:marketProduct.id
@@ -734,9 +688,9 @@ module.exports.getDetailProductService = async (result) => {
             }
         }
 
-        if (marketProduct.branch) {
-            marketProduct.dataValues.branch.dataValues.totalProduct = parseInt(marketProduct.dataValues.branch.dataValues.totalProduct);
-            marketProduct.dataValues.branch.dataValues.totalQuantitySold = parseInt(marketProduct.dataValues.branch.dataValues.totalQuantitySold);
+        if (marketProduct.store) {
+            marketProduct.dataValues.store.dataValues.totalProduct = parseInt(marketProduct.dataValues.store.dataValues.totalProduct);
+            marketProduct.dataValues.store.dataValues.totalQuantitySold = parseInt(marketProduct.dataValues.store.dataValues.totalQuantitySold);
         }
         return {
             success: true,
@@ -753,21 +707,14 @@ module.exports.getDetailProductService = async (result) => {
     }
 }
 
-module.exports.getAllBranchService = async (result) => {
+module.exports.getAllStoreService = async (result) => {
     try {
-        const {branchId, limit = 10, page = 1, isPrivateMarket, keyword} = result;
-        if(!branchId){
-            return{
-                error:true,
-                code:HttpStatusCode.BAD_REQUEST,
-                message:"Vui lòng nhập thông tin chi nhánh"
-            }
-        }
-        let include = [...branchInclude];
+        const {storeId, limit = 10, page = 1, isPrivateMarket, keyword} = result;
+        let include = [...storeInclude];
         let includeCount = [];
         let where = {
             id: {
-                [Op.ne]: branchId
+                [Op.ne]: storeId
             }
         }
         if(isPrivateMarket){
@@ -775,7 +722,7 @@ module.exports.getAllBranchService = async (result) => {
                 model:models.RequestAgency,
                 as: "agencys",
                 where: {
-                    agencyId: branchId,
+                    agencyId: storeId,
                     status: marketConfigContant.AGENCY_STATUS.ACTIVE
                 },
                 attributes: []
@@ -783,60 +730,40 @@ module.exports.getAllBranchService = async (result) => {
             include.push(requestAgencyModel);
             includeCount.push(requestAgencyModel);
         }
-        if(keyword){
-            const index = include.findIndex(item => item.as === "store");
-            let includeStore = {
-                model:models.Store,
-                as:"store",
-                include:[{
-                    model: models.Image,
-                    as: "logo"
-                }],
-                where:{
-                    name:{
-                        [Op.like]:`%${keyword}%`
-                    }
-                }
+        if (keyword) {
+            where.name = {
+                [Op.like]: `%${keyword}%`
             }
-            include[index] = includeStore;
-            includeCount.push(includeStore);
         }
-        const listBranch = await models.Branch.findAll({
+        const listStore = await models.Store.findAll({
             where,
-            attributes: [
-                "id", "name", "phone", "address1", "address2", "wardId", "districtId", "provinceId","isAgency",
-                [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
-    WHERE market_products.branchId = Branch.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
-                [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
-    WHERE market_products.branchId = Branch.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
-            ],
+            attributes: storeAttributes,
             include,
             limit: parseInt(limit),
             offset: (parseInt(page) - 1) * parseInt(limit)
         });
 
-        const count = await models.Branch.count({
-            where:{
-                id: {
-                    [Op.ne]: branchId
-                },
+
+        const count = await models.Store.count({
+            where: {
+                ...where,
                 [Op.and]: Sequelize.literal(`EXISTS (
                 SELECT 1 
                 FROM market_products 
-                WHERE market_products.branchId = Branch.id 
+                WHERE market_products.storeId = Store.id 
                 AND market_products.deletedAt IS NULL
             )`)
             },
-            include:includeCount
+            include: includeCount
         })
-        for (let item of listBranch) {
+        for (let item of listStore) {
             item.dataValues.totalProduct = parseInt(item.dataValues.totalProduct);
             item.dataValues.totalQuantitySold = parseInt(item.dataValues.totalQuantitySold);
         }
         return {
             success: true,
             data: {
-                items: listBranch,
+                items: listStore,
                 totalItem: count
             }
         }
@@ -849,27 +776,21 @@ module.exports.getAllBranchService = async (result) => {
     }
 }
 
-module.exports.getDetailBranchService = async (result) => {
+module.exports.getDetailStoreService = async (result) => {
     try {
         const {storeId, id} = result;
-        const branch = await models.Branch.findOne({
+        const store = await models.Store.findOne({
             where: {
                 id
             },
-            attributes: [
-                "id", "name", "phone", "address1", "address2", "wardId", "districtId", "provinceId","isAgency",
-                [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
-    WHERE market_products.branchId = Branch.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
-                [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
-    WHERE market_products.branchId = Branch.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']
-            ],
-            include: branchInclude
+            attributes: storeAttributes,
+            include: storeInclude
         });
-        branch.dataValues.totalProduct = parseInt(branch.dataValues.totalProduct);
-        branch.dataValues.totalQuantitySold = parseInt(branch.dataValues.totalQuantitySold);
+        store.dataValues.totalProduct = parseInt(store.dataValues.totalProduct);
+        store.dataValues.totalQuantitySold = parseInt(store.dataValues.totalQuantitySold);
         return {
             success: true,
-            data: branch
+            data: store
         }
     } catch (e) {
         return {
@@ -882,23 +803,13 @@ module.exports.getDetailBranchService = async (result) => {
 
 module.exports.addProductToCartService = async (result) => {
     try {
-        let {storeId, branchId, marketProductId, quantity, price} = result;
-        const branchExists = await models.Branch.findOne({
-            where: {
-                id: branchId,
-                storeId
-            }
-        });
-        if (!branchExists) {
-            return {
-                error: true,
-                code: HttpStatusCode.BAD_REQUEST,
-                message: `Không tồn tại chi nhánh có id = ${branchId} trong cửa hàng id = ${storeId}`
-            }
-        }
+        let {storeId, marketProductId, quantity, price} = result;
         const marketProductExists = await models.MarketProduct.findOne({
             where: {
-                id: marketProductId
+                id: marketProductId,
+                storeId:{
+                    [Op.ne]:storeId
+                }
             }
         });
         if (!marketProductExists) {
@@ -913,7 +824,7 @@ module.exports.addProductToCartService = async (result) => {
         }
         const productInCart = await models.Cart.findOne({
             where: {
-                branchId, marketProductId
+                storeId, marketProductId
             }
         });
         let totalQuantity;
@@ -930,7 +841,7 @@ module.exports.addProductToCartService = async (result) => {
         let resultId;
         if (!productInCart) {
             let newProductInCart = await models.Cart.create({
-                branchId,
+                storeId,
                 marketProductId,
                 quantity,
                 price
@@ -942,7 +853,7 @@ module.exports.addProductToCartService = async (result) => {
                 quantity: totalQuantity
             }, {
                 where: {
-                    branchId, marketProductId
+                    storeId, marketProductId
                 }
             });
         }
@@ -964,28 +875,9 @@ module.exports.addProductToCartService = async (result) => {
 
 module.exports.getProductInCartService = async (result) => {
     try {
-        const {branchId, storeId, limit = 20, page = 1} = result;
-        if (!branchId) {
-            return {
-                error: true,
-                code: HttpStatusCode.BAD_REQUEST,
-                message: "Vui lòng chọn chi nhánh"
-            }
-        }
-        const branchExists = await models.Branch.findOne({
-            where: {
-                id: branchId, storeId
-            }
-        });
-        if (!branchExists) {
-            return {
-                error: true,
-                code: HttpStatusCode.BAD_REQUEST,
-                message: `Không tồn tại chi nhánh có id = ${branchId} trong cửa hàng có id = ${storeId}`
-            }
-        }
+        const {storeId, limit = 20, page = 1} = result;
         let where = {
-            branchId
+            storeId
         };
         let include =  [{
             model: models.MarketProduct,
@@ -1002,27 +894,24 @@ module.exports.getProductInCartService = async (result) => {
                 }, {
                     model: models.Store,
                     as: "store",
-                    attributes: ["id", "name"]
-                }, {
-                    model: models.Image,
-                    as: "imageCenter"
-                }, {
-                    model: models.Branch,
-                    as: "branch",
+                    attributes: ["id", "name","address","phone"],
                     include: [{
                         model: models.RequestAgency,
                         as: "agencys",
                         where: {
-                            agencyId: branchId,
+                            agencyId: storeId,
                             status: marketConfigContant.AGENCY_STATUS.ACTIVE
                         }
                     }]
+                }, {
+                    model: models.Image,
+                    as: "imageCenter"
                 },
                 {
                     model: models.MarketProductAgency,
                     as: "agencys",
-                    where: Sequelize.literal('(`marketProduct->agencys`.`agencyId` = `marketProduct->branch->agencys`.`id` ' +
-                        'OR `marketProduct->agencys`.`groupAgencyId` = `marketProduct->branch->agencys`.`groupAgencyId`) ' +
+                    where: Sequelize.literal('(`marketProduct->agencys`.`agencyId` = `marketProduct->store->agencys`.`id` ' +
+                        'OR `marketProduct->agencys`.`groupAgencyId` = `marketProduct->store->agencys`.`groupAgencyId`) ' +
                         'AND `marketProduct->agencys`.`marketProductId` = `marketProduct`.`id`'),
                     required: false
                 }
@@ -1032,7 +921,7 @@ module.exports.getProductInCartService = async (result) => {
             where,
             include
         });
-        let listProductGroupByBranch = [];
+        let listProductGroupByStore = [];
         for (let item of listProductInCart) {
             //Cập nhật giá cho đại lý
             item.dataValues.price = item.dataValues.marketProduct.dataValues.price;
@@ -1055,14 +944,14 @@ module.exports.getProductInCartService = async (result) => {
                 }));
             }
 
-            let index = listProductGroupByBranch.findIndex(tmp => {
-                return tmp.branchId === item?.marketProduct?.branchId;
+            let index = listProductGroupByStore.findIndex(tmp => {
+                return tmp.storeId === item?.marketProduct?.storeId;
             });
             if (index > -1) {
-                listProductGroupByBranch[index].products.push(item);
+                listProductGroupByStore[index].products.push(item);
             } else {
-                listProductGroupByBranch.push({
-                    branchId: item?.marketProduct?.branchId,
+                listProductGroupByStore.push({
+                    storeId: item?.marketProduct?.storeId,
                     products: [item]
                 })
             }
@@ -1070,7 +959,7 @@ module.exports.getProductInCartService = async (result) => {
         return {
             success: true,
             data: {
-                item: listProductGroupByBranch
+                item: listProductGroupByStore
             }
         }
     } catch (e) {
@@ -1087,14 +976,14 @@ module.exports.updateQuantityProductInCartService = async (result) => {
         const {id, storeId, quantity} = result;
         const cartExists = await models.Cart.findOne({
             where: {
-                id
+                id, storeId
             }
         });
         if (!cartExists) {
             return {
                 error: true,
                 code: HttpStatusCode.BAD_REQUEST,
-                message: `Không tồn tai sản phẩm trong giỏ hàng`
+                message: `Không tồn tại sản phẩm trong giỏ hàng`
             }
         }
         const marketProduct = await models.MarketProduct.findOne({
@@ -1141,20 +1030,7 @@ module.exports.updateQuantityProductInCartService = async (result) => {
 
 module.exports.updateProductInCartService = async (result) => {
     try {
-        const {ids, storeId, branchId} = result;
-        const branchExists = await models.Branch.findOne({
-            where:{
-                id:branchId,
-                storeId
-            }
-        });
-        if(!branchExists){
-            return{
-                error:true,
-                message:`Không tồn tại chi nhánh có id = ${branchId} thuộc cửa hàng ${storeId}`,
-                code:HttpStatusCode.BAD_REQUEST
-            }
-        }
+        const {ids, storeId} = result;
         const t = await models.sequelize.transaction(async (t)=>{
             await models.Cart.update({
                 isSelected:false
@@ -1163,7 +1039,7 @@ module.exports.updateProductInCartService = async (result) => {
                     id:{
                         [Op.notIn]:ids
                     },
-                    branchId
+                    storeId
                 },
                 transaction:t
             });
@@ -1175,7 +1051,7 @@ module.exports.updateProductInCartService = async (result) => {
                     id:{
                         [Op.in]:ids
                     },
-                    branchId
+                    storeId
                 },
                 transaction:t
             })
@@ -1195,10 +1071,10 @@ module.exports.updateProductInCartService = async (result) => {
 
 module.exports.deleteProductInCartService = async (result) => {
     try {
-        const {id} = result;
+        const {id, storeId} = result;
         const productInCartExists = await models.Cart.findOne({
             where: {
-                id
+                id, storeId
             }
         });
         if (!productInCartExists) {
@@ -1218,24 +1094,28 @@ module.exports.deleteProductInCartService = async (result) => {
             data: null
         }
     } catch (e) {
-
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Lỗi ${e}`
+        }
     }
 }
 
 module.exports.createMarketOrderService = async (result) => {
     try {
-        const {orders, loginUser} = result;
+        const {orders, storeId} = result;
         const listNewMarketOrderBuy = [];
         const t = await models.sequelize.transaction(async (t) => {
             for (const order of orders) {
-                const {branchId, addressId, listProduct, toBranchId, note} = order;
+                const {addressId, listProduct, toStoreId, note} = order;
                 if (!addressId) {
-                    throw new Error(`Vui lòng gửi thông tin địa chỉ giao hàng`)
+                    throw new Error(`Vui lòng gửi thông tin địa chỉ giao hàng`);
                 }
                 const addressExists = await models.Address.findOne({
                     where: {
                         id: addressId,
-                        branchId
+                        storeId
                     }
                 });
                 if (!addressExists) {
@@ -1245,52 +1125,46 @@ module.exports.createMarketOrderService = async (result) => {
                     throw new Error(`Vui lòng mua ít nhất 1 sản phẩm`);
                 }
                 let newMarketOrderBuy;
-                const branchSell = await models.Branch.findOne({
+                const storeSell = await models.Store.findOne({
                     where: {
-                        id: toBranchId
-                    },
-                    include: [
-                        {
-                            model: models.Store,
-                            as: "store",
-                            attributes: ["id"]
-                        }
-                    ]
+                        id: toStoreId
+                    }
                 });
-                if (!branchSell) {
-                    throw new Error("Không tồn tại chi nhánh bán");
+                if (!storeSell) {
+                    throw new Error("Không tồn tại cửa hàng bán");
                 }
 
                 let customer = await models.Customer.findOne({
                     where: {
-                        branchId: branchId,
+                        customerStoreId: storeId,
                         type: customerContant.customerType.Agency,
-                        storeId: branchSell?.store?.id
+                        storeId: storeSell?.id
                     }
                 });
 
-                const branchExists = await models.Branch.findOne({
+                const storeExists = await models.Store.findOne({
                     where: {
-                        id: branchId
+                        id: storeId
                     }
                 });
 
                 if (!customer) {
                     customer = await handlerCreateCustomer({
-                        branchBuy: branchExists,
-                        storeSell: branchSell?.store?.id
+                        storeBuy: storeExists,
+                        storeSell
                     });
                 }
 
                 newMarketOrderBuy = await models.MarketOrder.create({
-                    branchId, addressId,
+                    addressId,
+                    storeId,
                     address: addressExists.address,
                     districtId: addressExists.districtId,
                     wardId: addressExists.wardId,
                     provinceId: addressExists.provinceId,
                     status: marketSellContant.STATUS_ORDER.PENDING,
                     phone: addressExists.phone,
-                    toBranchId: toBranchId,
+                    toStoreId,
                     fullName: customer.fullName,
                     deliveryFee: 50000,
                     note
@@ -1306,6 +1180,9 @@ module.exports.createMarketOrderService = async (result) => {
                             id: item.marketProductId,
                         }
                     });
+                    if(!marketProductExists) {
+                        throw new Error(`Không tồn tại sản phẩm có id = ${item.marketProductId}`);
+                    }
                     await models.MarketOrderProduct.create({
                         marketProductId: item.marketProductId,
                         marketOrderId: newMarketOrderBuy.id,
@@ -1318,7 +1195,7 @@ module.exports.createMarketOrderService = async (result) => {
                     await models.Cart.destroy({
                         where: {
                             marketProductId: item.marketProductId,
-                            branchId
+                            storeId
                         },
                         transaction: t
                     });
@@ -1360,31 +1237,20 @@ module.exports.createMarketOrderService = async (result) => {
     }
 }
 
-const handleGetDetailMarketOrder = async ( {id,branchId} )=>{
-    if(!branchId){
-        return{
-            error:true,
-            message:"Vui lòng truyền lên thông tin chi nhánh",
-            code:HttpStatusCode.BAD_REQUEST
-        }
-    }
+const handleGetDetailMarketOrder = async ( {id,storeId} )=>{
     let marketOrder = await models.MarketOrder.findOne({
         where: {
             id,
             [Op.or]:{
-                branchId:branchId,
-                toBranchId:branchId
+                storeId,
+                toStoreId:storeId
             }
         },
         include: marketOrderInclude,
         attributes:marketOrderAttributes
     });
     if (!marketOrder) {
-        return {
-            error: true,
-            message: `Không tồn tại đơn hàng có id = ${id}`,
-            code: HttpStatusCode.BAD_REQUEST
-        }
+        throw new Error(`Không tồn tại đơn hàng có id = ${id}`);
     }
     marketOrder.dataValues.totalPrice = parseInt(marketOrder.dataValues.totalPrice);
     return marketOrder;
@@ -1423,7 +1289,7 @@ module.exports.getAllMarketOrderService = async (result) => {
             limit = 10,
             page = 1,
             type,
-            branchId,
+            storeId,
             status,
             keyword,
             dateNumber,
@@ -1440,10 +1306,10 @@ module.exports.getAllMarketOrderService = async (result) => {
             where.createdAt = addFilterByDate([startDate,endDate]);
         }
         if (type === marketSellContant.MARKET_ORDER_TYPE.BUY) {
-            where.branchId = branchId;
+            where.storeId = storeId;
         }
         if (type === marketSellContant.MARKET_ORDER_TYPE.SELL) {
-            where.toBranchId = branchId;
+            where.toStoreId = storeId;
         }
         if (status) {
             where.status = status;
@@ -1474,7 +1340,7 @@ module.exports.getAllMarketOrderService = async (result) => {
         ];
         for(const item of statusOrder){
             let where = {
-                toBranchId:branchId,
+                toStoreId:storeId,
                 status:item
             };
             if(dateNumber){
@@ -1510,127 +1376,9 @@ module.exports.getAllMarketOrderService = async (result) => {
     }
 }
 
-module.exports.getDetailProductPrivateService = async (result)=>{
-    try {
-        const {id, storeId, branchId} = result;
-        if(!branchId){
-            return{
-                error:true,
-                code:HttpStatusCode.BAD_REQUEST,
-                message:"Vui lòng nhập thông tin chi nhánh"
-            }
-        }
-
-        if(! (await isProductPermission(id, branchId))){
-            return{
-                error:true,
-                code:HttpStatusCode.BAD_REQUEST,
-                message:"Bạn không có quyền truy cập sản phẩm này"
-            }
-        }
-
-        let include = [
-            {
-                model: models.Branch,
-                as: "branch",
-                include: [{
-                    model: models.RequestAgency,
-                    as: "agencys",
-                    where: {
-                        agencyId: branchId,
-                        status: marketConfigContant.AGENCY_STATUS.ACTIVE
-                    }
-                }]
-            },
-            {
-                model: models.MarketProductAgency,
-                as: "agencys",
-                where: Sequelize.literal('(`agencys`.`agencyId` = `branch->agencys`.`id` OR `agencys`.`groupAgencyId` = `branch->agencys`.`groupAgencyId`) AND `agencys`.`marketProductId` = `MarketProduct`.`id`'),
-                required: false
-            },
-            {
-                model:models.Product,
-                as:"product",
-                attributes: ["id", "name", "shortName"]
-            }
-        ];
-
-        const marketProduct = await models.MarketProduct.findOne({
-            where: {
-                id,
-            },
-            include
-        });
-
-        if (!marketProduct) {
-            return {
-                error: true,
-                code: HttpStatusCode.BAD_REQUEST,
-                message: `Không tìm thấy sản phẩm có id = ${id} trên chợ`
-            }
-        }
-
-        if (marketProduct.images) {
-            marketProduct.dataValues.images = await getImages(marketProduct.images);
-        }
-
-        const listProduct = await models.MarketProduct.findAll({
-            where: {
-                marketType: marketConfigContant.MARKET_TYPE.PRIVATE,
-                branchId: {
-                    [Op.eq]: marketProduct.branchId
-                },
-                id:{
-                    [Op.ne]:marketProduct.id
-                },
-                status:marketConfigContant.PRODUCT_MARKET_STATUS.ACTIVE
-            },
-            include
-        });
-        for(const product of listProduct){
-            if (product.agencys.length > 0) {
-                let index = product.agencys.findIndex(item => {
-                    return item.agencyId !== null;
-                });
-                if (index === -1) index = 0;
-                product.dataValues.price = product.dataValues.agencys[index].dataValues.price;
-                product.dataValues.discountPrice = product.dataValues.agencys[index].discountPrice;
-            }
-        }
-        marketProduct.dataValues.productWillCare = listProduct;
-
-        if (marketProduct.branch) {
-            marketProduct.dataValues.branch.dataValues.totalProduct = parseInt(marketProduct.dataValues.branch.dataValues.totalProduct);
-            marketProduct.dataValues.branch.dataValues.totalQuantitySold = parseInt(marketProduct.dataValues.branch.dataValues.totalQuantitySold);
-        }
-
-        if (marketProduct.agencys.length > 0) {
-            let index = marketProduct.agencys.findIndex(item => {
-                return item.agencyId !== null;
-            });
-            if (index === -1) index = 0;
-            marketProduct.dataValues.price = marketProduct.dataValues.agencys[index].dataValues.price;
-            marketProduct.dataValues.discountPrice = marketProduct.dataValues.agencys[index].discountPrice;
-        }
-
-        return {
-            success: true,
-            data: {
-                item: marketProduct
-            }
-        }
-    } catch (e) {
-        return {
-            error: true,
-            message: `Lỗi ${e}`,
-            code: HttpStatusCode.BAD_REQUEST
-        }
-    }
-}
-
 module.exports.changeStatusMarketOrderService = async (result) =>   {
     try {
-        let {id, status, note, products, loginUser, branchId} = result;
+        let {id, status,toBranchId, note, products, loginUser, storeId} = result;
         const marketOrderExists = await models.MarketOrder.findOne({
             where: {
                 id,
@@ -1675,17 +1423,28 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
             }, {
                 transaction: t
             });
-            //Processing : Tạo mã seri và chon lô cho sản phẩm bán
-            if(status === marketSellContant.STATUS_ORDER.DONE && marketOrderExists.isPayment === false){
-                await handlerCreateOrderPayment({marketOrderId : id, storeId:loginUser.storeId,loginUser, branchId:marketOrderExists.toBranchId, paid : 0,t})
+            //Confirm : Chọn chi nhánh bán
+            if(status === marketSellContant.STATUS_ORDER.CONFIRM){
+                await models.MarketOrder.update({
+                    toBranchId
+                },{
+                    where:{
+                        id
+                    },
+                    transaction: t
+                })
             }
+            if(status === marketSellContant.STATUS_ORDER.DONE && marketOrderExists.isPayment === false){
+                await handlerCreateOrderPayment({marketOrderId : id, storeId:loginUser.storeId,branchId: marketOrderExists.toBranchId,loginUser, paid : 0,t})
+            }
+            //Processing : Tạo mã seri và chon lô cho sản phẩm bán
             if(status === marketSellContant.STATUS_ORDER.PROCESSING){
                 for (const item of products) {
                     await updateSeri({
                         marketProductId:item.marketProductId,
                         listSeri: item.listSeri,
                         marketOrderId:id,
-                        loginUser, branchId,
+                        loginUser, storeId,
                         transaction:t
                     });
                     // if(item?.batches && item?.batches.length > 0) {
@@ -1861,7 +1620,7 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                     });
                     const customer = await models.Customer.findOne({
                         where:{
-                            branchId:marketOrderExists.branchId,
+                            customerStoreId:marketOrderExists.storeId,
                             storeId:loginUser.storeId,
                             type:customerContant.customerType.Agency
                         }
@@ -1950,6 +1709,7 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                 }
             }
         })
+
         return {
             success: true,
             data: null
@@ -1964,13 +1724,13 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
 }
 
 module.exports.updateOrderService = async (result) => {
-    const {id, addressId, listProduct, branchId, note} = result;
+    const {id, addressId, listProduct,storeId, note} = result;
     const marketOrder = await models.MarketOrder.findOne({
         where: {
             id,
             [Op.or]: {
-                branchId,
-                toBranchId: branchId
+                storeId,
+                toStoreId: storeId
             }
         }
     });
@@ -1991,7 +1751,7 @@ module.exports.updateOrderService = async (result) => {
     const addressExists = await models.Address.findOne({
         where: {
             id: addressId,
-            branchId: marketOrder.branchId
+            storeId: marketOrder.storeId
         }
     });
     if (!addressExists) {
@@ -2070,7 +1830,7 @@ module.exports.updateOrderService = async (result) => {
     }
 }
 
-const isProductPermission = async (marketProductId, branchId)=>{
+const isProductPermission = async (marketProductId, storeId)=>{
     const marketProduct = await models.MarketProduct.findOne({
         where:{
             id:marketProductId
@@ -2079,8 +1839,8 @@ const isProductPermission = async (marketProductId, branchId)=>{
     if(marketProduct.marketType === marketConfigContant.MARKET_TYPE.PRIVATE){
         const isAgency = await models.RequestAgency.findOne({
             where:{
-                branchId:marketProduct.branchId,
-                agencyId:branchId
+                storeId:marketProduct.storeId,
+                agencyId:storeId
             }
         });
         if(!isAgency){
@@ -2092,15 +1852,8 @@ const isProductPermission = async (marketProductId, branchId)=>{
 
 module.exports.getProductPrivateService = async (result) => {
     try {
-        const {storeId, branchId, limit = 10, page = 1, keyword, toBranchId,  productType} = result;
+        const {storeId, limit = 10, page = 1, keyword, toStoreId,  productType} = result;
         let { sortBy } = result;
-        if(!branchId){
-            return{
-                error:true,
-                code:HttpStatusCode.BAD_REQUEST,
-                message:"Vui lòng gửi thông tin chi nhánh"
-            }
-        }
         let include = [
             {
                 model: models.Product,
@@ -2116,16 +1869,16 @@ module.exports.getProductPrivateService = async (result) => {
                 as: "imageCenter"
             },
             {
-                model: models.Branch,
-                as: "branch",
+                model: models.Store,
+                as: "store",
                 where:{
-                    id:toBranchId
+                    id:toStoreId
                 },
                 include: [{
                     model: models.RequestAgency,
                     as: "agencys",
                     where: {
-                        agencyId: branchId,
+                        agencyId: storeId,
                         status: marketConfigContant.AGENCY_STATUS.ACTIVE
                     },
                     required:false
@@ -2134,7 +1887,7 @@ module.exports.getProductPrivateService = async (result) => {
             {
                 model: models.MarketProductAgency,
                 as: "agencys",
-                where: Sequelize.literal('(`agencys`.`agencyId` = `branch->agencys`.`id` OR `agencys`.`groupAgencyId` = `branch->agencys`.`groupAgencyId`) AND `agencys`.`marketProductId` = `MarketProduct`.`id`'),
+                where: Sequelize.literal('(`agencys`.`agencyId` = `store->agencys`.`id` OR `agencys`.`groupAgencyId` = `store->agencys`.`groupAgencyId`) AND `agencys`.`marketProductId` = `MarketProduct`.`id`'),
                 required: false
             },
             {
@@ -2159,19 +1912,19 @@ module.exports.getProductPrivateService = async (result) => {
             }
         ];
         let where = {
-            branchId: {
-                [Op.ne]: branchId
+            storeId: {
+                [Op.ne]: storeId
             },
             [Op.or]: [
                 {
-                    // Trường hợp chi nhánh A là đại lý của chi nhánh B
+                    // Trường hợp store A là đại lý của store B
                     [Op.and]: [
                         Sequelize.literal(`
                     EXISTS (
                         SELECT 1
                         FROM request_agency 
-                        WHERE agencyId = ${branchId} 
-                          AND branchId = ${toBranchId}
+                        WHERE agencyId = ${storeId} 
+                          AND storeId = ${toStoreId}
                           AND deletedAt IS NULL 
                           AND status = '${marketConfigContant.AGENCY_STATUS.ACTIVE}'
                     )
@@ -2185,14 +1938,14 @@ module.exports.getProductPrivateService = async (result) => {
                     ]
                 },
                 {
-                    // Trường hợp chi nhánh A không phải là đại lý của chi nhánh B
+                    // Trường hợp store A không phải là đại lý của store B
                     [Op.and]: [
                         Sequelize.literal(`
                     NOT EXISTS (
                         SELECT 1 
                         FROM request_agency 
-                        WHERE agencyId = ${branchId} 
-                          AND branchId = ${toBranchId}
+                        WHERE agencyId = ${storeId} 
+                          AND storeId = ${toStoreId}
                           AND deletedAt IS NULL
                           AND status = '${marketConfigContant.AGENCY_STATUS.ACTIVE}'
                     )
@@ -2326,7 +2079,7 @@ module.exports.getSeriService = async (result) => {
     }
 }
 
-const updateSeri = async ({marketProductId, listSeri,marketOrderId,loginUser,branchId,transaction})=>{
+const updateSeri = async ({marketProductId, listSeri,marketOrderId,loginUser,storeId,transaction})=>{
     const listSeriIdDestroy = listSeri.filter(item=>{
         return item.id !== undefined
     }).map(item=>{
@@ -2347,7 +2100,7 @@ const updateSeri = async ({marketProductId, listSeri,marketOrderId,loginUser,bra
         //Check unique code
         let where = {
             code:seri.code,
-            branchId,
+            storeId,
         }
         if(seri.id){
             where.id = {
@@ -2379,7 +2132,7 @@ const updateSeri = async ({marketProductId, listSeri,marketOrderId,loginUser,bra
                 marketOrderId,
                 marketProductId,
                 createdBy:loginUser.id,
-                branchId
+                storeId
             },{
                 transaction
             });
@@ -2389,18 +2142,11 @@ const updateSeri = async ({marketProductId, listSeri,marketOrderId,loginUser,bra
 
 module.exports.updateSeriService = async (result)=>{
     try {
-        const {marketOrderId,products = [],loginUser, branchId} = result;
-        if(!branchId){
-            return{
-                error:true,
-                message:"Vui lòng truyền thông tin chi nhánh",
-                code:HttpStatusCode.BAD_REQUEST
-            }
-        }
+        const {marketOrderId,products = [],loginUser, storeId} = result;
         const t = await models.sequelize.transaction(async (t)=>{
             for(const product of products){
                 const {marketProductId, listSeri = []} = product;
-                await updateSeri({marketProductId, listSeri,marketOrderId,loginUser,branchId,t});
+                await updateSeri({marketProductId, listSeri,marketOrderId,loginUser,storeId,t});
             }
         });
         return {
@@ -2418,17 +2164,10 @@ module.exports.updateSeriService = async (result)=>{
 
 module.exports.checkSeriService = async (result)=>{
     try {
-        const {loginUser, code, branchId} = result;
-        if(!branchId){
-            return{
-                error:true,
-                message:"Vui lòng truyền thông tin chi nhánh",
-                code:HttpStatusCode.BAD_REQUEST
-            }
-        }
+        const {loginUser, code, storeId} = result;
         const seriExists = await models.Seri.findOne({
             where:{
-                code,branchId
+                code,storeId
             }
         });
         let isExists = false;
@@ -2452,9 +2191,17 @@ module.exports.checkSeriService = async (result)=>{
 
 module.exports.marketOrderPaymentService = async (result)=>{
     try {
-        const {marketOrderId, storeId,loginUser, branchId,paid} = result;
+        const {marketOrderId, storeId,loginUser,paid} = result;
+        const marketOrder = await models.MarketOrder.findOne({
+            where:{
+                id:marketOrderId
+            }
+        });
+        if(!marketOrder){
+            throw new Error(`Không tồn tại đơn đặt hàng có id = ${marketOrderId}`);
+        }
         const t = await models.sequelize.transaction(async (t)=>{
-            await handlerCreateOrderPayment({...result,t});
+            await handlerCreateOrderPayment({...result,branchId:marketOrder.toBranchId,t});
         })
         return {
             success: true,
@@ -2517,43 +2264,18 @@ module.exports.getMarketProductBySeriSerive = async (result)=>{
 
 module.exports.getNotificationService = async (result)=>{
     try{
-        const {branchId, storeId} = result;
-        if(!branchId){
-            return{
-                error:true,
-                message:"Vui lòng truyền lên thông tin chi nhánh",
-                code:HttpStatusCode.BAD_REQUEST
-            }
-        }
-        const branchExists = await models.Branch.findOne({
-            where:{
-                id:branchId,
-                storeId
-            }
-        });
-        if(!branchExists){
-            return{
-                error:true,
-                message:`Không tồn tại chi nhánh có id = ${branchId} trong cửa hàng của bạn`,
-                code:HttpStatusCode.BAD_REQUEST
-            }
-        }
+        const {storeId} = result;
         const notification = await models.MarketNotification.findAll({
             include:[
                 {
                     model:models.MarketOrder,
                     as:"marketOrder",
                     where:{
-                        toBranchId:branchId
+                        toStoreId:storeId
                     },
                     include:[{
-                        model:models.Branch,
-                        as:"branch",
-                        include:[{
-                            model:models.Store,
-                            as:"store",
-                            attributes:["id","name"]
-                        }]
+                        model:models.Store,
+                        as:"store"
                     }]
                 }
             ]

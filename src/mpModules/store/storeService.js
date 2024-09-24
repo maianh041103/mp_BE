@@ -20,6 +20,7 @@ const attributes = [
   "address",
   "createdAt",
   "businessRegistrationNumber",
+    "isAgency"
 ];
 
 const include = [

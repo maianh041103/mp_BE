@@ -21,8 +21,7 @@ const attributes = [
   "address2",
   "isDefaultBranch",
   "status",
-  "createdAt",
-    "isAgency"
+  "createdAt"
 ];
 
 const include = [
