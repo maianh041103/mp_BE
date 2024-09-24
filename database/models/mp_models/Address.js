@@ -34,7 +34,7 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: true,
                 type: Sequelize.STRING(100),
             },
-            branchId: {
+            storeId: {
                 allowNull: false,
                 type: DataTypes.INTEGER(10).UNSIGNED,
             },
@@ -64,9 +64,9 @@ module.exports = (sequelize, DataTypes) => {
     );
 
     Address.associate = function (models) {
-        Address.belongsTo(models.Branch, {
-            as: "branch",
-            foreignKey: "branchId",
+        Address.belongsTo(models.Store, {
+            as: "store",
+            foreignKey: "storeId",
             targetKey: "id",
         });
         Address.belongsTo(models.Ward, {

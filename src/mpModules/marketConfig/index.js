@@ -95,19 +95,4 @@ router.delete("/group-agency/:id", authenticate, (req, res, next) => {
     next();
 }, authorize, controller.deleteGroupAgency);
 
-router.post("/image", authenticate, (req, res, next) => {
-    req.apiRole = [];
-    next();
-}, authorize, controller.createMarketImage);
-
-router.get("/image", authenticate, (req, res, next) => {
-    req.apiRole = [];
-    next();
-}, authorize, controller.getAllMarketImage);
-
-router.delete("/image/:id", authenticate, (req, res, next) => {
-    req.apiRole = [];
-    next();
-}, authorize, controller.deleteMarketImage);
-
 module.exports = router;

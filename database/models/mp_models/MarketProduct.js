@@ -56,10 +56,6 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull: false,
                 type: DataTypes.INTEGER(10).UNSIGNED,
             },
-            branchId:{
-                allowNull:false,
-                type:DataTypes.INTEGER(10).UNSIGNED,
-            },
             description: {
                 allowNull: true,
                 type: DataTypes.STRING,
@@ -140,12 +136,6 @@ module.exports = (sequelize, DataTypes) => {
             as:"batches",
             sourceKey:"id",
             foreignKey: "marketProductId"
-        });
-
-        MarketProduct.belongsTo(models.Branch,{
-            as:"branch",
-            targetKey:"id",
-            foreignKey: "branchId"
         });
 
         MarketProduct.belongsTo(models.Image,{

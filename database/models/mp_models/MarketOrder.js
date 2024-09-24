@@ -19,11 +19,11 @@ module.exports = (sequelize, DataTypes) => {
               allowNull: true,
               type: Sequelize.STRING(255)
             },
-            branchId: {
+            storeId: {
                 allowNull: false,
                 type: DataTypes.INTEGER(10).UNSIGNED,
             },
-            toBranchId:{
+            toStoreId:{
                 allowNull:false,
                 type:DataTypes.INTEGER(10).UNSIGNED,
             },
@@ -83,6 +83,10 @@ module.exports = (sequelize, DataTypes) => {
                 type:DataTypes.INTEGER(10).UNSIGNED,
                 defaultValue:0
             },
+            toBranchId:{
+                allowNull:true,
+                type:DataTypes.INTEGER(10).UNSIGNED
+            },
             createdAt: {
                 allowNull: true,
                 type: DataTypes.DATE,
@@ -104,9 +108,9 @@ module.exports = (sequelize, DataTypes) => {
     );
 
     MarketOrder.associate = function (models) {
-        MarketOrder.belongsTo(models.Branch, {
-            as: "branch",
-            foreignKey: "branchId",
+        MarketOrder.belongsTo(models.Store, {
+            as: "store",
+            foreignKey: "storeId",
             targetKey: "id",
         });
         MarketOrder.belongsTo(models.Address, {
@@ -119,9 +123,9 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey:"marketOrderId",
             sourceKey:"id"
         });
-        MarketOrder.belongsTo(models.Branch,{
-            as:"toBranch",
-            foreignKey:"toBranchId",
+        MarketOrder.belongsTo(models.Store,{
+            as:"toStore",
+            foreignKey:"toStoreId",
             targetKey:"id"
         });
         MarketOrder.hasMany(models.HistoryPurchase,{

@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
             autoIncrement: true,
             allowNull: false,
         },
-        branchId: {
+        storeId: {
             allowNull: false,
             type: DataTypes.INTEGER(10).UNSIGNED,
         },
@@ -47,9 +47,9 @@ module.exports = (sequelize, DataTypes) => {
         paranoid: true,
     });
     Cart.associate = function (models) {
-        Cart.belongsTo(models.Branch, {
-            as: 'branch',
-            foreignKey: 'branchId',
+        Cart.belongsTo(models.Store, {
+            as: 'store',
+            foreignKey: 'storeId',
             targetKey: 'id',
         });
 

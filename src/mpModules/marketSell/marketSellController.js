@@ -99,16 +99,15 @@ module.exports.deleteAddress = async (req,res)=>{
     }
 }
 
-//[GET] mp/api/market/sell/prduct/:id
+//[GET] mp/api/market/sell/product/:id
 module.exports.getDetailProduct = async (req,res)=>{
     try {
         const { loginUser = {} } = req;
         const {id} = req.params;
-        const {branchId} = req.query;
         const result = await marketSellService.getDetailProductService(
             {
                 storeId: loginUser.storeId,
-                id, branchId
+                id
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -118,11 +117,11 @@ module.exports.getDetailProduct = async (req,res)=>{
     }
 }
 
-//[GET] mp/api/market/sell/branch
-module.exports.getAllBranch = async (req,res)=>{
+//[GET] mp/api/market/sell/store
+module.exports.getAllStore = async (req,res)=>{
     try {
         const { loginUser = {} } = req;
-        const result = await marketSellService.getAllBranchService(
+        const result = await marketSellService.getAllStoreService(
             {
                 storeId: loginUser.storeId,
                 ...req.query
@@ -135,12 +134,12 @@ module.exports.getAllBranch = async (req,res)=>{
     }
 }
 
-//[GET] mp/api/market/sell/branch/:id
-module.exports.getDetailBranch = async (req,res)=>{
+//[GET] mp/api/market/sell/store/:id
+module.exports.getDetailStore = async (req,res)=>{
     try {
         const { loginUser = {} } = req;
         const {id} = req.params;
-        const result = await marketSellService.getDetailBranchService(
+        const result = await marketSellService.getDetailStoreService(
             {
                 storeId: loginUser.storeId,
                 id
@@ -209,11 +208,11 @@ module.exports.updateQuantityProductInCart = async (req,res)=>{
 module.exports.updateProductInCart = async (req,res)=>{
     try {
         const { loginUser = {} } = req;
-        const {ids,branchId} = req.body;
+        const {ids} = req.body;
         const result = await marketSellService.updateProductInCartService(
             {
                 storeId: loginUser.storeId,
-                ids,branchId
+                ids
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -299,14 +298,12 @@ module.exports.changeStatusMarketOrder = async (req,res)=>{
     try {
         const { loginUser = {} } = req;
         const {id} = req.params;
-        const {branchId} = req.query;
         const result = await marketSellService.changeStatusMarketOrderService(
             {
                 storeId: loginUser.storeId,
                 loginUser,
                 id,
-                ...req.body,
-                branchId
+                ...req.body
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -353,25 +350,6 @@ module.exports.getProductPrivate = async(req,res)=>{
     }
 }
 
-//[GET] mp/api/market/sell/product-private/:id
-module.exports.getDetailProductPrivate = async (req,res)=>{
-    try {
-        const { loginUser = {} } = req;
-        const {id} = req.params;
-        const result = await marketSellService.getDetailProductPrivateService(
-            {
-                storeId: loginUser.storeId,
-                ...req.query,
-                id
-            }
-        );
-        if (result.success) res.json(respondItemSuccess(result.data));
-        else res.json(respondWithError(result.code, result.message, {}));
-    } catch (e) {
-        res.json(respondWithClientError(e))
-    }
-}
-
 //[GET] mp/api/market/sell/seri/:marketOrderProductId
 module.exports.getSeri = async (req,res)=>{
     try {
@@ -397,7 +375,8 @@ module.exports.updateSeri = async (req,res)=>{
         const result = await marketSellService.updateSeriService(
             {
                 loginUser,
-                ...req.body
+                ...req.body,
+                storeId:loginUser.storeId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -412,12 +391,11 @@ module.exports.checkSeri = async (req,res)=>{
     try {
         const { loginUser = {}} = req;
         const {code} = req.params;
-        const {branchId} = req.query;
         const result = await marketSellService.checkSeriService(
             {
                 loginUser,
                 code,
-                branchId
+                storeId:loginUser.storeId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -453,7 +431,7 @@ module.exports.getMarketProductBySeri = async (req,res)=>{
         const {code} = req.params;
         const result = await marketSellService.getMarketProductBySeriSerive(
             {
-                code,
+                code
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -466,10 +444,8 @@ module.exports.getMarketProductBySeri = async (req,res)=>{
 //[GET] mp/api/market/notification?branchId
 module.exports.getNotification = async (req,res)=>{
     try {
-        const {branchId} = req.query;
         const { loginUser = {}} = req;
         const result = await marketSellService.getNotificationService({
-                branchId,
                 storeId:loginUser.storeId
         });
         if (result.success) res.json(respondItemSuccess(result.data));

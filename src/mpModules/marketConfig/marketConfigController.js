@@ -31,7 +31,8 @@ module.exports.getAllProduct = async (req, res) => {
         const result = await marketConfigService.getAllProductService(
             {
                 ...req.query,
-                loginUser
+                loginUser,
+                storeId:loginUser.storeId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -48,8 +49,7 @@ module.exports.changeStatusProduct = async (req, res) => {
         const {id,status} = req.params;
         const result = await marketConfigService.changeStatusProductService(
             {
-                id,status,storeId: loginUser.storeId,
-                ...req.query
+                id,status,storeId: loginUser.storeId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -133,12 +133,10 @@ module.exports.changeStatusAgency = async (req, res) => {
         const { loginUser = {} } = req;
         const { id, status } = req.params;
         const {groupAgencyId} = req.body;
-        const {branchId} = req.query;
         const result = await marketConfigService.changeStatusAgencyService(
             {
                 id, status,groupAgencyId,
-                storeId: loginUser.storeId,
-                branchId
+                storeId: loginUser.storeId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -174,7 +172,6 @@ module.exports.getStatusAgency = async (req,res)=>{
             {
                 id,
                 storeId: loginUser.storeId,
-                ...req.query
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -189,11 +186,12 @@ module.exports.changeAgency = async (req,res)=>{
     try {
         const {id} = req.params;
         const {groupAgencyId} = req.body;
+        const {loginUser} = req;
         const result = await marketConfigService.changeAgencyService(
             {
                 id,
                 groupAgencyId,
-                ...req.query
+                storeId:loginUser
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -212,7 +210,6 @@ module.exports.deleteAgency = async (req,res)=>{
             {
                 id,
                 storeId: loginUser.storeId,
-                ...req.query
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -265,8 +262,7 @@ module.exports.getDetailGroupAgency = async (req,res)=>{
         const result = await marketConfigService.getDetailGroupAgencyService(
             {
                 id,
-                storeId: loginUser.storeId,
-                ...req.query
+                storeId: loginUser.storeId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -284,7 +280,7 @@ module.exports.changeGroupAgency = async (req,res)=>{
             {
                 ...req.body,
                 id: req.params.id,
-                ...req.query,
+                storeId: loginUser.storeId,
                 loginUser
             }
         );
@@ -303,58 +299,6 @@ module.exports.deleteGroupAgency = async (req,res)=>{
             {
                 storeId: loginUser.storeId,
                 id: req.params.id,
-            }
-        );
-        if (result.success) res.json(respondItemSuccess(result.data));
-        else res.json(respondWithError(result.code, result.message, {}));
-    } catch (e) {
-        res.json(respondWithClientError(e))
-    }
-}
-
-//[POST] mp/api/market/config/image
-module.exports.createMarketImage = async (req,res)=>{
-    try {
-        const { loginUser = {} } = req;
-        const result = await marketConfigService.createMarketImageService(
-            {
-                ...req.body,
-                storeId: loginUser.storeId
-            }
-        );
-        if (result.success) res.json(respondItemSuccess(result.data));
-        else res.json(respondWithError(result.code, result.message, {}));
-    } catch (e) {
-        res.json(respondWithClientError(e))
-    }
-}
-
-//[GET] mp/api/market/config/image
-module.exports.getAllMarketImage = async (req,res)=>{
-    try {
-        const { loginUser = {} } = req;
-        const result = await marketConfigService.getAllMarketImageService(
-            {
-                ...req.query,
-                storeId: loginUser.storeId
-            }
-        );
-        if (result.success) res.json(respondItemSuccess(result.data));
-        else res.json(respondWithError(result.code, result.message, {}));
-    } catch (e) {
-        res.json(respondWithClientError(e))
-    }
-}
-
-//[DELETE] mp/api/market/config/image/:id
-module.exports.deleteMarketImage = async (req,res)=>{
-    try {
-        const { loginUser = {} } = req;
-        const {id} = req.params;
-        const result = await marketConfigService.deleteMarketImageService(
-            {
-                id,
-                storeId: loginUser.storeId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));

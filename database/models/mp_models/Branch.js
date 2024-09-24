@@ -59,11 +59,6 @@ module.exports = (sequelize, Sequelize) => {
       type: Sequelize.INTEGER(1).UNSIGNED,
       defaultValue: 1,
     },
-    isAgency:{
-      allowNull:true,
-      type:Sequelize.BOOLEAN,
-      defaultValue:false
-    },
     createdAt: {
       allowNull: true,
       type: Sequelize.DATE
@@ -113,18 +108,6 @@ module.exports = (sequelize, Sequelize) => {
       foreignKey: 'wardId',
       targetKey: 'id',
     });
-
-    Branch.hasMany(models.MarketProduct,{
-      as: 'marketProduct',
-      foreignKey: 'branchId',
-      sourceKey: 'id',
-    });
-
-    Branch.hasMany(models.RequestAgency,{
-      as:"agencys",
-      foreignKey:"branchId",
-      sourceKey:"id"
-    })
   };
   return Branch;
 };

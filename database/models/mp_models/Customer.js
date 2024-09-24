@@ -108,6 +108,10 @@ module.exports = (sequelize, Sequelize) => {
         allowNull: false,
         type: Sequelize.INTEGER(10).UNSIGNED,
       },
+    customerStoreId:{
+      allowNull:true,
+        type: Sequelize.INTEGER(10).UNSIGNED,
+    },
       status: {
         allowNull: false,
         type: Sequelize.ENUM("draft", "active", "inactive", "potential"),
@@ -161,6 +165,12 @@ module.exports = (sequelize, Sequelize) => {
       as: 'store',
       foreignKey: 'storeId',
       targetKey: 'id',
+    });
+
+    Customer.belongsTo(models.Store,{
+        as:'customerStore',
+        foreignKey:'customerStoreId',
+        targetKey: 'id',
     });
 
     Customer.hasMany(models.CustomerGroupCustomer, {
