@@ -582,7 +582,11 @@ module.exports.getDetailProductService = async (result) => {
             {
                 model: models.Store,
                 as: "store",
-                attributes: storeAttributes,
+                attributes: ["id", "name", "phone","email", "address", "wardId", "districtId", "provinceId","isAgency",
+                [Sequelize.literal(`(SELECT COUNT(*) FROM market_products
+    WHERE market_products.storeId = store.id and market_products.deletedAt IS NULL)`), 'totalProduct'],
+            [Sequelize.literal(`(SELECT SUM(market_products.quantitySold) FROM market_products
+    WHERE market_products.storeId = store.id and market_products.deletedAt IS NULL)`), 'totalQuantitySold']],
                 include: [
                     {
                         model: models.Image,
@@ -640,6 +644,7 @@ module.exports.getDetailProductService = async (result) => {
                 message: `Không tìm thấy sản phẩm có id = ${id} trên chợ`
             }
         }
+
         if(! (await isProductPermission(id, storeId))){
             return{
                 error:true,
