@@ -1021,7 +1021,8 @@ module.exports.updateQuantityProductInCartService = async (result) => {
         return {
             success: true,
             data: {
-                id:parseInt(id)
+                id:parseInt(id),
+                quantity:parseInt(quantity)
             }
         }
     } catch (e) {
