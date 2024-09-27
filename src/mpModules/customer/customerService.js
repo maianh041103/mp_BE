@@ -413,6 +413,20 @@ export async function updateCustomer(id, payload, loginUser) {
             message: "Khách hàng không tồn tại",
         };
     }
+    if(payload.phone && payload.phone !== "") {
+        const phoneExists = await models.Customer.findOne({
+            where: {
+                id: {
+                    [Op.ne]: id
+                },
+                phone: payload.phone,
+                storeId:payload.storeId
+            }
+        });
+        if (phoneExists) {
+            throw new Error("Số điện thoại đã tồn tại");
+        }
+    }
     if(!checkCoordinates(payload.lng) || !checkCoordinates(payload.lat)) {
         return{
             error:true,
