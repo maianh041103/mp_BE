@@ -1625,6 +1625,9 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                         },
                         transaction: t
                     });
+                    if(!inventory){
+                        throw new Error("Chi nhánh không tồn tại sản phẩm bán")
+                    }
                     const customer = await models.Customer.findOne({
                         where:{
                             customerStoreId:marketOrderExists.storeId,

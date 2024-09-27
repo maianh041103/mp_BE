@@ -215,7 +215,7 @@ export async function createStore(payload) {
     provinceId: payload.provinceId || null,
     address1: payload.address || "",
     address2: "",
-    isDefaultBranch: true,
+    isDefaultBranch: false,
     createdBy: payload.createdBy,
     createdAt: new Date(),
     storeId: newStore.id,
