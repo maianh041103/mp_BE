@@ -217,8 +217,8 @@ export async function receiveMove(id, payload, loginUser) {
                 partner: move.fromBranch.name,
                 productId: moveItem.productId,
                 branchId: move.toBranchId,
-                changeQty: totalQuantity,
-                remainQty: await getInventory(move.toBranchId, moveItem.productId) + totalQuantity,
+                changeQty: +totalQuantity,
+                remainQty: parseInt(await getInventory(move.toBranchId, moveItem.productId)) + +totalQuantity,
                 createdAt: new Date(),
                 updatedAt: new Date()
             }, t)
