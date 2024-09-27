@@ -1,5 +1,5 @@
 import { SALES_CONCERN } from "./contant";
-import { groupByField, getFilter } from "./util";
+import {groupByField, getFilter, getFilterStore} from "./util";
 
 const moment = require("moment");
 const { addFilterByDate } = require("../../helpers/utils");
@@ -159,8 +159,14 @@ export async function indexRevenuesReport(params, loginUser) {
   };
 }
 
-async function getReportByTime(from, to, branchId) {
+async function getReportByTime(from, to, branchId, storeId) {
   const groupBy = groupByField('Order.createdAt', from, to);
+  let where;
+  if(branchId){
+    where = getFilter(from,to,branchId);
+  }else{
+    where = getFilterStore(from,to,storeId);
+  }
   const res = await models.Order.findAll({
     attributes: [
       [sequelize.literal(groupBy), 'title'],
@@ -168,7 +174,7 @@ async function getReportByTime(from, to, branchId) {
       [sequelize.literal(`(SELECT COALESCE(SUM(CASE WHEN payments.isReturn = 1 THEN payments.amount ELSE 0 END), 0) FROM payments WHERE payments.orderId = Order.id)`), 'saleReturn'],
       [sequelize.fn('SUM', sequelize.col('totalPrice')), 'realRevenue'],
     ],
-    where: getFilter(from, to, branchId),
+    where,
     group: [sequelize.literal(groupBy)]
   })
   return {
@@ -180,8 +186,14 @@ async function getReportByTime(from, to, branchId) {
   };
 }
 
-async function getReportBySaleReturn(from, to, branchId) {
+async function getReportBySaleReturn(from, to, branchId, storeId) {
   const groupBy = groupByField('SaleReturn.createdAt', from, to);
+  let where;
+  if(branchId){
+    where = getFilter(from,to,branchId);
+  }else{
+    where = getFilterStore(from,to,storeId);
+  }
   const res = await models.SaleReturn.findAll({
     attributes: [
       [sequelize.literal(groupBy), 'title'],
@@ -190,7 +202,7 @@ async function getReportBySaleReturn(from, to, branchId) {
       //[sequelize.literal(`(SELECT COUNT(payments.id) FROM payments WHERE payments.isReturn = 1 AND ${groupByField('payments.createdAt', from, to)} = ${groupByField('Order.createdAt', from, to)})`), 'numberOfReturn'],
       //[sequelize.literal(`(SELECT COALESCE(SUM(CASE WHEN payments.isReturn = 1 THEN payments.amount ELSE 0 END), 0) FROM payments WHERE  ${groupByField('payments.createdAt', from, to)} = ${groupByField('Order.createdAt', from, to)})`), 'saleReturn']
     ],
-    where: getFilter(from, to, branchId),
+    where,
     group: [sequelize.literal(groupBy)]
   })
   return {
@@ -202,8 +214,14 @@ async function getReportBySaleReturn(from, to, branchId) {
   };
 }
 
-async function getReportByRevenue(from, to, branchId) {
+async function getReportByRevenue(from, to, branchId, storeId) {
   const groupBy = groupByField('Order.createdAt', from, to);
+  let where;
+  if(branchId){
+    where = getFilter(from,to,branchId);
+  }else{
+    where = getFilterStore(from,to,storeId);
+  }
   const res = await models.Order.findAll({
     attributes: [
       [sequelize.literal(groupBy), 'title'],
@@ -217,7 +235,7 @@ async function getReportByRevenue(from, to, branchId) {
         attributes: []
       }
     ],
-    where: getFilter(from, to, branchId),
+    where,
     group: sequelize.literal(groupBy)
   })
 
@@ -227,7 +245,7 @@ async function getReportByRevenue(from, to, branchId) {
       [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscount'],
       [sequelize.fn('SUM', sequelize.col('totalPrice')), 'totalRevenue']
     ],
-    where: getFilter(from, to, branchId),
+    where,
     group: sequelize.literal(groupBy)
   });
 
@@ -247,8 +265,14 @@ async function getReportByRevenue(from, to, branchId) {
   };
 }
 
-async function getReportByDiscount(from, to, branchId) {
+async function getReportByDiscount(from, to, branchId, storeId) {
   const groupBy = groupByField('Order.createdAt', from, to);
+  let where;
+  if(branchId){
+    where = getFilter(from,to,branchId);
+  }else{
+    where = getFilterStore(from,to,storeId);
+  }
   const res = await models.Order.findAll({
     attributes: [
       [sequelize.literal(groupBy), 'title'],
@@ -263,7 +287,7 @@ async function getReportByDiscount(from, to, branchId) {
         attributes: []
       }
     ],
-    where: getFilter(from, to, branchId),
+    where,
     group: sequelize.literal(groupBy)
   })
   return {
@@ -275,8 +299,14 @@ async function getReportByDiscount(from, to, branchId) {
   };
 }
 
-async function getReportByEmployee(from, to, branchId) {
+async function getReportByEmployee(from, to, branchId, storeId) {
   const groupBy = 'user.fullName'
+  let where;
+  if(branchId){
+    where = getFilter(from,to,branchId);
+  }else{
+    where = getFilterStore(from,to,storeId);
+  }
   const res = await models.Order.findAll({
     attributes: [
       [sequelize.literal(groupBy), 'title'],
@@ -292,7 +322,7 @@ async function getReportByEmployee(from, to, branchId) {
         attributes: []
       }
     ],
-    where: getFilter(from, to, branchId),
+    where,
     group: sequelize.literal(groupBy)
   })
   return {
@@ -304,7 +334,7 @@ async function getReportByEmployee(from, to, branchId) {
   };
 }
 
-export async function indexSalesReport(params, loginUser) {
+export async function indexSalesReport(params, storeId) {
   const {
     branchId,
     from,
@@ -314,17 +344,17 @@ export async function indexSalesReport(params, loginUser) {
 
   switch (concern) {
     case SALES_CONCERN.TIME:
-      return await getReportByTime(from, to, branchId);
+      return await getReportByTime(from, to, branchId, storeId);
     case SALES_CONCERN.REVENUE:
-      return await getReportByRevenue(from, to, branchId)
+      return await getReportByRevenue(from, to, branchId, storeId)
     case SALES_CONCERN.DISCOUNT:
-      return await getReportByDiscount(from, to, branchId)
+      return await getReportByDiscount(from, to, branchId, storeId)
     case SALES_CONCERN.SALE_RETURN:
-      return await getReportBySaleReturn(from, to, branchId)
+      return await getReportBySaleReturn(from, to, branchId, storeId)
     case SALES_CONCERN.EMPLOYEE:
-      return await getReportByEmployee(from, to, branchId)
+      return await getReportByEmployee(from, to, branchId, storeId)
     default:
-      return await getReportByTime(from, to, branchId);
+      return await getReportByTime(from, to, branchId, storeId);
   }
 }
 

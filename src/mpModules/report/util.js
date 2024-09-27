@@ -32,3 +32,15 @@ export function getFilter(from, to, branchId) {
         branchId: branchId
     }
 }
+
+export function getFilterStore(from, to, storeId) {
+    return {
+        createdAt: {
+            [Op.and]: {
+                [Op.gte]: moment(from).startOf("day"),
+                [Op.lte]: moment(to).endOf("day")
+            }
+        },
+        storeId: storeId
+    }
+}
