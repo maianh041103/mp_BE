@@ -40,6 +40,7 @@ const userIncludes = [
       "wardId",
       "address",
       "createdAt",
+        "isAgency"
     ],
     include: [
       {
@@ -403,8 +404,7 @@ export async function readUserProfile(userId) {
       "phone",
       "roleId",
       "storeId",
-      "position",
-        "isAgency"
+      "position"
     ],
     include: userIncludes,
   });
