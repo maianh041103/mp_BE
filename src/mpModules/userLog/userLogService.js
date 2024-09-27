@@ -10,11 +10,22 @@ const userLogInclude = [
     }
 ]
 module.exports.getAll = async (params) => {
-    const { branchId, limit = 10, page = 1 } = params;
+    const { branchId, limit = 10, page = 1, storeId } = params;
+    let where = {};
+    if(branchId){
+        where.branchId = branchId;
+    }
+    if(storeId){
+        userLogInclude.push({
+            model:models.Branch,
+            as:"branch",
+            where:{
+                storeId
+            }
+        });
+    }
     const { rows, count } = await models.UserLog.findAndCountAll({
-        where: {
-            branchId
-        },
+        where,
         include: userLogInclude,
         limit: parseInt(limit),
         offset: (parseInt(page) - 1) * parseInt(limit),

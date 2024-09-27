@@ -38,7 +38,7 @@ export async function getRevenuesReport(req, res) {
 export async function getSalesReport(req, res) {
   try {
     const { loginUser = {} } = req;
-    const result = await indexSalesReport(req.query, loginUser);
+    const result = await indexSalesReport(req.query, loginUser.storeId);
     if (result.success) res.json(respondItemSuccess(result.data));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {

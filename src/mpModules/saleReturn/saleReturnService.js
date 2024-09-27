@@ -31,17 +31,17 @@ const transactionService = require("../transaction/transactionService");
 export async function indexList(params, loginUser) {
   const filter = getFilter(params, loginUser)
   const { limit, page } = params
-  const [items, totalItem] = await Promise.all([
-    models.SaleReturn.findAll({
+  const items = await models.SaleReturn.findAll({
       attributes: saleReturnAttributes,
       include: saleReturnIncludes,
       ...filter,
       offset: +limit * (+page - 1),
       limit: +limit,
       order: [['id', 'desc']]
-    }),
-    models.SaleReturn.count(filter)
-  ])
+  });
+
+  delete filter.include;
+  const totalItem = await models.SaleReturn.count(filter);
 
   return {
     success: true,
