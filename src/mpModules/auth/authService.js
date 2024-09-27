@@ -404,6 +404,7 @@ export async function readUserProfile(userId) {
       "roleId",
       "storeId",
       "position",
+        "isAgency"
     ],
     include: userIncludes,
   });

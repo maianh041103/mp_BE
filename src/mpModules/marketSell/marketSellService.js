@@ -906,7 +906,8 @@ module.exports.getProductInCartService = async (result) => {
                         where: {
                             agencyId: storeId,
                             status: marketConfigContant.AGENCY_STATUS.ACTIVE
-                        }
+                        },
+                        required:false
                     }]
                 }, {
                     model: models.Image,
