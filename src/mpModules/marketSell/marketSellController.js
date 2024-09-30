@@ -89,7 +89,7 @@ module.exports.deleteAddress = async (req,res)=>{
         const result = await marketSellService.deleteAddressService(
             {
                 storeId: loginUser.storeId,
-                id
+                id, toStoreId: req.query.toStoreId
             }
         );
         if (result.success) res.json(respondItemSuccess(result.data));
