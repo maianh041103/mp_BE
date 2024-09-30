@@ -298,14 +298,9 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser,branc
 
 module.exports.createAddressService = async (result) => {
     try {
-        let {phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress, loginUser, fullName} = result;
+        let {phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress, loginUser, fullName, toStoreId} = result;
         let newAddress;
         const t = await models.sequelize.transaction(async (t) => {
-            const store = await models.Store.findOne({
-                where: {
-                    id: storeId
-                }
-            });
             if (!phone) {
                 throw new Error(`Vui lòng nhập số điện thoại giao hàng`);
             }
@@ -326,6 +321,17 @@ module.exports.createAddressService = async (result) => {
             });
             if(!wardExists){
                 throw new Error(`Xã không hợp lệ`)
+            }
+            if(toStoreId){
+                const storeExists = await models.Store.findOne({
+                    where:{
+                        id:toStoreId
+                    }
+                });
+                if(!storeExists){
+                    throw new Error(`Không tồn tại cửa hàng có id = ${toStoreId}`);
+                }
+                storeId = toStoreId;
             }
             newAddress = await models.Address.create({
                 phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress,
@@ -365,10 +371,15 @@ module.exports.createAddressService = async (result) => {
 
 module.exports.getAllAddressService = async (result) => {
     try {
-        const {isDefaultAddress, limit = 20, page = 1,loginUser, storeId} = result;
+        const {isDefaultAddress, limit = 20, page = 1,loginUser, storeId, toStoreId} = result;
         let where = {
             storeId
         };
+        if(toStoreId){
+            where = {
+                storeId: toStoreId
+            }
+        }
         if (isDefaultAddress) {
             where.isDefaultAddress = isDefaultAddress;
         }
@@ -423,7 +434,10 @@ module.exports.getAllAddressService = async (result) => {
 
 module.exports.getDetailAddressService = async (result) => {
     try {
-        const {id, storeId} = result;
+        let {id, storeId, toStoreId} = result;
+        if(toStoreId){
+            storeId = toStoreId;
+        }
         const addressExists = await models.Address.findOne({
             where: {
                 id, storeId
@@ -454,7 +468,18 @@ module.exports.getDetailAddressService = async (result) => {
 
 module.exports.updateAddressService = async (result) => {
     try {
-        let {id, storeId, phone, wardId, districtId, provinceId, address, isDefaultAddress, loginUser, fullName} = result;
+        let {id, storeId, phone, wardId, districtId, provinceId, address, isDefaultAddress, loginUser, fullName, toStoreId} = result;
+        if(toStoreId){
+            const storeExists = await models.Store.findOne({
+                where:{
+                    id:toStoreId
+                }
+            });
+            if(!storeExists){
+                throw new Error(`Không tồn tại cửa hàng có id = ${toStoreId}`);
+            }
+            storeId = toStoreId;
+        }
         const addressExists = await models.Address.findOne({
             where: {
                 id, storeId
@@ -531,7 +556,18 @@ module.exports.updateAddressService = async (result) => {
 
 module.exports.deleteAddressService = async (result) => {
     try {
-        const {id, storeId} = result;
+        let {id, storeId, toStoreId} = result;
+        if(toStoreId){
+            const storeExists = await models.Store.findOne({
+                where:{
+                    id:toStoreId
+                }
+            });
+            if(!storeExists){
+                throw new Error(`Không tồn tại cửa hàng có id = ${toStoreId}`);
+            }
+            storeId = toStoreId;
+        }
         const addressExists = await models.Address.findOne({
             where: {
                 id, storeId
@@ -1173,7 +1209,7 @@ module.exports.createMarketOrderService = async (result) => {
                     status: marketSellContant.STATUS_ORDER.PENDING,
                     phone: addressExists.phone,
                     toStoreId,
-                    fullName: customer.fullName,
+                    fullName: addressExists.fullName,
                     deliveryFee: 50000,
                     note
                 }, {
