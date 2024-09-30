@@ -20,6 +20,7 @@ const attributes = [
   "address1",
   "address2",
   "isDefaultBranch",
+    "isGeneral",
   "status",
   "createdAt"
 ];

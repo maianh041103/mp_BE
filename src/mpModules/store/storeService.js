@@ -219,6 +219,7 @@ export async function createStore(payload) {
     createdBy: payload.createdBy,
     createdAt: new Date(),
     storeId: newStore.id,
+    isGeneral:true
   };
   const newBranchGeneral = await models.Branch.create(createBranchGeneral);
 
