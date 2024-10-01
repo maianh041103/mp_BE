@@ -205,24 +205,6 @@ export async function createStore(payload) {
   await createDefaultCustomer(newStore.id)
   const newBranch = await models.Branch.create(createBranchInput);
 
-  const createBranchGeneral = {
-    name: "Chi nhánh tổng quát",
-    phone: payload.phone,
-    code: "",
-    zipCode: "",
-    wardId: payload.wardId || null,
-    districtId: payload.districtId || null,
-    provinceId: payload.provinceId || null,
-    address1: payload.address || "",
-    address2: "",
-    isDefaultBranch: false,
-    createdBy: payload.createdBy,
-    createdAt: new Date(),
-    storeId: newStore.id,
-    isGeneral:true
-  };
-  const newBranchGeneral = await models.Branch.create(createBranchGeneral);
-
   const logObject = {
     accountId: newStore.createdBy,
     type: accountTypes.USER,
@@ -240,12 +222,6 @@ export async function createStore(payload) {
       objectId: newBranch.id,
       action: logActions.branch_create.value,
       data: createBranchInput,
-    },
-    {
-      ...logObject,
-      objectId: newBranchGeneral.id,
-      action: logActions.branch_create.value,
-      data: newBranchGeneral,
     },
   ].forEach((obj) => createUserTracking(obj));
 
