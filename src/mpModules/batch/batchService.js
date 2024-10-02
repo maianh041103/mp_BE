@@ -206,13 +206,16 @@ export async function updateBatch(id, batch, loginUser) {
 }
 
 export async function findAllBatchByProductId(productId, branchId) {
+  let where = {
+    productId: productId,
+    quantity: { [Op.gt]: 0 }
+  }
+  if(branchId){
+    where.branchId = branchId;
+  }
   return await models.Batch.findAll({
     attributes: ["id", "name", "expiryDate", "quantity"],
-    where: {
-      productId: productId,
-      branchId: branchId,
-      quantity: { [Op.gt]: 0 }
-    },
+    where,
     order: [["expiryDate", "ASC"]]
   });
 }
