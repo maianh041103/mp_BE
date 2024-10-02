@@ -54,7 +54,7 @@ export async function getInventory(branchId, productId) {
     let quantity = 0;
     if(inv && inv.length > 0){
         quantity = inv.reduce((calc,item)=>{
-           return calc + item.quantity;
+           return +calc + +item.quantity;
         },0)
     }
     return quantity;
