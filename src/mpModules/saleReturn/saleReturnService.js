@@ -149,7 +149,7 @@ export async function indexCreate(saleReturn, loginUser) {
         discount: discount,
         itemPrice: itemPrice,
         totalPrice: totalPrice,
-        debt: totalPrice - paid,
+        debt: totalPrice - paid >= 0 ? totalPrice - paid : 0,
         paid: paid,
         status: SaleReturnStatus.SUCCEED,
         createdBy: loginUser.id
