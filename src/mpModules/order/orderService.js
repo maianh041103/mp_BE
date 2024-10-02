@@ -406,11 +406,28 @@ export async function indexOrders(params, loginUser) {
   }
 }
 
-export async function readOrder(id) {
+export async function readOrder(result) {
+  const {id,saleReturn} = result;
   const order = await models.Order.findByPk(id, {
     include: orderIncludes,
     attributes: orderAttributes
-  })
+  });
+
+  let orderProductWhere = {
+    orderId: id,
+    comboId: {
+      [Op.eq]: null
+    }
+  }
+
+  if(saleReturn){
+    orderProductWhere[Op.or] = [
+        { quantity: {
+                [Op.ne]: Sequelize.col('quantityLast')
+              }},
+        { quantityLast: null }
+      ]
+  }
 
   const products = await models.OrderProduct.findAll({
     attributes: [
@@ -420,15 +437,11 @@ export async function readOrder(id) {
       'customerId',
       'price',
       'itemPrice',
-      'point'
+      'point',
+      'quantityLast'
     ],
     include: orderProductIncludes,
-    where: {
-      orderId: id,
-      comboId: {
-        [Op.eq]: null
-      }
-    }
+    where: orderProductWhere
   })
 
   let totalPrice = 0
@@ -1193,7 +1206,7 @@ async function handleCreateOrder(order, loginUser) {
     }
   })
 
-  const { data: refreshOrder } = await readOrder(newOrder.id)
+  const { data: refreshOrder } = await readOrder({id:newOrder.id})
 
   return {
     success: true,

@@ -1,5 +1,5 @@
 import { getCustomer } from "../customer/customerService";
-import { getOrder, readOrder } from "./orderService";
+import { getOrder } from "./orderService";
 const transactionContant = require("../transaction/transactionContant");
 const transactionService = require("../transaction/transactionService");
 
