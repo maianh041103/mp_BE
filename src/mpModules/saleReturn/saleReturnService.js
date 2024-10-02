@@ -342,15 +342,16 @@ export async function indexCreate(saleReturn, loginUser) {
         { transaction: t }
       )
 
-      await models.CustomerDebt.create({
-        totalAmount: item.quantity * item.price,
-        customerId: saleReturn.customerId,
-        orderId:saleReturn.orderId,
-        debtAmount: -(item.quantity * item.price - saleReturn.paid),
-        type: "ORDER"
-      },{
-        transaction:t
-      })
+      if(item.quantity * item.price - saleReturn.paid !== 0){
+        await models.CustomerDebt.decrement({
+          debtAmount: item.quantity * item.price - saleReturn.paid
+        },{
+          where:{
+            orderId:saleReturn.orderId,
+          },
+          transaction:t
+        })
+      }
 
       if (findProduct.isBatchExpireControl) {
         for (const _batch of item.batches) {
