@@ -233,22 +233,6 @@ export async function indexCreate(saleReturn, loginUser) {
             transaction: t
           }
         )
-
-        if (
-          orderProduct.quantity ===
-          orderProduct.quantityLast + item.quantity
-        ) {
-          let id = saleReturn.orderId
-          console.log(id)
-          await models.Order.update(
-            {
-              canReturn: false
-            },
-            { where: { id: saleReturn.orderId },
-              transaction: t
-            }
-          )
-        }
       }
 
       if (!findProduct) {
@@ -381,6 +365,30 @@ export async function indexCreate(saleReturn, loginUser) {
           )
         }
       }
+    }
+
+    //Check cap nhat canReturn
+    const products = await models.OrderProduct.findAll({
+      where:{
+        orderId: saleReturn.orderId
+      }
+    });
+    let checkCanReturn = true;
+    for(const item of products) {
+      if(item.quantity !== item.quantityLast){
+        checkCanReturn = false;
+      }
+    }
+    if (checkCanReturn) {
+      await models.Order.update(
+          {
+            canReturn: false
+          },
+          {
+            where: { id: saleReturn.orderId },
+            transaction: t
+          }
+      )
     }
 
     //Trừ điểm tích lũy

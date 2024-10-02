@@ -81,7 +81,8 @@ export async function createPaymentController(req, res) {
 export async function readController(req, res) {
   try {
     const { id } = req.params;
-    const result = await readOrder(id);
+    const {saleReturn} = req.query;
+    const result = await readOrder({id,saleReturn});
     if (result.success) res.json(respondItemSuccess(_.get(result, "data", {})));
     else res.json(respondWithError(result.code, result.message, {}));
   } catch (error) {
