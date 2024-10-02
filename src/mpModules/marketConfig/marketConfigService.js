@@ -5,6 +5,7 @@ const {HttpStatusCode} = require("../../helpers/errorCodes");
 const marketConfigContant = require("./marketConfigContant");
 const utils = require("../../helpers/utils");
 const {getImages} = require("../../helpers/getImages");
+const {countStore} = require("../store/storeService");
 
 const marketProductInclude = [
     {
@@ -239,6 +240,8 @@ module.exports.getAllProductService = async (result) => {
         type, createdAt, storeId, limit = 20, page = 1,
         isConfig, productType, loginUser, otherStoreId} = result;
     let {sortBy} = result;
+    let stores ;
+    let countStore;
     let marketProductIncludeTmp = [
         {
             model: models.Product,
@@ -298,6 +301,9 @@ module.exports.getAllProductService = async (result) => {
     if (type) {
         where.marketType = type;
     }
+    if(!sortBy){
+        sortBy = "createdAt";
+    }
     let includeCount = [];
     if (groupAgencyId || agencyId) {
         where.marketType = marketConfigContant.MARKET_TYPE.PRIVATE;
@@ -326,6 +332,20 @@ module.exports.getAllProductService = async (result) => {
                     [Op.like]:`%${keyword.trim()}%`
                 }
             }
+            const storeWhere = {
+                name:{
+                    [Op.like]:`%${keyword}%`
+                }
+            }
+            stores = await models.Store.findAll({
+                where: storeWhere,
+                order: [[sortBy, "DESC"]],
+                limit:parseInt(limit),
+                offset:(parseInt(page) - 1)*parseInt(limit)
+            });
+            countStore = await models.Store.count({
+                where:storeWhere
+            })
         }
         if(productType){
             marketProductIncludeTmp[index].where = {
@@ -336,10 +356,6 @@ module.exports.getAllProductService = async (result) => {
     }
     if (createdAt) {
         where.createdAt = utils.addFilterByDate([createdAt.start, createdAt.end]);
-    }
-
-    if(!sortBy){
-        sortBy = "createdAt";
     }
 
     let rows = await models.MarketProduct.findAll({
@@ -362,7 +378,9 @@ module.exports.getAllProductService = async (result) => {
         success: true,
         data: {
             items: rows,
-            totalItem: count
+            totalItem: count,
+            stores,
+            totalItemStore:countStore
         }
     }
 }
