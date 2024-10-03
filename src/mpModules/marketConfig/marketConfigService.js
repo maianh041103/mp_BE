@@ -339,7 +339,7 @@ module.exports.getAllProductService = async (result) => {
             }
             stores = await models.Store.findAll({
                 where: storeWhere,
-                order: [[sortBy, "DESC"]],
+                order: [["createdAt", "DESC"]],
                 limit:parseInt(limit),
                 offset:(parseInt(page) - 1)*parseInt(limit)
             });
