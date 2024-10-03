@@ -701,17 +701,31 @@ module.exports.getDetailProductService = async (result) => {
             marketProduct.dataValues.discountPrice = marketProduct.dataValues.agencys[index].discountPrice;
         }
 
+        let where = {
+            storeId: {
+                [Op.eq]: marketProduct.storeId
+            },
+            id:{
+                [Op.ne]:marketProduct.id
+            },
+            status: marketConfigContant.PRODUCT_MARKET_STATUS.ACTIVE
+        };
+
+        //Check co phai la agency
+        const isAgency = await models.RequestAgency.findOne({
+            where:{
+                storeId:marketProduct.storeId,
+                agencyId:storeId,
+                status:marketConfigContant.AGENCY_STATUS.ACTIVE
+            }
+        });
+        if(!isAgency){
+            where.marketType = marketConfigContant.MARKET_TYPE.COMMON;
+        }
+
         //Tìm sản phẩm liên quan
         const listProduct = await models.MarketProduct.findAll({
-            where: {
-                storeId: {
-                    [Op.eq]: marketProduct.storeId
-                },
-                id:{
-                    [Op.ne]:marketProduct.id
-                },
-                status: marketConfigContant.PRODUCT_MARKET_STATUS.ACTIVE
-            },
+            where,
             include: marketProductDetailInclude,
         });
         marketProduct.dataValues.productWillCare = listProduct;
@@ -921,6 +935,7 @@ module.exports.getProductInCartService = async (result) => {
         let where = {
             storeId
         };
+
         let include =  [{
             model: models.MarketProduct,
             as: "marketProduct",
@@ -942,7 +957,7 @@ module.exports.getProductInCartService = async (result) => {
                         as: "agencys",
                         where: {
                             agencyId: storeId,
-                            status: marketConfigContant.AGENCY_STATUS.ACTIVE
+                            status: marketConfigContant.AGENCY_STATUS.ACTIVE,
                         },
                         required:false
                     }]
@@ -966,6 +981,11 @@ module.exports.getProductInCartService = async (result) => {
         });
         let listProductGroupByStore = [];
         for (let item of listProductInCart) {
+            if(
+                item.marketProduct.marketType === marketConfigContant.MARKET_TYPE.PRIVATE
+            && item.marketProduct.agencys.length === 0) {
+                continue;
+            }
             //Cập nhật giá cho đại lý
             item.dataValues.price = item.dataValues.marketProduct.dataValues.price;
             item.dataValues.discountPrice = item.dataValues.marketProduct.dataValues.discountPrice;
