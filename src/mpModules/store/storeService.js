@@ -188,7 +188,7 @@ export async function createStore(payload) {
   const newStore = await models.Store.create(payload);
   await insertNewCode(newStore.id);
   const createBranchInput = {
-    name: "Chi nhánh mặc định",
+    name: payload.name,
     phone: payload.phone,
     code: "",
     zipCode: "",
