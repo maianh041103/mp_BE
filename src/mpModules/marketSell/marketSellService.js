@@ -1816,7 +1816,8 @@ module.exports.updateOrderService = async (result) => {
                 phone: addressExists.phone,
                 wardId: addressExists.wardId,
                 districtId: addressExists.districtId,
-                provinceId: addressExists.provinceId
+                provinceId: addressExists.provinceId,
+                fullName: addressExists.fullName,
             }, {
                 where: {
                     id
