@@ -8,6 +8,7 @@ const { Op } = Sequelize;
 const models = require("../../../database/models");
 const { accountTypes, logActions, ACTIVE } = require("../../helpers/choices");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
+const storeService = require("../marketSell/marketSellService");
 const attributes = [
   "id",
   "name",
@@ -202,7 +203,17 @@ export async function createStore(payload) {
     createdAt: new Date(),
     storeId: newStore.id,
   };
-  await createDefaultCustomer(newStore.id)
+  await createDefaultCustomer(newStore.id);
+  await storeService.createAddressService({
+    phone: payload.phone,
+    wardId: payload.wardId || null,
+    districtId: payload.districtId || null,
+    provinceId: payload.provinceId || null,
+    address: payload.address || "",
+    storeId: newStore.id,
+    isDefaultAddress: true,
+    fullName: payload.name
+  });
   const newBranch = await models.Branch.create(createBranchInput);
 
   const logObject = {

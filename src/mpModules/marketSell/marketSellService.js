@@ -386,7 +386,7 @@ module.exports.getAllAddressService = async (result) => {
         let listAddress = await models.Address.findAll({
             where,
             include: marketAddressInclude,
-            order: [["createdAt", "DESC"]],
+            order: [["isDefaultAddress","DESC"],["createdAt", "DESC"]],
             limit: parseInt(limit),
             offset: (parseInt(limit) * (parseInt(page) - 1))
         });
@@ -395,27 +395,6 @@ module.exports.getAllAddressService = async (result) => {
             attributes: ["id"]
         });
 
-        const storeExists = await models.Store.findOne({
-            where:{
-                id:storeId
-            }
-        });
-
-        if(!listAddress || listAddress.length === 0){
-            let addressDefault = await models.Address.create({
-                fullName: storeExists.name,
-                phone: storeExists.phone,
-                wardId: storeExists.wardId,
-                districtId: storeExists.districtId,
-                provinceId: storeExists.provinceId,
-                address:storeExists.address,
-                isDefaultAddress:true,
-                storeId:storeExists.id,
-                createdAt:new Date()
-            });
-            listAddress = [addressDefault];
-            count = 1;
-        }
         return {
             success: true,
             data: {
