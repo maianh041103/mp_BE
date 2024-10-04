@@ -87,6 +87,10 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull:true,
                 type:DataTypes.INTEGER(10).UNSIGNED
             },
+            customerId:{
+                allowNull:true,
+                type:DataTypes.INTEGER(10).UNSIGNED
+            },
             createdAt: {
                 allowNull: true,
                 type: DataTypes.DATE,
@@ -148,6 +152,11 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey:"provinceId",
             targetKey:"id"
         });
+        MarketOrder.belongsTo(models.Customer,{
+            as:"customer",
+            foreignKey:"customerId",
+            targetKey:"id"
+        })
     };
     return MarketOrder;
 };
