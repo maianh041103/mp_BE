@@ -919,29 +919,29 @@ module.exports.mapRouting = async (params) => {
     }
 }
 
-module.exports.changeCurrent = async (params) => {
-    const { id, lng, lat } = params;
-    const key = `map_${id}`;
-    await client.set(key, JSON.stringify({ id, lng, lat }));
-    await client.expire(key, config.redis.timeToLive);
-    const value = await client.get(key);
-    return {
-        success: true,
-        data: JSON.parse(value)
-    }
-}
-
-module.exports.updateDb = async (req, res) => {
-    const keys = await client.keys('map*');
-    for (const key of keys) {
-        const value = JSON.parse(await client.get(key));
-        await models.Trip.update({
-            latCurrent: value.lat,
-            lngCurrent: value.lng
-        }, {
-            where: {
-                id: value.id
-            }
-        });
-    }
-}
+// module.exports.changeCurrent = async (params) => {
+//     const { id, lng, lat } = params;
+//     const key = `map_${id}`;
+//     await client.set(key, JSON.stringify({ id, lng, lat }));
+//     await client.expire(key, config.redis.timeToLive);
+//     const value = await client.get(key);
+//     return {
+//         success: true,
+//         data: JSON.parse(value)
+//     }
+// }
+//
+// module.exports.updateDb = async (req, res) => {
+//     const keys = await client.keys('map*');
+//     for (const key of keys) {
+//         const value = JSON.parse(await client.get(key));
+//         await models.Trip.update({
+//             latCurrent: value.lat,
+//             lngCurrent: value.lng
+//         }, {
+//             where: {
+//                 id: value.id
+//             }
+//         });
+//     }
+// }

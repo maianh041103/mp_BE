@@ -113,10 +113,14 @@ const marketOrderInclude = [
         as:"province",
         attributes: ["name", "name2"]
     },
+    {
+        model:models.Customer,
+        as:"customer"
+    }
 ];
 const marketOrderAttributes = [
-    "id","code","fullName","storeId","toStoreId","toBranchId","addressId","address",
-    "phone","status","note","wardId","districtId","provinceId","isPayment","createdAt","deliveryFee",
+    "id","code","fullName","storeId","toStoreId","toBranchId","addressId","address", "phone","status",
+    "note","wardId","districtId","provinceId","isPayment","createdAt","deliveryFee","customerId",
     [Sequelize.literal(`(SELECT SUM(market_order_products.quantity * market_order_products.price)
     FROM market_order_products
     WHERE MarketOrder.id = market_order_products.marketOrderId )`), 'totalPrice'],
@@ -164,12 +168,18 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser,branc
     if(!marketOrderExists){
         throw new Error(`Không tìm thấy đơn hàng có id = ${marketOrderId} của cửa hàng id = ${storeId}`)
     }
-    let customer = await models.Customer.findOne({
-        where:{
+    let whereCustomer = {};
+    if(marketOrderExists.customerId !== null){
+        whereCustomer.id = marketOrderExists.customerId;
+    }else{
+        whereCustomer = {
             customerStoreId:marketOrderExists.storeId,
             type:customerContant.customerType.Agency,
             storeId
         }
+    }
+    let customer = await models.Customer.findOne({
+        where:whereCustomer
     });
 
     await models.MarketOrder.update({
@@ -298,7 +308,7 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser,branc
 
 module.exports.createAddressService = async (result) => {
     try {
-        let {phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress, loginUser, fullName, toStoreId} = result;
+        let {phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress, loginUser, fullName, toStoreId, customerId} = result;
         let newAddress;
         const t = await models.sequelize.transaction(async (t) => {
             if (!phone) {
@@ -335,21 +345,29 @@ module.exports.createAddressService = async (result) => {
             }
             newAddress = await models.Address.create({
                 phone, wardId, districtId, provinceId, address, storeId, isDefaultAddress,
-                fullName
+                fullName, customerId
             }, {
                 transaction: t
             });
             if (isDefaultAddress) {
+                let where = {
+                    isDefaultAddress: true,
+                    id: {
+                        [Op.ne]: newAddress.id
+                    },
+                    storeId,
+                }
+                if(customerId){
+                    where.customerId = customerId;
+                }else{
+                    where.customerId = {
+                        [Op.eq]:null
+                    }
+                }
                 await models.Address.update({
                     isDefaultAddress: false
                 }, {
-                    where: {
-                        isDefaultAddress: true,
-                        id: {
-                            [Op.ne]: newAddress.id
-                        },
-                        storeId
-                    },
+                    where,
                     transaction: t
                 });
             }
@@ -371,7 +389,7 @@ module.exports.createAddressService = async (result) => {
 
 module.exports.getAllAddressService = async (result) => {
     try {
-        const {isDefaultAddress, limit = 20, page = 1,loginUser, storeId, toStoreId} = result;
+        const {isDefaultAddress, limit = 20, page = 1,loginUser, storeId, toStoreId, customerId} = result;
         let where = {
             storeId
         };
@@ -382,6 +400,9 @@ module.exports.getAllAddressService = async (result) => {
         }
         if (isDefaultAddress) {
             where.isDefaultAddress = isDefaultAddress;
+        }
+        if(customerId){
+            where.customerId = customerId;
         }
         let listAddress = await models.Address.findAll({
             where,
@@ -447,7 +468,7 @@ module.exports.getDetailAddressService = async (result) => {
 
 module.exports.updateAddressService = async (result) => {
     try {
-        let {id, storeId, phone, wardId, districtId, provinceId, address, isDefaultAddress, loginUser, fullName, toStoreId} = result;
+        let {id, storeId, phone, wardId, districtId, provinceId, address, isDefaultAddress, loginUser, fullName, toStoreId, customerId} = result;
         if(toStoreId){
             const storeExists = await models.Store.findOne({
                 where:{
@@ -507,15 +528,23 @@ module.exports.updateAddressService = async (result) => {
                 transaction:t
             });
             if (isDefaultAddress) {
+                let where = {
+                    id: {
+                        [Op.ne]: id
+                    },
+                    storeId
+                }
+                if(addressExists.customerId){
+                    where.customerId = customerId;
+                }else{
+                    where.customerId = {
+                        [Op.ne]:null
+                    }
+                }
                 await models.Address.update({
                     isDefaultAddress: false
                 }, {
-                    where: {
-                        id: {
-                            [Op.ne]: id
-                        },
-                        storeId
-                    },
+                    where,
                     transaction:t
                 })
             }
@@ -1147,13 +1176,23 @@ module.exports.deleteProductInCartService = async (result) => {
 
 module.exports.createMarketOrderService = async (result) => {
     try {
-        const {orders, storeId} = result;
+        let {orders, storeId} = result;
         const listNewMarketOrderBuy = [];
         const t = await models.sequelize.transaction(async (t) => {
             for (const order of orders) {
-                const {addressId, listProduct, toStoreId, note} = order;
+                let {addressId, listProduct, toStoreId, note, customerId} = order;
                 if (!addressId) {
                     throw new Error(`Vui lòng gửi thông tin địa chỉ giao hàng`);
+                }
+                if(customerId){
+                    const customer = await models.Customer.findOne({
+                        where:{
+                            id:customerId
+                        }
+                    });
+                    let tmp = storeId;
+                    storeId = customer.storeId;
+                    toStoreId = tmp;
                 }
                 const addressExists = await models.Address.findOne({
                     where: {
@@ -1177,12 +1216,17 @@ module.exports.createMarketOrderService = async (result) => {
                     throw new Error("Không tồn tại cửa hàng bán");
                 }
 
+                let customerWhere = {
+                    storeId: storeSell?.id
+                };
+                if(customerId){
+                    customerWhere.id = customerId;
+                }else{
+                    customerWhere.type = customerContant.customerType.Agency;
+                    customerWhere.customerStoreId = storeId;
+                }
                 let customer = await models.Customer.findOne({
-                    where: {
-                        customerStoreId: storeId,
-                        type: customerContant.customerType.Agency,
-                        storeId: storeSell?.id
-                    }
+                    where: customerWhere
                 });
 
                 const storeExists = await models.Store.findOne({
@@ -1210,7 +1254,8 @@ module.exports.createMarketOrderService = async (result) => {
                     toStoreId,
                     fullName: addressExists.fullName,
                     deliveryFee: 50000,
-                    note
+                    note,
+                    customerId
                 }, {
                     transaction: t
                 });
@@ -1235,13 +1280,15 @@ module.exports.createMarketOrderService = async (result) => {
                         transaction: t
                     });
 
-                    await models.Cart.destroy({
-                        where: {
-                            marketProductId: item.marketProductId,
-                            storeId
-                        },
-                        transaction: t
-                    });
+                    if(!customerId) {
+                        await models.Cart.destroy({
+                            where: {
+                                marketProductId: item.marketProductId,
+                                storeId
+                            },
+                            transaction: t
+                        });
+                    }
                 }
 
                 const code = generateCode("MK", newMarketOrderBuy.id);
@@ -1664,13 +1711,21 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                     if(!inventory){
                         throw new Error("Chi nhánh không tồn tại sản phẩm bán")
                     }
-                    const customer = await models.Customer.findOne({
-                        where:{
+
+                    let whereCustomer = {};
+                    if(marketOrderExists.customerId !== null){
+                        whereCustomer.id = marketOrderExists.customerId;
+                    }else{
+                        whereCustomer = {
                             customerStoreId:marketOrderExists.storeId,
-                            storeId:loginUser.storeId,
-                            type:customerContant.customerType.Agency
+                            type:customerContant.customerType.Agency,
+                            storeId
                         }
+                    }
+                    let customer = await models.Customer.findOne({
+                        where:whereCustomer
                     });
+
                     await models.WarehouseCard.create({
                             code: marketOrderExists.code,
                             type: warehouseStatus.SALE_MARKET,

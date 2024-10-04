@@ -43,6 +43,10 @@ module.exports = (sequelize, DataTypes) => {
                 type: Sequelize.BOOLEAN,
                 defaultValue: false,
             },
+            customerId:{
+                allowNull: true,
+                type: Sequelize.INTEGER
+            },
             createdAt: {
                 allowNull: true,
                 type: DataTypes.DATE,
