@@ -371,7 +371,8 @@ export async function indexCreate(saleReturn, loginUser) {
     const products = await models.OrderProduct.findAll({
       where:{
         orderId: saleReturn.orderId
-      }
+      },
+      transaction: t
     });
     let checkCanReturn = true;
     for(const item of products) {
@@ -379,7 +380,7 @@ export async function indexCreate(saleReturn, loginUser) {
         checkCanReturn = false;
       }
     }
-    if (checkCanReturn) {
+    if (checkCanReturn === true) {
       await models.Order.update(
           {
             canReturn: false
