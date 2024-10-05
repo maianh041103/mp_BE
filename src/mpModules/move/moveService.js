@@ -172,7 +172,7 @@ export async function getDetail(id) {
 export async function getMoveItem(id) {
     const moveItem = await models.MoveItem.findByPk(id,
         {
-            attributes: ['id', 'quantity', 'productId'],
+            attributes: ['id', 'quantity', 'productId','toQuantity'],
             include: [
                 {
                     model: models.ProductUnit,
@@ -196,21 +196,17 @@ export async function receiveMove(id, payload, loginUser) {
         raiseBadRequestError("Đã nhận được hàng")
     }
     await models.sequelize.transaction(async (t) => {
-        await models.Move.update({
-            receivedBy: receivedBy,
-            receivedAt: new Date(),
-            receiveNote: note,
-            status: moveStatus.RECEIVED
-        }, {
-            where: { id: id }, transaction: t
-        })
+        let checkReceived = true;
         for (const item of items) {
-            const moveItem = await getMoveItem(item.id)
+            const moveItem = await getMoveItem(item.id);
+            if(item.totalQuantity + moveItem.toQuantity !== moveItem.quantity){
+                checkReceived = false;
+            }
             await models.MoveItem.update({
-                toQuantity: item.totalQuantity
-            }, { where: { id: moveItem.id }, transaction: t })
-            const exchangeValue = moveItem.productUnit.exchangeValue
-            const totalQuantity = moveItem.quantity * exchangeValue
+                toQuantity: item.totalQuantity + (moveItem.toQuantity || 0)
+            }, { where: { id: moveItem.id }, transaction: t });
+            const exchangeValue = moveItem.productUnit.exchangeValue;
+            const totalQuantity = item.totalQuantity * exchangeValue
             await createWarehouseCard({
                 code: move.code,
                 type: warehouseStatus.MOVE_RECEIVE,
@@ -241,6 +237,17 @@ export async function receiveMove(id, payload, loginUser) {
                     await addBatchQty(batchReq.id, batchReq.quantity * exchangeValue, t)
                 }
             }
+        }
+
+        if(checkReceived === true){
+            await models.Move.update({
+                receivedBy: receivedBy,
+                receivedAt: new Date(),
+                receiveNote: note,
+                status: moveStatus.RECEIVED
+            }, {
+                where: { id: id }, transaction: t
+            });
         }
         const amount = (await models.Move.findOne({
             where: {
