@@ -853,18 +853,49 @@ module.exports.getListAgencyService = async (query) => {
                     attributes: ["id", "fullName"],
                 },
                 {
-                    model:models.Store,
-                    as:"store"
+                    model: models.Store,
+                    as: "store"
                 }
             ],
         },
         {
-            model:models.Store,
-            as:"store"
+            model: models.Store,
+            as: "store"
         },
         {
-            model:models.Store,
-            as:"agency"
+            model: models.Store,
+            as: "agency",
+            include: [
+                {
+                    model: models.Image,
+                    as: "businessRegistrationImage"
+                },
+                {
+                    model: models.Province,
+                    as: "province",
+                    attributes: ["id", "name"],
+                },
+                {
+                    model: models.District,
+                    as: "district",
+                    attributes: ["id", "name"],
+                },
+                {
+                    model: models.Ward,
+                    as: "ward",
+                    attributes: ["id", "name"],
+                },
+                {
+                    model: models.Image,
+                    as: "logo"
+                },
+                {
+                    model: models.User,
+                    as:"users",
+                    orderBy:["createdAt","ASC"],
+                    limit:1
+                }
+            ]
         }
     ]
 
@@ -888,8 +919,6 @@ module.exports.getListAgencyService = async (query) => {
         }
     }
 
-    console.log(where);
-    console.log(requestAgencyInclude);
     const {rows, count} = (await models.RequestAgency.findAndCountAll({
         where,
         include: requestAgencyInclude,
