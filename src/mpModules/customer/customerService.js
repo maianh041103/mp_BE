@@ -44,6 +44,7 @@ const customerAttributes = [
     "isDefault",
     "lat",
     "lng",
+    "customerStoreId",
     [Sequelize.literal(`(SELECT COALESCE(SUM(debtAmount), 0) 
   FROM customer_debts 
   WHERE Customer.id = customer_debts.customerId and customer_debts.debtAmount >= 0)`), 'totalDebt'],
