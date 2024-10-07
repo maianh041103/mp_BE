@@ -5,7 +5,6 @@ const { HttpStatusCode } = require("../../helpers/errorCodes");
 const axios = require('axios');
 const tripContant = require("./tripContant");
 const { generateCode } = require("../../helpers/codeGenerator");
-const { client } = require("../../../redis/redisConnect");
 const config = require("../../../config/default.json");
 const {checkDouble, checkCoordinates} = require("../../helpers/utils");
 
@@ -556,12 +555,6 @@ module.exports.changeStatus = async (params) => {
             });
 
             const key = `map_${tripCustomer.tripId}`;
-            await client.set(key, JSON.stringify({
-                id: tripCustomer.tripId,
-                lng: tripCustomer.lng,
-                lat: tripCustomer.lat
-            }));
-            await client.expire(key, config.redis.timeToLive);
 
             await models.Trip.update({
                 latCurrent: tripCustomer.lat,
@@ -918,30 +911,3 @@ module.exports.mapRouting = async (params) => {
         data
     }
 }
-
-// module.exports.changeCurrent = async (params) => {
-//     const { id, lng, lat } = params;
-//     const key = `map_${id}`;
-//     await client.set(key, JSON.stringify({ id, lng, lat }));
-//     await client.expire(key, config.redis.timeToLive);
-//     const value = await client.get(key);
-//     return {
-//         success: true,
-//         data: JSON.parse(value)
-//     }
-// }
-//
-// module.exports.updateDb = async (req, res) => {
-//     const keys = await client.keys('map*');
-//     for (const key of keys) {
-//         const value = JSON.parse(await client.get(key));
-//         await models.Trip.update({
-//             latCurrent: value.lat,
-//             lngCurrent: value.lng
-//         }, {
-//             where: {
-//                 id: value.id
-//             }
-//         });
-//     }
-// }
