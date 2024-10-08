@@ -53,7 +53,7 @@ export async function queryFilter(params) {
     unitId,
     manufactureId,
     notEqualManufactureId,
-    listProductId = [],
+    listProductId,
     notEqualId,
     order = [["id", "DESC"]],
     tag,
@@ -151,6 +151,13 @@ export async function queryFilter(params) {
     where.manufactureId = {
       [Op.in]: manufactureId,
     };
+  }
+
+  if(listProductId){
+    let ids = listProductId.split(",");
+    where.id = {
+      [Op.in]:ids
+    }
   }
 
   if (_.isArray(listProductId) && listProductId.length) {
