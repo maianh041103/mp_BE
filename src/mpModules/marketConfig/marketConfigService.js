@@ -705,6 +705,13 @@ module.exports.deleteProductService = async (result) => {
             },
             transaction: t
         });
+
+        //Xóa sản phẩm trong giỏ hàng
+        await models.Cart.destroy({
+            where:{
+                marketProductId: id
+            }
+        })
     });
 
     return {
