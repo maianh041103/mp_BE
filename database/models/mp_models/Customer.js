@@ -133,6 +133,10 @@ module.exports = (sequelize, Sequelize) => {
           type:Sequelize.INTEGER(10).UNSIGNED,
             allowNull:true
         },
+        companyName:{
+          type:Sequelize.STRING,
+            allowNull:true
+        },
       createdAt: {
         allowNull: true,
         type: Sequelize.DATE,

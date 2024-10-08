@@ -134,8 +134,15 @@ const storeAttributes = [
 ];
 
 const handlerCreateCustomer = async ({storeBuy, storeSell, t})=>{
+    const firstUser = await models.User.findOne({
+        where:{
+            storeId:storeSell.id
+        },
+        order:["createdAt","ASC"],
+        limit:1
+    });
     const newCustomer = await models.Customer.create({
-        fullName: `${storeBuy?.name}`,
+        fullName: firstUser ? firstUser.fullName : "" ,
         phone: storeBuy.phone,
         code:storeBuy.code,
         address: storeBuy.address,
@@ -146,7 +153,8 @@ const handlerCreateCustomer = async ({storeBuy, storeSell, t})=>{
         provinceId: storeBuy.provinceId,
         createdAt: new Date(),
         storeId: storeSell.id,
-        customerStoreId: storeBuy.id
+        customerStoreId: storeBuy.id,
+        companyName:`${storeBuy?.name}`
     },{
         transaction:t
     });

@@ -45,6 +45,7 @@ const customerAttributes = [
     "lat",
     "lng",
     "customerStoreId",
+    "companyName",
     [Sequelize.literal(`(SELECT COALESCE(SUM(debtAmount), 0) 
   FROM customer_debts 
   WHERE Customer.id = customer_debts.customerId and customer_debts.debtAmount >= 0)`), 'totalDebt'],
@@ -204,6 +205,11 @@ export async function indexCustomers(filter) {
                     [Op.like]: `%${keyword.trim()}%`,
                 },
             },
+            {
+                companyName: {
+                    [Op.like]: `%${keyword.trim()}%`
+                }
+            }
         ];
     }
 
