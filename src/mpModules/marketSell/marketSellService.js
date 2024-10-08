@@ -180,7 +180,6 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser,branc
     }else{
         whereCustomer = {
             customerStoreId:marketOrderExists.storeId,
-            type:customerContant.customerType.Agency,
             storeId
         }
     }
@@ -1228,7 +1227,6 @@ module.exports.createMarketOrderService = async (result) => {
                 if(customerId){
                     customerWhere.id = customerId;
                 }else{
-                    customerWhere.type = customerContant.customerType.Agency;
                     customerWhere.customerStoreId = storeId;
                 }
                 let customer = await models.Customer.findOne({
@@ -1724,7 +1722,6 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                     }else{
                         whereCustomer = {
                             customerStoreId:marketOrderExists.storeId,
-                            type:customerContant.customerType.Agency,
                             storeId
                         }
                     }
