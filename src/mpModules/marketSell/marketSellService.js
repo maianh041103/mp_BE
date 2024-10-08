@@ -1185,7 +1185,7 @@ module.exports.createMarketOrderService = async (result) => {
         const listNewMarketOrderBuy = [];
         const t = await models.sequelize.transaction(async (t) => {
             for (const order of orders) {
-                let {addressId, listProduct, toStoreId, note, customerId} = order;
+                let {addressId, listProduct, toStoreId, note, customerId, isDirectSale} = order;
                 if (!addressId) {
                     throw new Error(`Vui lòng gửi thông tin địa chỉ giao hàng`);
                 }
@@ -1197,6 +1197,11 @@ module.exports.createMarketOrderService = async (result) => {
                     });
                     let tmp = storeId;
                     storeId = customer.storeId;
+                    toStoreId = tmp;
+                }
+                if(isDirectSale && isDirectSale === true){
+                    let tmp = storeId;
+                    storeId = toStoreId;
                     toStoreId = tmp;
                 }
                 const addressExists = await models.Address.findOne({
