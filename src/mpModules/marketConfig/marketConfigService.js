@@ -895,7 +895,7 @@ module.exports.getListAgencyService = async (query) => {
                     orderBy:["createdAt","ASC"],
                     limit:1
                 }
-            ]
+            ],
         }
     ]
 
@@ -908,14 +908,8 @@ module.exports.getListAgencyService = async (query) => {
     }
     if(keyword){
         const index = requestAgencyInclude.findIndex(item=>item.as === "agency");
-        requestAgencyInclude[index] = {
-            model: models.Store,
-            as: "agency",
-            attributes: ["id","name"],
-            where: {
-                 name: { [Op.like]: `%${keyword.trim()}%` },
-            },
-            required:true
+        requestAgencyInclude[index].where = {
+            name: { [Op.like]: `%${keyword.trim()}%` }
         }
     }
 
@@ -925,7 +919,7 @@ module.exports.getListAgencyService = async (query) => {
         limit: parseInt(limit),
         offset: (parseInt(page) - 1) * parseInt(limit),
         order: [['createdAt', 'DESC']]
-    }))
+    }));
     return {
         success: true,
         data: {
