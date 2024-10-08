@@ -137,16 +137,14 @@ const handlerCreateCustomer = async ({storeBuy, storeSell, t})=>{
     const firstUser = await models.User.findOne({
         where:{
             storeId:storeSell.id
-        },
-        order:["createdAt","ASC"],
-        limit:1
+        }
     });
     const newCustomer = await models.Customer.create({
         fullName: firstUser ? firstUser.fullName : "" ,
         phone: storeBuy.phone,
         code:storeBuy.code,
         address: storeBuy.address,
-        type: customerType.Agency,
+        type: customerType.Company,
         status: storeBuy.status === 1 ? customerStatus.ACTIVE : customerStatus.INACTIVE,
         wardId: storeBuy.wardId,
         districtId: storeBuy.districtId,
