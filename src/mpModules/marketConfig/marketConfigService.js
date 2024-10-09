@@ -6,6 +6,7 @@ const marketConfigContant = require("./marketConfigContant");
 const utils = require("../../helpers/utils");
 const {getImages} = require("../../helpers/getImages");
 const {countStore} = require("../store/storeService");
+const marketSellService = require("../marketSell/marketSellService");
 
 const marketProductInclude = [
     {
@@ -337,15 +338,8 @@ module.exports.getAllProductService = async (result) => {
                     [Op.like]:`%${keyword}%`
                 }
             }
-            stores = await models.Store.findAll({
-                where: storeWhere,
-                order: [["createdAt", "DESC"]],
-                limit:parseInt(limit),
-                offset:(parseInt(page) - 1)*parseInt(limit)
-            });
-            countStore = await models.Store.count({
-                where:storeWhere
-            })
+            stores = (await marketSellService.getAllStoreService({storeId, limit, page, keyword})).data;
+
         }
         if(productType){
             marketProductIncludeTmp[index].where = {
@@ -379,8 +373,8 @@ module.exports.getAllProductService = async (result) => {
         data: {
             items: rows,
             totalItem: count,
-            stores,
-            totalItemStore:countStore
+            stores: stores.items,
+            totalItemStore:stores.totalItem
         }
     }
 }
