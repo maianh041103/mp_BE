@@ -373,8 +373,8 @@ module.exports.getAllProductService = async (result) => {
         data: {
             items: rows,
             totalItem: count,
-            stores: stores.items,
-            totalItemStore:stores.totalItem
+            stores: stores?.items,
+            totalItemStore:stores?.totalItem
         }
     }
 }
