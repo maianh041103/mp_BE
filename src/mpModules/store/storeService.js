@@ -263,10 +263,24 @@ export async function updateStore(id, payload, loginUser) {
     };
   }
 
-  await models.Store.update(payload, {
-    where: {
-      id,
-    },
+  const t = await models.sequelize.transaction(async (t)=>{
+    if(payload.name !== findStore.name){
+      await models.Customer.update({
+        fullName: payload.name
+      },{
+        where:{
+          customerStoreId:id
+        },
+        transaction:t
+      })
+    }
+
+    await models.Store.update(payload, {
+      where: {
+        id,
+      },
+      transaction:t
+    });
   });
 
   createUserTracking({
