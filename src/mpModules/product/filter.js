@@ -66,7 +66,8 @@ export async function queryFilter(params) {
     storeId,
     isSale,
     branchId,
-    inventoryType
+    inventoryType,
+      listProductUnitId
   } = params;
 
   const query = {
@@ -75,7 +76,21 @@ export async function queryFilter(params) {
     order,
   };
 
-  const include = [...productIncludes];
+  const include = _.cloneDeep(productIncludes);
+
+  if(listProductUnitId){
+    let productUnitInclude = include.find((item,index)=>{
+      return item.as === 'productUnit';
+    });
+    if(productUnitInclude){
+      productUnitInclude.where = {
+        id:{
+          [Op.in]:listProductUnitId.split(",")
+        }
+      }
+    }
+  }
+
   const attributes = [...productAttributes];
 
   if (raw) query.raw = true;
