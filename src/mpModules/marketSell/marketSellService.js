@@ -1969,15 +1969,8 @@ module.exports.getProductPrivateService = async (result) => {
                     id:customerId
                 }
             });
-            if(!customerExists){
-                return{
-                    error:true,
-                    message:`Không tồn tại khách hàng có id = ${customerId} trong cửa hàng có id = ${storeId}`,
-                    code:HttpStatusCode.BAD_REQUEST
-                }
-            }
             toStoreId = storeId
-            storeId = customerExists.customerStoreId !== null ? customerExists.customerStoreId : -1;
+            storeId = customerExists !== null ? customerExists.customerStoreId : -1;
         }
         let { sortBy } = result;
         let include = [

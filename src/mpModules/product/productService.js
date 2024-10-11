@@ -153,6 +153,16 @@ export async function indexProducts(params) {
     };
 }
 
+export async function indexProductsByGroup(params){
+    const result = indexProducts(params);
+    if(result.success){
+        const products = result.data.items;
+        for(let product of products){
+
+        }
+    }
+}
+
 function getCode(type) {
     switch (type) {
         case productTypes.THUOC:
