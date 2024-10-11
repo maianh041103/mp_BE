@@ -136,7 +136,7 @@ const storeAttributes = [
 const handlerCreateCustomer = async ({storeBuy, storeSell, t})=>{
     const firstUser = await models.User.findOne({
         where:{
-            storeId:storeSell.id
+            storeId:storeBuy.id
         }
     });
     const newCustomer = await models.Customer.create({
