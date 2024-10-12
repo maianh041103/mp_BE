@@ -66,6 +66,11 @@ module.exports = (sequelize, Sequelize) => {
       type: Sequelize.INTEGER(1).UNSIGNED,
       defaultValue: 1,
     },
+    isAgency:{
+      allowNull:true,
+      type:Sequelize.BOOLEAN,
+      defaultValue:false
+    },
     createdAt: {
       allowNull: true,
       type: Sequelize.DATE
@@ -123,11 +128,29 @@ module.exports = (sequelize, Sequelize) => {
       targetKey: 'id',
     });
 
+    Store.hasMany(models.MarketProduct,{
+      as:"marketProduct",
+      foreignKey:"storeId",
+      sourceKey:"id"
+    });
+
     Store.hasMany(models.User, {
       as: 'users',
       foreignKey: 'storeId',
       targetKey: 'id'
     });
-  }
+
+    Store.hasMany(models.Branch,{
+      as:"branches",
+      foreignKey: "storeId",
+      targetKey: 'id'
+    });
+
+    Store.hasMany(models.RequestAgency,{
+      as:"agencys",
+      foreignKey:"storeId",
+      sourceKey:"id"
+    })
+  };
   return Store;
 };

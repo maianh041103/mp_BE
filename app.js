@@ -29,11 +29,11 @@ const accessLogStream = rfs.createStream("access.log", {
   path: path.join(__dirname, "logs"),
 });
 
-// //Tạo cron
-cron.schedule('*/5 * * * *', () => {
-  tripService.updateDb();
-});
-// //End tạo cron
+// // //Tạo cron
+// cron.schedule('*/5 * * * *', () => {
+//   tripService.updateDb();
+// });
+// // //End tạo cron
 
 // setup the logger
 // app.use(morgan('combined', { stream: accessLogStream }));

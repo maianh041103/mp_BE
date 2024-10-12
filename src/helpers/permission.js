@@ -142,6 +142,30 @@ export const modelPermissions = [
   {
     name: "map",
     text: "Tạo chuyến đi"
+  },
+  {
+    name: "market_config",
+    text: "Cấu hình sản phẩm lên chợ"
+  },
+  {
+    name: "market_buy",
+    text: "Mua hàng trên chợ"
+  },
+  {
+    name: "market_agency",
+    text: "Chợ đại lý"
+  },
+  {
+    name: "market_order",
+    text: "Duyệt đơn hàng"
+  },
+  {
+    name: "market_confirm",
+    text: "Xác nhận đơn hàng"
+  },
+  {
+    name:"market_agency",
+    text: "Duyệt làm đại lý"
   }
 ];
 
@@ -169,7 +193,7 @@ export const actionPermissions = [
   {
     name: "view_all",
     text: "Xem tất cả",
-  },
+  }
 ];
 
 export function getPermissionByAction(action) {

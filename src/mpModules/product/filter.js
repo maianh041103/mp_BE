@@ -53,7 +53,7 @@ export async function queryFilter(params) {
     unitId,
     manufactureId,
     notEqualManufactureId,
-    listProductId = [],
+    listProductId,
     notEqualId,
     order = [["id", "DESC"]],
     tag,
@@ -66,7 +66,8 @@ export async function queryFilter(params) {
     storeId,
     isSale,
     branchId,
-    inventoryType
+    inventoryType,
+      listProductUnitId
   } = params;
 
   const query = {
@@ -75,7 +76,21 @@ export async function queryFilter(params) {
     order,
   };
 
-  const include = [...productIncludes];
+  const include = _.cloneDeep(productIncludes);
+
+  if(listProductUnitId){
+    let productUnitInclude = include.find((item,index)=>{
+      return item.as === 'productUnit';
+    });
+    if(productUnitInclude){
+      productUnitInclude.where = {
+        id:{
+          [Op.in]:listProductUnitId.split(",")
+        }
+      }
+    }
+  }
+
   const attributes = [...productAttributes];
 
   if (raw) query.raw = true;
@@ -151,6 +166,13 @@ export async function queryFilter(params) {
     where.manufactureId = {
       [Op.in]: manufactureId,
     };
+  }
+
+  if(listProductId){
+    let ids = listProductId.split(",");
+    where.id = {
+      [Op.in]:ids
+    }
   }
 
   if (_.isArray(listProductId) && listProductId.length) {

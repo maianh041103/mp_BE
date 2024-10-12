@@ -1,7 +1,6 @@
 import {readDefaultCustomer} from "./customerService";
 import {indexOrderDebt} from "./CustomerDebtService";
 import ExcelJS from "exceljs";
-import {indexDoctors} from "../doctor/doctorService";
 import path from "path";
 import fs from "fs";
 
@@ -25,7 +24,9 @@ const {
     indexPaymentCustomer,
     historyPointService,
     historyVisitedService,
-    uploadFileCreateCustomer
+    uploadFileCreateCustomer,
+    uploadFileCreateCustomerKiotVietService,
+    deleteListCustomer
 } = require("./customerService");
 const {hashPassword} = require("../auth/authService");
 const {formatMobileToSave} = require("../../helpers/utils");
@@ -103,6 +104,7 @@ export async function createController(req, res) {
             gender: _.get(req, "body.gender", ""),
             phone: formatMobileToSave(_.get(req, "body.phone", "")),
             email: _.get(req, "body.email", ""),
+            facebook:_.get(req,"body.facebook",""),
             taxCode: _.get(req, "body.taxCode", ""),
             address: _.get(req, "body.address", ""),
             position: _.get(req, "body.position", null),
@@ -118,8 +120,8 @@ export async function createController(req, res) {
             createdBy: loginUser.id,
             createdAt: new Date(),
             note: _.get(req.body, "note", ""),
-            lat: _.get(req.body, "lat", "").trim(),
-            lng: _.get(req.body, "lng", "").trim()
+            lat:_.get(req.body, "lat", "")?_.get(req.body, "lat", "").trim():null,
+            lng:_.get(req.body, "lng", "")?_.get(req.body, "lng", "").trim():null
         };
         const result = await createCustomer(customer, loginUser);
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -142,6 +144,8 @@ export async function updateController(req, res) {
             birthday: _.get(req, "body.birthday", moment().format("YYYY-MM-DD")),
             gender: _.get(req, "body.gender", ""),
             email: _.get(req, "body.email", ""),
+            facebook: _.get(req, "body.facebook",""),
+            phone: _.get(req,"body.phone",""),
             taxCode: _.get(req, "body.taxCode", ""),
             type: _.get(req.body, "type", null),
             address: _.get(req, "body.address", ""),
@@ -155,6 +159,7 @@ export async function updateController(req, res) {
             note: _.get(req.body, "note", null),
             lat: _.get(req.body, "lat", ""),
             lng: _.get(req.body, "lng", ""),
+            storeId: loginUser.storeId,
             ...(status && {status}),
             updatedBy: loginUser.id,
             updatedAt: new Date(),
@@ -309,6 +314,7 @@ export async function exportCustomerController(req, res) {
             {header: "Số điện thoại", key: "phone", width: 15},
             {header: "Mã khách hàng", key: "code", width: 15},
             {header: "Email", key: "email", width: 25},
+            {header: "Facebook",key: "facebook",width:25},
             {header: "Giới tính", key: "gender", width: 10},
             {header: "Ngày sinh", key: "birthday", width: 20},
             {header: "Mã thuế", key: "taxCode", width: 20},
@@ -320,39 +326,60 @@ export async function exportCustomerController(req, res) {
             {header: "Ghi chú", key: "note", width: 30},
             {header: "Loại khách hàng", key: "type", width: 15},
             {header: "Trạng thái", key: "status", width: 10},
-            {header: "Kinh độ", key: "lng", width: 10},
-            {header: "Vĩ độ", key: "lat", width: 10},
+            {header: "Tọa độ", key: "location", width: 40},
             {header: "Điểm tích lũy", key: "point", width: 10},
             {header: "Nợ", key: "debt", width: 10},
         ];
-        const result = await indexCustomers({storeId, page, limit});
+        const result = await indexCustomers({storeId, page, limit : 10**10});
         result.data.items.forEach(item => {
+            let location = ""
+            if(item.lat && item.lat !== ""){
+                location += item.lat + ", ";
+            }
+            if(item.lng && item.lng !== ""){
+                location += item.lng;
+            }
+            if(item.type === 1){
+                item.type = "Khách hàng thường";
+            }else if(item.type === 2){
+                item.type = "Công ty";
+            }else if(item.type === 3){
+                item.type = "Nhà thuốc"
+            }else if(item.type === 4){
+                item.type = "Phòng khám"
+            }else{
+                item.type = "Đại lý"
+            }
+            let listGroupCustomerName = item?.listGroupCustomer?.length > 0 ?
+                item.listGroupCustomer.map(item=>item?.groupCustomer?.name || "") : [];
             worksheet.addRow({
                 name: item.fullName,
                 phone: item.phone,
                 code: item.code,
                 email: item.email,
-                gender: item.gender == "female" ? item.gender = 0 : (item.gender == "male" ? item.gender = 1 : item.gender = 2),
+                facebook:item.facebook,
+                gender: item.gender == "female" ? item.gender = 'Nữ' :
+                    (item.gender == "male" ? item.gender = 'Nam' : item.gender = 'Khác'),
                 birthday: item.birthday,
                 taxCode: item.taxCode,
-                groupCustomerName: item?.groupCustomer?.name,
+                groupCustomerName: listGroupCustomerName.join("|"),
                 wardName: item?.ward?.name2,
                 districtName: item?.district?.name2,
                 provinceName: item?.province?.name,
                 address: item?.address,
                 note: item?.note,
-                type: item?.type,
-                status: item?.status == "draft" ? item.status = 2 : (item?.status == "inactive" ? item.status = 0 : item.status = 1),
-                lng: item?.lng,
-                lat: item?.lat,
+                type: item.type,
+                status: item?.status == "draft" ? item.status = 2 :
+                    (item?.status == "inactive" ? item.status = 0 : item.status = 1),
+                location,
                 point: item?.point,
-                debt: item?.debt
+                debt: item?.dataValues.totalDebt
             });
         });
         const filePath = path.join(__dirname, `customer_store_${storeId}.xlsx`);
         await workbook.xlsx.writeFile(filePath);
 
-        res.download(filePath, `customer_store_${storeId}.xlsx`, (err) => {
+        res.download(filePath, `Danhsachkhachhang.xlsx`, (err) => {
             if (err) {
                 console.error('Error downloading file:', err);
                 res.status(500).send('Error downloading file');
@@ -368,10 +395,11 @@ export async function exportCustomerController(req, res) {
 
 export async function exportCustomerExampleController(req,res){
     try {
+        const type = req.query.type || "";
         const tmp = path.resolve(__dirname, '../../../')
-        const filePath = path.join(tmp, 'excel', 'customer.xlsx');
+        const filePath = path.join(tmp, 'excel', `customer${type}.xlsx`);
         // Sử dụng res.download để gửi file và xóa file sau khi gửi
-        res.download(filePath, `customerExample.xlsx`, (err) => {
+        res.download(filePath, `Maufilekhachang.xlsx`, (err) => {
             if (err) {
                 console.error('Error downloading file:', err);
                 res.status(500).send('Error downloading file');
@@ -384,4 +412,44 @@ export async function exportCustomerExampleController(req,res){
     }
 }
 
+export async function createCustomerByUploadKiotvietController(req, res) {
+    try {
+        const {loginUser = {}} = req;
 
+        await uploadFile(req, res);
+
+        if (req.file === undefined) {
+            return res.status(400).send({message: 'Please upload a file!'});
+        }
+        // Đường dẫn tạm thời của tệp Excel đã tải lên
+        const excelFilePath = req.file.path;
+
+        // Đọc dữ liệu từ tệp Excel
+        const workbook = xlsx.readFile(excelFilePath);
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const data = xlsx.utils.sheet_to_json(worksheet);
+
+        const result = await uploadFileCreateCustomerKiotVietService(data, loginUser);
+        if (result.success) res.json(respondItemSuccess());
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}
+
+export async function deleteListCustomerController(req, res) {
+    try {
+        const {loginUser = {}} = req;
+        const {listCustomerId} = req.body;
+        const result = await deleteListCustomer(loginUser,listCustomerId);
+        if (result.success) res.json(respondItemSuccess());
+        else res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        res.json(
+            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+        );
+    }
+}

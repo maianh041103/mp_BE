@@ -89,7 +89,8 @@ const orderIncludes = [
       {
         model: models.Doctor,
         as: 'doctor',
-        attributes: ['name', 'phone', 'code', 'email', 'gender']
+        attributes: ['name', 'phone', 'code', 'email', 'gender'],
+        paranoid: false
       },
       {
         model: models.HealthFacility,
@@ -122,12 +123,14 @@ const orderIncludes = [
   {
     model: models.User,
     as: 'user',
-    attributes: userAttributes
+    attributes: userAttributes,
+    paranoid: false
   },
   {
     model: models.User,
     as: 'creator',
-    attributes: userAttributes
+    attributes: userAttributes,
+    paranoid: false
   },
   {
     model: models.Customer,
@@ -139,7 +142,8 @@ const orderIncludes = [
       'email',
       'address',
       'groupCustomerId'
-    ]
+    ],
+    paranoid: false
   }
 ]
 
@@ -402,11 +406,28 @@ export async function indexOrders(params, loginUser) {
   }
 }
 
-export async function readOrder(id) {
+export async function readOrder(result) {
+  const {id,saleReturn} = result;
   const order = await models.Order.findByPk(id, {
     include: orderIncludes,
     attributes: orderAttributes
-  })
+  });
+
+  let orderProductWhere = {
+    orderId: id,
+    comboId: {
+      [Op.eq]: null
+    }
+  }
+
+  if(saleReturn){
+    orderProductWhere[Op.or] = [
+        { quantity: {
+                [Op.ne]: Sequelize.col('quantityLast')
+              }},
+        { quantityLast: null }
+      ]
+  }
 
   const products = await models.OrderProduct.findAll({
     attributes: [
@@ -416,15 +437,11 @@ export async function readOrder(id) {
       'customerId',
       'price',
       'itemPrice',
-      'point'
+      'point',
+      'quantityLast'
     ],
     include: orderProductIncludes,
-    where: {
-      orderId: id,
-      comboId: {
-        [Op.eq]: null
-      }
-    }
+    where: orderProductWhere
   })
 
   let totalPrice = 0
@@ -708,8 +725,8 @@ async function handleCreateOrder(order, loginUser) {
           partner: findCustomer.fullName,
           productId: item.productId,
           branchId: order.branchId,
-          changeQty: -item.quantity * productUnit.exchangeValue,
-          remainQty: inventory - item.quantity * productUnit.exchangeValue,
+          changeQty: -item.quantity * +productUnit.exchangeValue,
+          remainQty: +inventory - +item.quantity * +productUnit.exchangeValue,
           createdAt: new Date(),
           updatedAt: new Date()
         },
@@ -1189,7 +1206,7 @@ async function handleCreateOrder(order, loginUser) {
     }
   })
 
-  const { data: refreshOrder } = await readOrder(newOrder.id)
+  const { data: refreshOrder } = await readOrder({id:newOrder.id})
 
   return {
     success: true,

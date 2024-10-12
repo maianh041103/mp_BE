@@ -29,7 +29,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     quantity: {
       allowNull: false,
-      type: DataTypes.INTEGER(10).UNSIGNED,
+      type: DataTypes.INTEGER(10),
     },
     isUsed: {
       allowNull: true,

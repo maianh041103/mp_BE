@@ -13,61 +13,14 @@ const express = require("express");
 
 const router = new express.Router();
 
-router.get(
-  "/",
-  authenticate,
-  (req, res, next) => {
-    req.apiRole = ["banner_read"];
-    next();
-  },
-  authorize,
-  getList
-);
+router.get("/", getList);
 
-router.post(
-  "/",
-  authenticate,
-  (req, res, next) => {
-    req.apiRole = "banner_create";
-    next();
-  },
-  authorize,
-  createValidator,
-  create
-);
+router.post("/", create);
 
-router.get(
-  "/:id",
-  authenticate,
-  (req, res, next) => {
-    req.apiRole = "banner_update";
-    next();
-  },
-  authorize,
-  getDetail
-);
+router.get("/:id", getDetail);
 
-router.patch(
-  "/:id",
-  authenticate,
-  (req, res, next) => {
-    req.apiRole = "banner_update";
-    next();
-  },
-  authorize,
-  createValidator,
-  update
-);
+router.patch("", update);
 
-router.delete(
-  "/:id",
-  authenticate,
-  (req, res, next) => {
-    req.apiRole = "banner_delete";
-    next();
-  },
-  authorize,
-  deleteController
-);
+router.delete("/:id", deleteController);
 
 module.exports = router;

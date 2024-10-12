@@ -41,16 +41,22 @@ export async function addInventory(branchId, productId, quantity, transaction) {
 }
 
 export async function getInventory(branchId, productId) {
-    const inv = await models.Inventory.findOne({
-        attributes: ['quantity'],
-        where: {
-            branchId: branchId,
-            productId: productId
-        }
-    })
-    if (!inv) {
-        return 0
+    let where = {
+        productId: productId,
     }
-    return inv.quantity
+    if(branchId && branchId !== null) {
+        where.branchId = branchId;
+    }
+    const inv = await models.Inventory.findAll({
+        attributes: ['quantity'],
+        where
+    });
+    let quantity = 0;
+    if(inv && inv.length > 0){
+        quantity = inv.reduce((calc,item)=>{
+           return +calc + +item.quantity;
+        },0)
+    }
+    return quantity;
 }
 

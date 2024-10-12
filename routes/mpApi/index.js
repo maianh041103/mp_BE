@@ -53,6 +53,9 @@ import userTransactionRouter from "../../src/mpModules/userTransaction/index.js"
 import customerNoteRouter from "../../src/mpModules/customerNote/index.js";
 import userLogRouter from "../../src/mpModules/userLog/index.js";
 import tripRouter from "../../src/mpModules/trip/index.js";
+import marketConfigRouter from "../../src/mpModules/marketConfig/index.js";
+import marketSellRouter from "../../src/mpModules/marketSell/index.js";
+import adminRouter from "../../src/mpModules/admin/index";
 
 const mpRouterManager = function (app) {
   app.use("/mp/api/address", addressApiRouter);
@@ -109,6 +112,9 @@ const mpRouterManager = function (app) {
   app.use("/mp/api/customer-note", customerNoteRouter);
   app.use("/mp/api/user_log", userLogRouter);
   app.use("/mp/api/trip", tripRouter);
+  app.use("/mp/api/market/config", marketConfigRouter);
+  app.use("/mp/api/market/sell",marketSellRouter);
+  app.use("/mp/api/admin",adminRouter);
 };
 
 module.exports = mpRouterManager;

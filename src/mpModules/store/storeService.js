@@ -8,6 +8,7 @@ const { Op } = Sequelize;
 const models = require("../../../database/models");
 const { accountTypes, logActions, ACTIVE } = require("../../helpers/choices");
 const { HttpStatusCode } = require("../../helpers/errorCodes");
+const storeService = require("../marketSell/marketSellService");
 const attributes = [
   "id",
   "name",
@@ -20,13 +21,13 @@ const attributes = [
   "address",
   "createdAt",
   "businessRegistrationNumber",
+    "isAgency"
 ];
 
 const include = [
   {
     model: models.Image,
-    as: "businessRegistrationImage",
-    attributes: ["id", "path"],
+    as: "businessRegistrationImage"
   },
 
   {
@@ -44,6 +45,10 @@ const include = [
     as: "ward",
     attributes: ["id", "name"],
   },
+  {
+    model: models.Image,
+    as: "logo"
+  }
 ];
 
 function processQuery(params) {
@@ -110,7 +115,7 @@ export async function storeFilter(params) {
 
 export async function indexStores(params) {
   const { rows, count } = await models.Store.findAndCountAll(
-    processQuery(params)
+      processQuery(params)
   );
   return {
     success: true,
@@ -137,7 +142,7 @@ export async function listStore(params) {
     data: {
       items: rows,
       totalItem: count,
-     
+
       totalPages: Math.ceil(count / limit),
       currentPage: page
     },
@@ -162,13 +167,20 @@ const StoreInclude = [
   },
   {
     model: models.Image,
-    as: "businessRegistrationImage",
-    attributes: ["id", "path"],
+    as: "businessRegistrationImage"
   },
   {
     model: models.User,
     as: "users",
     attributes: ["id", "username", "email", "phone", "position"],
+  },
+  {
+    model: models.Branch,
+    as: "branches"
+  },
+  {
+    model:models.Image,
+    as:"logo"
   }
 ];
 
@@ -177,7 +189,7 @@ export async function createStore(payload) {
   const newStore = await models.Store.create(payload);
   await insertNewCode(newStore.id);
   const createBranchInput = {
-    name: "Chi nhánh mặc định",
+    name: payload.name,
     phone: payload.phone,
     code: "",
     zipCode: "",
@@ -191,7 +203,17 @@ export async function createStore(payload) {
     createdAt: new Date(),
     storeId: newStore.id,
   };
-  await createDefaultCustomer(newStore.id)
+  await createDefaultCustomer(newStore.id);
+  await storeService.createAddressService({
+    phone: payload.phone,
+    wardId: payload.wardId || null,
+    districtId: payload.districtId || null,
+    provinceId: payload.provinceId || null,
+    address: payload.address || "",
+    storeId: newStore.id,
+    isDefaultAddress: true,
+    fullName: payload.name
+  });
   const newBranch = await models.Branch.create(createBranchInput);
 
   const logObject = {
@@ -241,10 +263,24 @@ export async function updateStore(id, payload, loginUser) {
     };
   }
 
-  await models.Store.update(payload, {
-    where: {
-      id,
-    },
+  const t = await models.sequelize.transaction(async (t)=>{
+    if(payload.name !== findStore.name){
+      await models.Customer.update({
+        fullName: payload.name
+      },{
+        where:{
+          customerStoreId:id
+        },
+        transaction:t
+      })
+    }
+
+    await models.Store.update(payload, {
+      where: {
+        id,
+      },
+      transaction:t
+    });
   });
 
   createUserTracking({

@@ -1,4 +1,5 @@
 import {productAttributes, productIncludes} from "../product/constant";
+import Sequelize from "sequelize";
 const models = require("../../../database/models");
 
 export const moveStatus = {
@@ -7,7 +8,17 @@ export const moveStatus = {
     TRASH: "TRASH",
 };
 
-export const moveAttributes = ["id", "code", "fromBranchId", "toBranchId", "movedAt", "movedBy", "receivedAt", "receivedBy", "status", "totalPrice", "note", "receiveNote", "totalItem", "totalPrice"]
+export const moveAttributes = ["id", "code", "fromBranchId", "toBranchId", "movedAt", "movedBy",
+    "receivedAt", "receivedBy", "status", "totalPrice", "note", "receiveNote", "totalItem", "totalPrice","createdAt",
+    [Sequelize.literal(`(SELECT SUM(move_items.quantity) FROM move_items 
+    WHERE move_items.moveId = Move.id)`), 'totalCountMoved'],
+    [Sequelize.literal(`(SELECT SUM(move_items.quantity * move_items.price) 
+    FROM move_items WHERE move_items.moveId = Move.id)`), 'totalPriceMoved'],
+    [Sequelize.literal(`(SELECT SUM(move_items.toQuantity) FROM move_items 
+    WHERE move_items.moveId = Move.id)`), 'totalCountReceived'],
+    [Sequelize.literal(`(SELECT SUM(move_items.toQuantity * move_items.price) 
+    FROM move_items WHERE move_items.moveId = Move.id)`), 'totalPriceReceived'],
+]
 export const moveInclude = [
     {
         model: models.Branch,

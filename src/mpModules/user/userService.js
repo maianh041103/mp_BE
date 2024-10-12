@@ -423,11 +423,7 @@ export async function readUser(id, loginUser) {
     }
   });
   if (!findUser) {
-    return {
-      error: true,
-      code: HttpStatusCode.NOT_FOUND,
-      message: "Người dùng không tồn tại",
-    };
+    throw new Error("Người dùng không tồn tại");
   }
   return {
     success: true,

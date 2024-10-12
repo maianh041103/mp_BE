@@ -1,6 +1,7 @@
 import { createWarehouseCard } from "../warehouse/warehouseService";
 import { warehouseStatus } from "../warehouse/constant";
 import { addInventory, getInventory } from "../inventory/inventoryService";
+import tripContant from "../trip/tripContant";
 
 const _ = require("lodash");
 const Sequelize = require("sequelize");
@@ -102,6 +103,31 @@ const inboundIncludes = [
       },
     ],
   },
+  {
+    model:models.InboundToProduct,
+    as:"inboundProducts",
+    include:[
+      {
+        model:models.Product,
+        as:"product",
+        attributes: ["code","name","primePrice","baseUnit"]
+      },
+      {
+        model:models.ProductUnit,
+        as:"productUnit",
+        attributes: ["unitName","code"]
+      },
+      {
+        model:models.InboundProductBatch,
+        as:"batches",
+        include:[{
+          model:models.Batch,
+          as:"batch",
+          attributes: ["name","expiryDate"]
+        }]
+      }
+    ]
+  }
 ];
 
 const inboundAttributes = [
@@ -118,6 +144,11 @@ const inboundAttributes = [
   "supplierId",
   "status",
   "createdAt",
+    "updatedAt",
+  [Sequelize.literal(`(SELECT COUNT(inbound_to_products.id) FROM inbound_to_products WHERE inbound_to_products.inboundId = Inbound.id
+        AND inbound_to_products.deletedAt IS NULL)`), 'countProduct'],
+  [Sequelize.literal(`(SELECT SUM(inbound_to_products.quantity) FROM inbound_to_products WHERE inbound_to_products.inboundId = Inbound.id
+        AND inbound_to_products.deletedAt IS NULL)`), 'quantityProduct']
 ];
 
 const productAttributes = ["name", "shortName", "code", "barCode", "imageId", "isBatchExpireControl"];
@@ -605,7 +636,7 @@ export async function handleCreateInbound(inbound, loginUser) {
           productId: item.productId,
           branchId: inbound.branchId,
           changeQty: item.totalQuantity * productUnit.exchangeValue,
-          remainQty: await getInventory(inbound.branchId, item.productId) + item.totalQuantity * productUnit.exchangeValue,
+          remainQty: parseInt(await getInventory(inbound.branchId, item.productId)) + parseInt(+item.totalQuantity * +productUnit.exchangeValue),
           createdAt: new Date(),
           updatedAt: new Date()
         }, t)
@@ -678,7 +709,7 @@ export async function deleteInbound(id, loginUser) {
     return {
       error: true,
       code: HttpStatusCode.NOT_FOUND,
-      message: "Không tìm thấy nhập saản phẩm",
+      message: "Không tìm thấy nhập sản phẩm",
     };
   }
   await models.Inbound.destroy({

@@ -15,7 +15,7 @@ const schema = Joi.object().keys({
   branchId: Joi.number().integer().min(0).allow(null).allow(""),
   districtId: Joi.number().integer().min(0).allow(null).allow(""),
   provinceId: Joi.number().integer().min(0).allow(null).allow(""),
-  note: Joi.string().max(500).allow(null).allow(""),
+  note: Joi.string().allow(null).allow(""),
   groupSupplierId: Joi.number().integer().min(0).allow(null).allow(""),
 });
 

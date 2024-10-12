@@ -159,16 +159,16 @@ module.exports.mapRouting = async (req, res) => {
     }
 }
 
-module.exports.changeCurrent = async (req, res) => {
-    try {
-        const body = req.body;
-        const { id } = req.params;
-        const result = await tripService.changeCurrent({ ...body, id });
-        if (result.success) res.json(respondItemSuccess(result.data));
-        else res.json(respondWithError(result.code, result.message, {}));
-    } catch (error) {
-        res.json(
-            respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
-        );
-    }
-}
+// module.exports.changeCurrent = async (req, res) => {
+//     try {
+//         const body = req.body;
+//         const { id } = req.params;
+//         const result = await tripService.changeCurrent({ ...body, id });
+//         if (result.success) res.json(respondItemSuccess(result.data));
+//         else res.json(respondWithError(result.code, result.message, {}));
+//     } catch (error) {
+//         res.json(
+//             respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error)
+//         );
+//     }
+// }

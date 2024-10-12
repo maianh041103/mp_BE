@@ -31,17 +31,17 @@ const transactionService = require("../transaction/transactionService");
 export async function indexList(params, loginUser) {
   const filter = getFilter(params, loginUser)
   const { limit, page } = params
-  const [items, totalItem] = await Promise.all([
-    models.SaleReturn.findAll({
+  const items = await models.SaleReturn.findAll({
       attributes: saleReturnAttributes,
       include: saleReturnIncludes,
       ...filter,
       offset: +limit * (+page - 1),
       limit: +limit,
       order: [['id', 'desc']]
-    }),
-    models.SaleReturn.count(filter)
-  ])
+  });
+
+  delete filter.include;
+  const totalItem = await models.SaleReturn.count(filter);
 
   return {
     success: true,
@@ -104,11 +104,7 @@ function calculateTotalItemPrice(products) {
 
 export async function indexCreate(saleReturn, loginUser) {
   if (!saleReturn.products || !saleReturn.products.length) {
-    return {
-      error: true,
-      code: HttpStatusCode.BAD_REQUEST,
-      message: `Bạn cần chọn sản phẩm để tiến hành trả hàng`
-    }
+    throw new Error(`Bạn cần chọn sản phẩm để tiến hành trả hàng`);
   }
 
   // Validate thông tin nhà cung cấp, nhân viên, chi nhánh
@@ -153,7 +149,7 @@ export async function indexCreate(saleReturn, loginUser) {
         discount: discount,
         itemPrice: itemPrice,
         totalPrice: totalPrice,
-        debt: totalPrice - paid,
+        debt: totalPrice - paid >= 0 ? totalPrice - paid : 0,
         paid: paid,
         status: SaleReturnStatus.SUCCEED,
         createdBy: loginUser.id
@@ -184,6 +180,15 @@ export async function indexCreate(saleReturn, loginUser) {
     })
 
     let pointDecrement = 0;
+
+    //Kiểm tra tích điểm có được bật k
+    const pointExists = await models.Point.findOne({
+      where:{
+        storeId:loginUser.storeId,
+        status:"active"
+      }
+    });
+    //End kiểm tra tích điểm có được bật k
     for (const item of saleReturn.products) {
       const findProduct = await models.Product.findOne({
         where: {
@@ -228,20 +233,6 @@ export async function indexCreate(saleReturn, loginUser) {
             transaction: t
           }
         )
-
-        if (
-          orderProduct.quantity ==
-          orderProduct.quantityLast + item.quantity
-        ) {
-          let id = saleReturn.orderId
-          console.log(id)
-          await models.Order.update(
-            {
-              canReturn: false
-            },
-            { where: { id: saleReturn.orderId } }
-          )
-        }
       }
 
       if (!findProduct) {
@@ -267,10 +258,10 @@ export async function indexCreate(saleReturn, loginUser) {
           partner: customer.fullName,
           productId: item.productId,
           branchId: saleReturn.branchId,
-          changeQty: item.quantity * productUnit.exchangeValue,
-          remainQty:
-            (await getInventory(saleReturn.branchId, item.productId)) +
-            item.quantity * productUnit.exchangeValue,
+          changeQty: parseInt(item.quantity * productUnit.exchangeValue),
+          remainQty:parseInt(
+            (await getInventory(saleReturn.branchId, item.productId))) +
+            parseInt(+item.quantity * +productUnit.exchangeValue),
           createdAt: new Date(),
           updatedAt: new Date()
         },
@@ -282,6 +273,7 @@ export async function indexCreate(saleReturn, loginUser) {
         item.quantity * productUnit.exchangeValue,
         t
       )
+
       const saleReturnItem = await models.SaleReturnItem.create(
         {
           storeId: loginUser.storeId,
@@ -292,7 +284,8 @@ export async function indexCreate(saleReturn, loginUser) {
           discount: item.discount || 0,
           createdBy: loginUser.id,
           price: item.price,
-          totalPrice: item.price * item.totalQuantity
+          totalPrice: item.price * item.totalQuantity,
+          pointDecrement: pointExists ? orderProduct.point * item.quantity / orderProduct.quantity : 0
         },
         { transaction: t }
       )
@@ -333,6 +326,17 @@ export async function indexCreate(saleReturn, loginUser) {
         { transaction: t }
       )
 
+      if(item.quantity * item.price - saleReturn.paid !== 0){
+        await models.CustomerDebt.decrement({
+          debtAmount: item.quantity * item.price - saleReturn.paid
+        },{
+          where:{
+            orderId:saleReturn.orderId,
+          },
+          transaction:t
+        })
+      }
+
       if (findProduct.isBatchExpireControl) {
         for (const _batch of item.batches) {
           const responseReadBatch = await readBatch(_batch.id, loginUser)
@@ -363,25 +367,54 @@ export async function indexCreate(saleReturn, loginUser) {
       }
     }
 
-    //Trừ điểm tích lũy
-    await models.Customer.decrement({
-      point: pointDecrement
-    }, {
-      where: {
-        id: saleReturn.customerId
+    //Check cap nhat canReturn
+    const products = await models.OrderProduct.findAll({
+      where:{
+        orderId: saleReturn.orderId
       },
       transaction: t
-    })
+    });
+    let checkCanReturn = true;
+    for(const item of products) {
+      if(item.quantity !== item.quantityLast){
+        checkCanReturn = false;
+      }
+    }
+    if (checkCanReturn === true) {
+      await models.Order.update(
+          {
+            canReturn: false
+          },
+          {
+            where: { id: saleReturn.orderId },
+            transaction: t
+          }
+      )
+    }
 
-    await models.PointHistory.create({
-      customerId: saleReturn.customerId,
-      point: pointDecrement * (-1),
-      saleReturnId: newSaleReturn.id,
-      code: code
-    },
-      {
+    //Trừ điểm tích lũy
+    if(!pointExists){
+      pointDecrement = 0;
+    }
+    if(pointExists) {
+      await models.Customer.decrement({
+        point: pointDecrement
+      }, {
+        where: {
+          id: saleReturn.customerId
+        },
         transaction: t
       });
+    }
+    await models.PointHistory.create({
+          customerId: saleReturn.customerId,
+          point: pointDecrement * (-1),
+          saleReturnId: newSaleReturn.id,
+          code: code
+        },
+        {
+          transaction: t
+        });
     //End trừ điểm tích lũy
   })
   const refresh = await indexDetail(newSaleReturn.id, loginUser)

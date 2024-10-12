@@ -5,9 +5,8 @@ const { HttpStatusCode } = require("../../helpers/errorCodes");
 const axios = require('axios');
 const tripContant = require("./tripContant");
 const { generateCode } = require("../../helpers/codeGenerator");
-const { client } = require("../../../redis/redisConnect");
 const config = require("../../../config/default.json");
-const {checkDouble} = require("../../helpers/utils");
+const {checkDouble, checkCoordinates} = require("../../helpers/utils");
 
 const tripAttributes = [
     "id",
@@ -67,15 +66,14 @@ const sortMap = async (listPoint) => {
     const apiUrl = `https://maps.vietmap.vn/api/matrix?api-version=1.1&apikey=${API_KEY}&${points}`;
     const response = await axios.get(apiUrl);
     const data = response.data;
-    let res = travel(data);
-    res.shift();
-    res.shift();
+    //let res = travel(data);
+    let res = tsp(data.distances);
     console.log(res);
     return res;
 }
 
 const travel = (data) => {
-    let X = []; //X[i] là số thứ tự thành phố thứ i đi qua 
+    let X = []; //X[i] là số thứ tự thành phố thứ i đi qua
     let d = 0; //Tính khoảng cách đi lại
     let ans = 999999999; //lưu chi phí đường đi tối ưu
     let cmin = 999999999; //lưu chi phí 1 quãng đường ngắn nhất
@@ -124,7 +122,74 @@ const travel = (data) => {
     }
     Try(2);
     return X_best;
+    // console.log(data.distances);
+    // const n = data.distances.length; // Số lượng thành phố
+    // const INF = Infinity;
+    //
+    // // dp[mask][i] sẽ là chi phí tối thiểu để đi qua tất cả các thành phố trong `mask` và kết thúc ở thành phố `i`
+    // let dp = Array(1 << n).fill(null).map(() => Array(n).fill(INF));
+    //
+    // // Bắt đầu từ thành phố 0, chi phí là 0
+    // dp[1][0] = 0;
+    //
+    // // Duyệt qua tất cả các tập hợp (mask) của các thành phố đã thăm
+    // for (let mask = 1; mask < (1 << n); mask++) {
+    //     for (let u = 0; u < n; u++) {
+    //         // Nếu thành phố `u` đã được thăm trong tập hợp `mask`
+    //         if (mask & (1 << u)) {
+    //             for (let v = 0; v < n; v++) {
+    //                 // Nếu thành phố `v` chưa được thăm trong tập hợp `mask`
+    //                 if (!(mask & (1 << v))) {
+    //                     let nextMask = mask | (1 << v); // Cập nhật tập hợp mới sau khi thăm thành phố `v`
+    //                     dp[nextMask][v] = Math.min(dp[nextMask][v], dp[mask][u] + data.distances[u][v]);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+    //
+    // // Tìm chi phí tối thiểu để quay lại thành phố 0 từ tất cả các thành phố khác
+    // let ans = INF;
+    // for (let i = 1; i < n; i++) {
+    //     ans = Math.min(ans, dp[(1 << n) - 1][i] + data.distances[i][0]);
+    // }
+    //
+    // return ans;
 }
+
+const tsp = (distances) => {
+    const n = distances.length; // Number of cities
+    const visited = new Array(n).fill(false); // Track visited cities
+    const path = [0]; // Start at city 0
+    let totalDistance = 0;
+
+    visited[0] = true; // Mark the starting city as visited
+
+    for (let i = 1; i < n; i++) {
+        let lastCity = path[path.length - 1];
+        let nearestCity = -1;
+        let nearestDistance = Infinity;
+
+        // Find the nearest unvisited city
+        for (let j = 0; j < n; j++) {
+            if (!visited[j] && distances[lastCity][j] < nearestDistance) {
+                nearestCity = j;
+                nearestDistance = distances[lastCity][j];
+            }
+        }
+
+        // Move to the nearest city
+        path.push(nearestCity);
+        visited[nearestCity] = true;
+        totalDistance += nearestDistance;
+    }
+
+    // Return to the starting city
+    totalDistance += distances[path[path.length - 1]][0];
+    return path;
+};
+
+
 
 module.exports.createTrip = async (params) => {
     const { name, lat, lng, time, latEnd, lngEnd, userId, note, listCustomer, createdBy, storeId, status = tripContant.TRIPSTATUS.PENDING } = params;
@@ -187,7 +252,7 @@ module.exports.createTrip = async (params) => {
             }
         }
         if (listCustomer.length > 1) {
-            listPoint.push(`${latEnd},${lngEnd}`);
+            //listPoint.push(`${latEnd},${lngEnd}`);
             let res = await sortMap(listPoint);
             for (let i = 0; i < listCustomer.length; i++) {
                 let lngTmp, latTmp;
@@ -203,7 +268,7 @@ module.exports.createTrip = async (params) => {
                     lngTmp = listCustomer[i].lng;
                     latTmp = listCustomer[i].lat;
                 }
-                const index = res.findIndex(item => item == i + 2);
+                const index = res.findIndex(item => item == i + 1);
                 const address = await reverse(lngTmp, latTmp);
 
                 await models.TripCustomer.create({
@@ -212,7 +277,7 @@ module.exports.createTrip = async (params) => {
                     lat: latTmp,
                     lng: lngTmp,
                     status: tripContant.TRIPSTATUS.NOT_VISITED,
-                    stt: index + 1,
+                    stt: index,
                     address
                 }, {
                     transaction: t
@@ -383,8 +448,6 @@ const getDistance = async (listPoint, currentIndex) => {
     let points = listPoint.join("&point=");
     let API_KEY = tripContant.KEY.API_KEY;
     points = "point=" + points;
-    console.log(listPoint);
-    console.log(currentIndex);
     const apiUrl = `https://maps.vietmap.vn/api/matrix?api-version=1.1&apikey=${API_KEY}&${points}&sources=${currentIndex}`;
     const response = await axios.get(apiUrl);
     const data = response.data;
@@ -492,12 +555,6 @@ module.exports.changeStatus = async (params) => {
             });
 
             const key = `map_${tripCustomer.tripId}`;
-            await client.set(key, JSON.stringify({
-                id: tripCustomer.tripId,
-                lng: tripCustomer.lng,
-                lat: tripCustomer.lat
-            }));
-            await client.expire(key, config.redis.timeToLive);
 
             await models.Trip.update({
                 latCurrent: tripCustomer.lat,
@@ -632,7 +689,7 @@ const updateIndex = async (tripId) => {
         listPoint.unshift(`${trip.lat},${trip.lng}`);
     }
     if (listPoint.length > 1) {
-        listPoint.push(`${trip.latEnd},${trip.lngEnd}`);
+        //listPoint.push(`${trip.latEnd},${trip.lngEnd}`);
         console.log(listPoint);
         let res = await sortMap(listPoint);
         const countVisted = await models.TripCustomer.count({
@@ -643,10 +700,10 @@ const updateIndex = async (tripId) => {
         });
 
         for (let i = 0; i < listTripCustomer.length; i++) {
-            const index = res.findIndex(item => item == i + 2);
-            if (index + 1 + countVisted != listTripCustomer[i].stt) {
+            const index = res.findIndex(item => item === i + 1);
+            if (index + countVisted !== listTripCustomer[i].stt) {
                 await models.TripCustomer.update({
-                    stt: index + 1 + countVisted
+                    stt: index + countVisted
                 }, {
                     where: {
                         id: listTripCustomer[i].id
@@ -746,60 +803,72 @@ module.exports.reverse = async (params) => {
 }
 
 module.exports.geofencing = async (params) => {
-    const { radius, storeId, limit = 10, page = 1 } = params;
+    const { radius, storeId, limit = 200, page = 1 } = params;
     const lng = (params.lng).toString().trim();
     const lat = (params.lat).toString().trim();
-    const listCustomer = await models.Customer.findAll({
-        attributes: ["id", "lng", "lat"],
-        where: {
-            storeId,
-            lat: {
-                [Op.ne]: null
-            },
-            lng: {
-                [Op.ne]: null
-            }
-        }
-    });
-    const listCustomerConvert = listCustomer.map(item => {
-        return {
-            id: `${item.id}`,
-            long: (item.lng).toString().trim(),
-            lat: (item.lat).toString().trim()
-        }
-    }).filter(item => checkDouble(item.lat) && checkDouble(item.long));
-    let API_KEY = tripContant.KEY.API_KEY;
-    const body = {
-        geometryCenters: listCustomerConvert,
-        radius,
-        long: lng,
-        lat:lat
-    }
-    const apiUrl = `https://maps.vietmap.vn/api/geofencing?apikey=${API_KEY}`;
-    const response = await axios.post(apiUrl, body);
-    const data = response.data.data;
-    const listCustomerIdInside = (data.filter(item => item.inside == true))
-        .map(item => item.id);
-
-    const listCustomerInside = await models.Customer.findAll({
-        where: {
-            id: {
-                [Op.in]: listCustomerIdInside
-            }
+    const where = {
+        storeId,
+        lat: {
+            [Op.ne]: null
         },
-        attributes: ["id", "code", "fullName", "phone", "address", "lat", "lng", "status"],
-        limit: parseInt(limit),
-        offset: (parseInt(page) - 1) * parseInt(limit)
-    });
-
-    const listPoint = listCustomerInside.map(item => `${(item.lat).trim()},${(item.lng).trim()}`);
-    listPoint.unshift(`${lat},${lng}`);
-    let distances = (await getDistance(listPoint, 0)).distances[0];
-    const result = listCustomerInside.map((item, index) => {
-        return {
-            ...item.dataValues,
-            distance: distances[index + 1]
+        lng: {
+            [Op.ne]: null
         }
+    }
+    const totalItem = await models.Customer.count({
+        where
+    });
+    let API_KEY = tripContant.KEY.API_KEY;
+    let result = [];
+    for(let i = 0 ; i < Math.ceil(totalItem/parseInt(limit));i++){
+        const listCustomer = await models.Customer.findAll({
+            attributes: ["id", "lng", "lat"],
+            where,
+            limit:parseInt(limit),
+            offset: i * parseInt(limit)
+        });
+        const listCustomerConvert = listCustomer.map(item => {
+            return {
+                id: `${item.id}`,
+                long: (item.lng).toString().trim(),
+                lat: (item.lat).toString().trim()
+            }
+        }).filter(item => checkDouble(item.lat) && checkDouble(item.long));
+
+        const body = {
+            geometryCenters: listCustomerConvert,
+            radius,
+            long: lng,
+            lat:lat
+        }
+        const apiUrl = `https://maps.vietmap.vn/api/geofencing?apikey=${API_KEY}`;
+        const response = await axios.post(apiUrl, body);
+        const data = response.data.data;
+        const listCustomerIdInside = (data.filter(item => item.inside == true))
+            .map(item => item.id);
+
+        const listCustomerInside = await models.Customer.findAll({
+            where: {
+                id: {
+                    [Op.in]: listCustomerIdInside
+                }
+            },
+            attributes: ["id", "code", "fullName", "phone", "address", "lat", "lng", "status"]
+        });
+
+        const listPoint = listCustomerInside.map(item => `${(item.lat).trim()},${(item.lng).trim()}`);
+        listPoint.unshift(`${lat},${lng}`);
+        let distances = (await getDistance(listPoint, 0)).distances[0];
+        let tmp = listCustomerInside.map((item, index) => {
+            return {
+                ...item.dataValues,
+                distance: distances[index + 1]
+            }
+        })
+        result = [...result,...tmp];
+    }
+    result = result.sort((a,b)=>{
+        return a.distance - b.distance;
     })
     return {
         success: true,
@@ -840,32 +909,5 @@ module.exports.mapRouting = async (params) => {
     return {
         success: true,
         data
-    }
-}
-
-module.exports.changeCurrent = async (params) => {
-    const { id, lng, lat } = params;
-    const key = `map_${id}`;
-    await client.set(key, JSON.stringify({ id, lng, lat }));
-    await client.expire(key, config.redis.timeToLive);
-    const value = await client.get(key);
-    return {
-        success: true,
-        data: JSON.parse(value)
-    }
-}
-
-module.exports.updateDb = async (req, res) => {
-    const keys = await client.keys('map*');
-    for (const key of keys) {
-        const value = JSON.parse(await client.get(key));
-        await models.Trip.update({
-            latCurrent: value.lat,
-            lngCurrent: value.lng
-        }, {
-            where: {
-                id: value.id
-            }
-        });
     }
 }

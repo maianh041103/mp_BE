@@ -3,6 +3,8 @@ import {addInventory, getInventory, newInventory} from "../inventory/inventorySe
 import {raiseBadRequestError} from "../../helpers/exception";
 import {createWarehouseCard} from "../warehouse/warehouseService";
 import {warehouseStatus} from "../warehouse/constant";
+import {MARKET_TYPE} from "../marketConfig/marketConfigContant";
+import {STATUS_ORDER} from "../marketSell/marketSellContant";
 
 const moment = require("moment");
 const {
@@ -26,6 +28,7 @@ const {
     checkUniqueValue,
     formatEndDateTime,
     removeDiacritics,
+    formatExcelDate
 } = require("../../helpers/utils");
 const {
     productStatuses,
@@ -41,6 +44,7 @@ const {accountTypes, logActions} = require("../../helpers/choices");
 const {productIncludes, productAttributes} = require("./constant")
 const {queryFilter} = require("./filter")
 const generateCode = require("../../helpers/codeGenerator");
+const now = moment();
 
 export async function productFilter(params) {
     try {
@@ -54,12 +58,17 @@ export async function productFilter(params) {
 export async function countProduct(query) {
     try {
         const invInclude = query.include.find(x => x.as === 'inventories')
+        const unitInclude = query.include.find(x => x.as === 'productUnit')
         delete query.order
-        delete query.include
+        query.include = [];
         if (invInclude) {
-            query.include = [invInclude];
+            query.include.push(invInclude);
+        }
+        if(unitInclude && unitInclude.where){
+            query.include.push(unitInclude);
         }
         query.attributes = ["id"]
+        query.distinct = true;
 
         return await models.Product.count(query);
     } catch (e) {
@@ -144,6 +153,16 @@ export async function indexProducts(params) {
     };
 }
 
+export async function indexProductsByGroup(params){
+    const result = indexProducts(params);
+    if(result.success){
+        const products = result.data.items;
+        for(let product of products){
+
+        }
+    }
+}
+
 function getCode(type) {
     switch (type) {
         case productTypes.THUOC:
@@ -189,7 +208,46 @@ export async function createProduct(product, loginUser) {
             };
         }
     }
-
+    if (product.productUnits) {
+        let cntCode = {};
+        let cntBarCode = {};
+        cntCode[product.code] = 1;
+        cntBarCode[product.barCode] = 1;
+        for (const item of product.productUnits) {
+            if (item.code) {
+                cntCode[item.code] = (cntCode[item.code] || 0) + 1;
+            }
+            if(item.barCode){
+                cntBarCode[item.barCode] = (cntBarCode[item.barCode] || 0) + 1;
+            }
+        }
+        let checkCode = false;
+        for(const item in cntCode){
+            if(cntCode[item] > 1){
+                checkCode = true;
+            }
+        }
+        if (checkCode) {
+            return {
+                error: true,
+                message: "Mã code là duy nhất",
+                code: HttpStatusCode.BAD_REQUEST
+            }
+        }
+        let checkBarCode = false;
+        for(const item in cntBarCode){
+            if(cntBarCode[item] > 1){
+                checkBarCode = true;
+            }
+        }
+        if (checkBarCode) {
+            return {
+                error: true,
+                message: "Mã vạch là duy nhất",
+                code: HttpStatusCode.BAD_REQUEST
+            }
+        }
+    }
     if (product.barCode) {
         product.barCode = removeDiacritics(product.barCode);
         const checkUniqueBarCode = await checkUniqueValue("Product", {
@@ -439,12 +497,74 @@ export async function updateProduct(id, product, loginUser) {
                 [Op.ne]: findProduct.id,
             },
         });
-        if (!checkUniqueCode) {
+        const checkUniqueCodeUnit = await checkUniqueValue("ProductUnit",{
+            code: product.code,
+            storeId: product.storeId,
+            [Op.or]:[
+                {
+                    productId: {
+                        [Op.ne]: findProduct.id,
+                    }
+                },
+                {
+                    [Op.and]:[
+                        {
+                            productId: {
+                                [Op.eq]: findProduct.id
+                            }
+                        },
+                        {isBaseUnit: false}
+                    ]
+                }
+            ]
+        });
+        if (!checkUniqueCode || !checkUniqueCodeUnit) {
             return {
                 error: true,
                 code: HttpStatusCode.BAD_REQUEST,
                 message: `Mã hàng ${product.code} đã tồn tại.`,
             };
+        }
+    }
+
+    if (product.productUnits) {
+        let cntCode = {};
+        let cntBarCode = {};
+        cntCode[product.code] = 1;
+        cntBarCode[product.barCode] = 1;
+        for (const item of product.productUnits) {
+            if (item.code) {
+                cntCode[item.code] = (cntCode[item.code] || 0) + 1;
+            }
+            if(item.barCode){
+                cntBarCode[item.barCode] = (cntBarCode[item.barCode] || 0) + 1;
+            }
+        }
+        let checkCode = false;
+        for(const item in cntCode){
+            if(cntCode[item] > 1){
+                checkCode = true;
+            }
+        }
+        if (checkCode) {
+            return {
+                error: true,
+                message: "Mã code là duy nhất",
+                code: HttpStatusCode.BAD_REQUEST
+            }
+        }
+        let checkBarCode = false;
+        for(const item in cntBarCode){
+            if(cntBarCode[item] > 1){
+                checkBarCode = true;
+            }
+        }
+        if (checkBarCode) {
+            return {
+                error: true,
+                message: "Mã vạch là duy nhất",
+                code: HttpStatusCode.BAD_REQUEST
+            }
         }
     }
 
@@ -514,6 +634,9 @@ export async function updateProduct(id, product, loginUser) {
                 }
             }
 
+        }
+        if(product.imageId){
+            product.imageUrl = "";
         }
         await models.Product.update(product, {
             where: {
@@ -631,6 +754,30 @@ export async function getProductDetail(id) {
     };
 }
 
+export async function getProductBySeri(id) {
+    const instance = await models.Product.findOne({
+        include: productIncludes,
+        attributes: productAttributes,
+        where: {
+            id: id
+        },
+    });
+
+    if (!instance) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: "Không tồn tại sản phẩm",
+        };
+    }
+
+    return {
+        success: true,
+        data: instance,
+    };
+}
+
+
 export async function readProduct(id, loginUser) {
     const instance = await models.Product.findOne({
         include: productIncludes,
@@ -742,6 +889,33 @@ export async function deleteProductById(id, loginUser) {
             code: HttpStatusCode.BAD_REQUEST,
             message: "Sản phẩm đang được sử dụng ở nhập hàng, không thể xóa",
         };
+    }
+
+    // Kiểm tra trong đơn hàng trên chợ
+    const findProductMarket = await models.MarketProduct.findOne({
+        where:{
+            productId:id
+        }
+    });
+
+    if(findProductMarket) {
+        const findProductMarketOrder = await models.MarketOrderProduct.findOne({
+            where:{
+                marketProductId: findProductMarket.id,
+            }
+        });
+        if (findProductMarketOrder) {
+            return {
+                error: true,
+                code: HttpStatusCode.BAD_REQUEST,
+                message: "Sản phẩm đang được sử dụng ở hóa đơn trên chợ, không thể xóa",
+            };
+        }
+        await models.MarketProduct.destroy({
+            where:{
+                productId:id
+            }
+        })
     }
 
     await Promise.all([
@@ -1035,6 +1209,38 @@ export async function indexInventory(id, storeId, branchId, productUnitId) {
         });
         inventories[0].dataValues.quantityProductUnit = parseInt(Math.floor(inventories[0].quantity / productUnit.exchangeValue));
     }
+    const marketProduct = await models.MarketProduct.findOne({
+        where:{
+            productId: id
+        }
+    });
+    if(marketProduct){
+        // Tính số lượng khách hàng đặt
+        const totalProduct = await models.MarketOrderProduct.count({
+            where:{
+                marketProductId:marketProduct.id
+            },
+            include:[{
+                model:models.MarketOrder,
+                as:"marketOrder",
+                where:{
+                    [Op.or]:[
+                        {status:STATUS_ORDER.PENDING,},
+                        {status:STATUS_ORDER.CONFIRM}
+                    ]
+                }
+            }]
+        });
+        inventories[0].dataValues.customerOrders = totalProduct;
+        // Dự kiến hết hàng
+        const timeBuy = now.diff(moment(marketProduct.createdAt), 'days');
+        inventories[0].dataValues.stockout = parseInt(+timeBuy * +inventories[0].quantity /+totalProduct);
+
+    }
+    else{
+        inventories[0].dataValues.customerOrders = 0;
+        inventories[0].dataValues.stockout = 0;
+    }
     return {
         success: true,
         data: inventories
@@ -1077,7 +1283,7 @@ export async function findProduct(keyword, page, limit) {
     })
 }
 
-export async function uploadFileService(loginUser, data,branchId) {
+export async function uploadFileService(loginUser, data, branchId) {
     for (let index = 0; index < data.length; index++) {
         const item = data[index];
         try {
@@ -1113,9 +1319,9 @@ export async function uploadFileService(loginUser, data,branchId) {
             });
             let result = {
                 type: parseInt(_.get(item, 'Loại sản phẩm', 2).toString().trim()),
-                code:_.get(item, 'Mã hàng', '').toString().trim(),
+                code: _.get(item, 'Mã hàng', '').toString().trim(),
                 barCode: _.get(item, 'Mã vạch', '').toString().trim(),
-                drugCode:_.get(item, 'Mã thuốc', '').toString().trim(),
+                drugCode: _.get(item, 'Mã thuốc', '').toString().trim(),
                 name: _.get(item, 'Tên sản phẩm', null) ? _.get(item, 'Tên sản phẩm', null).toString().trim() : null,
                 shortName: _.get(item, 'Tên viết tắt', '').toString().trim(),
                 groupProductName: _.get(item, 'Nhóm sản phẩm', null) ? _.get(item, 'Nhóm sản phẩm', null).toString().trim() : null,
@@ -1144,11 +1350,11 @@ export async function uploadFileService(loginUser, data,branchId) {
             let newProduct;
             let product;
             await models.sequelize.transaction(async (t) => {
-                let groupProduct = {},manufacture = {},country = {},dosage = {},position = {};
-                if(result.groupProductName) {
+                let groupProduct = {}, manufacture = {}, country = {}, dosage = {}, position = {};
+                if (result.groupProductName) {
                     [groupProduct] = await models.GroupProduct.findOrCreate({
                         where: {
-                            name: {[Op.like]:`%${result.groupProductName}`},
+                            name: {[Op.like]: `%${result.groupProductName}`},
                             storeId: loginUser.storeId
                         },
                         defaults: {
@@ -1158,7 +1364,7 @@ export async function uploadFileService(loginUser, data,branchId) {
                         transaction: t
                     });
                 }
-                if(result.manufactureName) {
+                if (result.manufactureName) {
                     [manufacture] = await models.Manufacture.findOrCreate({
                         where: {
                             name: {
@@ -1173,17 +1379,17 @@ export async function uploadFileService(loginUser, data,branchId) {
                         transaction: t
                     });
                 }
-                if(result.countryName) {
+                if (result.countryName) {
                     country = await models.CountryProduce.findOne({
                         where: {
-                            name:{[Op.like]: `%${result.countryName}%`}
+                            name: {[Op.like]: `%${result.countryName}%`}
                         }
                     });
                 }
-                if(result.dosageName) {
+                if (result.dosageName) {
                     [dosage] = await models.Dosage.findOrCreate({
                         where: {
-                            name:{[Op.like]: `%${result.dosageName}%`},
+                            name: {[Op.like]: `%${result.dosageName}%`},
                             storeId: loginUser.storeId
                         },
                         defaults: {
@@ -1194,10 +1400,10 @@ export async function uploadFileService(loginUser, data,branchId) {
                         transaction: t
                     });
                 }
-                if(result.positionName) {
+                if (result.positionName) {
                     [position] = await models.Position.findOrCreate({
                         where: {
-                            name:{[Op.like]: `%${result.positionName}%`},
+                            name: {[Op.like]: `%${result.positionName}%`},
                             storeId: loginUser.storeId
                         },
                         defaults: {
@@ -1370,6 +1576,390 @@ export async function uploadFileService(loginUser, data,branchId) {
                 code: HttpStatusCode.BAD_REQUEST,
                 message: `Lỗi ${error}`
             }
+        }
+    }
+    return {
+        success: true,
+        data: null
+    }
+}
+
+export async function uploadFileKiotVietService(loginUser, data, branchId) {
+    try {
+        const t = await models.sequelize.transaction(async (t) => {
+            let listProductUnit = [];
+            for (let index = 0; index < data.length; index++) {
+                const item = data[index];
+                let result = {
+                    type: _.get(item, 'Loại hàng', 'Hàng hóa').toString().trim(),
+                    code: _.get(item, 'Mã hàng', '').toString().trim(),
+                    barCode: _.get(item, 'Mã vạch', '').toString().trim(),
+                    drugCode: _.get(item, 'Mã thuốc', '').toString().trim(),
+                    name: _.get(item, 'Tên hàng', null) ? _.get(item, 'Tên hàng', null).toString().trim() : null,
+                    shortName: _.get(item, 'Tên viết tắt', '').toString().trim(),
+                    groupProductName: _.get(item, 'Nhóm hàng(3 Cấp)', null) ? _.get(item, 'Nhóm hàng(3 Cấp)', null).toString().trim() : null,
+                    positionName: _.get(item, 'Vị trí', null) ? _.get(item, 'Vị trí', null).toString().trim() : null,
+                    dosageName: _.get(item, 'Đường dùng', null) ? _.get(item, 'Đường dùng', null).toString().trim() : null,
+                    primePrice: _.get(item, 'Giá vốn', 0),
+                    price: _.get(item, 'Giá bán', 0),
+                    weight: _.get(item, 'Trọng lượng', 0),
+                    packingSpecification: _.get(item, 'Quy cách đóng gói', null) ? _.get(item, 'Quy cách đóng gói', null).toString().trim() : null,
+                    manufactureName: _.get(item, 'Hãng sản xuất', null) ? _.get(item, 'Hãng sản xuất', null).toString().trim() : null,
+                    countryName: _.get(item, 'Nước sản xuất', null) ? _.get(item, 'Nước sản xuất', null).toString().trim() : null,
+                    inventory: _.get(item, 'Tồn kho', 0),
+                    isBatchExpireControl: _.get(item, 'Quản lý lô-hạn sử dụng', 0),
+                    expiryPeriod: _.get(item, 'Cảnh báo ngày hết hạn', null) ? _.get(item, 'Cảnh báo ngày hết hạn', null).toString().trim() : null,
+                    isDirectSale: _.get(item, 'Được bán trực tiếp', true),
+                    isLoyaltyPoint: _.get(item, 'Tích điểm', true),
+                    minInventory: _.get(item, 'Tồn nhỏ nhất', 0),
+                    maxInventory: _.get(item, 'Tồn lớn nhất', 999),
+                    description: _.get(item, 'Mô tả', null) ? _.get(item, 'Mô tả', null).toString().trim() : null,
+                    note: _.get(item, 'Ghi chú', null) ? _.get(item, 'Ghi chú', null).toString().trim() : null,
+                    unit: _.get(item, 'ĐVT', '').toString().trim(),
+                    exchangeValue: _.get(item, 'Quy đổi', null).toString().trim(),
+                    image: _.get(item, 'Hình ảnh (url1,url2...)', '').toString().trim(),
+                    status: _.get(item, 'Đang kinh doanh', 1).toString().trim(),
+                    codeBaseUnit: _.get(item, 'Mã ĐVT Cơ bản', '').toString().trim()
+                }
+
+                let listInventory = [];
+                if (result.codeBaseUnit === "") {
+                    _.forEach(item, (value, key) => {
+                        if (_.startsWith(key, 'Lô')) {
+                            const index = key.split(' ')[1];
+                            if (!isNaN(index)) {
+                                if (item[`Lô ${index}`]) {
+                                    listInventory.push({
+                                        [`name`]: item[`Lô ${index}`],
+                                        [`quantity`]: item[`Tồn ${index}`],
+                                        [`expiryDate`]: item[`Hạn sử dụng ${index}`]
+                                    });
+                                }
+                            }
+                        }
+                    });
+                }
+                let newProduct;
+                let product;
+                let groupProduct = {}, manufacture = {}, country = {}, dosage = {}, position = {};
+                if (result.groupProductName) {
+                    [groupProduct] = await models.GroupProduct.findOrCreate({
+                        where: {
+                            name: {[Op.like]: `%${result.groupProductName}`},
+                            storeId: loginUser.storeId
+                        },
+                        defaults: {
+                            name: result.groupProductName,
+                            createdBy: loginUser.id
+                        },
+                        transaction: t
+                    });
+                }
+                if (result.manufactureName) {
+                    [manufacture] = await models.Manufacture.findOrCreate({
+                        where: {
+                            name: {
+                                [Op.like]: `%${result.manufactureName}`
+                            },
+                            storeId: loginUser.storeId
+                        },
+                        defaults: {
+                            name: result.manufactureName,
+                            storeId: loginUser.storeId
+                        },
+                        transaction: t
+                    });
+                }
+                if (result.countryName) {
+                    country = await models.CountryProduce.findOne({
+                        where: {
+                            name: {[Op.like]: `%${result.countryName}%`}
+                        }
+                    });
+                }
+                if (result.dosageName) {
+                    [dosage] = await models.Dosage.findOrCreate({
+                        where: {
+                            name: {[Op.like]: `%${result.dosageName}%`},
+                            storeId: loginUser.storeId
+                        },
+                        defaults: {
+                            name: result.dosageName,
+                            storeId: loginUser.storeId,
+                            createdBy: loginUser.id
+                        },
+                        transaction: t
+                    });
+                }
+                if (result.positionName) {
+                    [position] = await models.Position.findOrCreate({
+                        where: {
+                            name: {[Op.like]: `%${result.positionName}%`},
+                            storeId: loginUser.storeId
+                        },
+                        defaults: {
+                            name: result.positionName,
+                            storeId: loginUser.storeId,
+                            createdBy: loginUser.id
+                        },
+                        transaction: t
+                    })
+                }
+                if(result.type === 'Hàng hóa'){
+                    result.type = 2;
+                }
+                else if(result.type === 'Thuốc'){
+                    result.type = 1;
+                }else{
+                    result.type = 3;
+                }
+                if (result.codeBaseUnit === '') {
+                    product = {
+                        name: result.name,
+                        slug: result.slug || "",
+                        drugCode: result.drugCode,
+                        code: result.code,
+                        barCode: result.barCode,
+                        shortName: result.shortName,
+                        groupProductId: groupProduct.id,
+                        primePrice: result.primePrice,
+                        price: result.price,
+                        weight: result.weight,
+                        warningExpiryDate: result.warningExpiryDate,
+                        warningExpiryText: result.warningExpiryText,
+                        isDirectSale: result.isDirectSale,
+                        packingSpecification: result.packingSpecification,
+                        manufactureId: manufacture.id,
+                        countryId: country.id,
+                        minInventory: result.minInventory,
+                        maxInventory: result.maxInventory,
+                        description: result.description,
+                        note: result.note,
+                        status: productStatuses.ACTIVE,
+                        imageUrl: result.image,
+                        type: result.type,
+                        storeId: loginUser.storeId,
+                        branchId: branchId,
+                        dosageId: dosage.id,
+                        positionId: position.id,
+                        isLoyaltyPoint: result.isLoyaltyPoint,
+                        isBatchExpireControl: result.isBatchExpireControl,
+                        expiryPeriod: result.expiryPeriod,
+                        inventory: result.inventory,
+                        baseUnit: result.unit,
+                        createdBy: loginUser.id,
+                        createdAt: new Date(),
+                    };
+                    if (product.code) {
+                        const checkUniqueCode = await checkUniqueValue("Product", {
+                            code: product.code,
+                            branchId: product.branchId,
+                            storeId: product.storeId,
+                        });
+                        if (!checkUniqueCode) {
+                            throw new Error(`Mã hàng ${product.code} đã tồn tại.`)
+                        }
+                    }
+                    if (product.barCode) {
+                        product.barCode = removeDiacritics(product.barCode);
+                        const checkUniqueBarCode = await checkUniqueValue("Product", {
+                            barCode: product.barCode,
+                            storeId: product.storeId,
+                        });
+                        if (!checkUniqueBarCode) {
+                            throw new Error(`Mã vạch ${product.barCode} đã tồn tại.`);
+                        }
+                    }
+                    newProduct = await models.Product.create({
+                        ...product,
+                        ...(product.type === productTypeCharacters.THUOC && {
+                            isBatchExpireControl: true,
+                        }),
+                    }, {transaction: t});
+                    await newInventory(product.branchId, newProduct.id, product.inventory, t);
+                    let newInventoryCheking;
+                    if (product.inventory && product.isBatchExpireControl == false) {
+                        newInventoryCheking = await models.InventoryChecking.create({
+                            userCreateId: product.createdBy,
+                            branchId: product.branchId
+                        }, {
+                            transaction: t
+                        });
+                        await models.InventoryChecking.update({
+                            code: generateCode.generateCode("KK", newInventoryCheking.id)
+                        }, {
+                            where: {
+                                id: newInventoryCheking.id
+                            },
+                            transaction: t
+                        });
+
+                        await createWarehouseCard({
+                            code: generateCode.generateCode("KK", newInventoryCheking.id),
+                            type: warehouseStatus.ADJUSTMENT,
+                            partner: "",
+                            productId: newProduct.id,
+                            branchId: product.branchId,
+                            changeQty: product.inventory,
+                            remainQty: product.inventory,
+                            createdAt: new Date(),
+                            updatedAt: new Date()
+                        }, t);
+                    }
+                    if (!product.code) {
+                        const nextValue = await getNextValue(product.storeId, product.type)
+                        const code = generateProductCode(product.type, nextValue)
+                        product.code = code
+                        if (!product.barCode) {
+                            product.barCode = code
+                        }
+                        await models.Product.update(
+                            {code: code, barCode: product.barCode},
+                            {where: {id: newProduct.id}, transaction: t}
+                        );
+                    }
+
+                    // add product units
+                    const productUnit = {
+                        productId: newProduct.id,
+                        unitName: result.unit,
+                        exchangeValue: result.exchangeValue,
+                        price: result.price,
+                        isDirectSale: result.isDirectSale || false,
+                        isBaseUnit: true,
+                        quantity: result.quantity || 0,
+                        code: product.code,
+                        barCode: product.barCode || "",
+                        point: result.point || 0,
+                        storeId: product.storeId,
+                        createdBy: loginUser.id,
+                    };
+
+                    const newProductUnit = await models.ProductUnit.create(productUnit, {
+                        transaction: t
+                    });
+                    if (newProductUnit.isBaseUnit == true && product.inventory && product.isBatchExpireControl == 0) {
+                        await models.InventoryCheckingProduct.create({
+                            inventoryCheckingId: newInventoryCheking.id,
+                            productUnitId: newProductUnit.id,
+                            realQuantity: product.inventory,
+                            difference: product.inventory
+                        }, {
+                            transaction: t
+                        })
+                    }
+
+                    //Thêm batches
+                    if (result.isBatchExpireControl) {
+                        for (const batch of listInventory) {
+                            const newBatch = await models.Batch.create({
+                                storeId: loginUser.storeId,
+                                branchId: parseInt(branchId),
+                                productId: newProduct.id,
+                                name: batch.name,
+                                expiryDate: formatExcelDate(batch.expiryDate),
+                                quantity: batch.quantity,
+                                oldQuantity: batch.quantity,
+                                createdBy: loginUser.id,
+                                updatedBy: loginUser.id
+                            }, {
+                                transaction: t
+                            });
+                        }
+                    }
+
+                    createUserTracking({
+                        accountId: loginUser.id,
+                        type: accountTypes.USER,
+                        objectId: newProduct.id,
+                        action: logActions.product_create.value,
+                        data: product,
+                    });
+
+                    //Thêm productUnit
+                    if(listProductUnit.length>0){
+                        for(let item of listProductUnit){
+                            const newProduct = await models.Product.findOne({
+                                where: {
+                                    code: item.codeBaseUnit,
+                                    storeId: loginUser.storeId
+                                },
+                                transaction: t
+                            });
+                            const productUnit = {
+                                productId: newProduct.id,
+                                unitName: item.unit,
+                                exchangeValue: item.exchangeValue,
+                                price: item.price,
+                                isDirectSale: item.isDirectSale || false,
+                                isBaseUnit: true,
+                                quantity: item.quantity || 0,
+                                code: item.code,
+                                barCode: item.barCode || "",
+                                point: item.point || 0,
+                                storeId: loginUser.storeId,
+                                createdBy: loginUser.id,
+                            };
+
+                            if (!item.code) {
+                                const nextValue = await getNextValue(item.storeId, item.type)
+                                item.code = generateProductCode(item.type, nextValue)
+                                if (!item.barCode) {
+                                    item.barCode = item.code
+                                }
+                            }
+                            await models.ProductUnit.create(productUnit, {
+                                transaction: t
+                            });
+                        }
+                    }
+                    listProductUnit = [];
+                } else {
+                    const newProduct = await models.Product.findOne({
+                        where: {
+                            code: result.codeBaseUnit,
+                            storeId: loginUser.storeId
+                        },
+                        transaction: t
+                    });
+                    if(!newProduct){
+                        listProductUnit.push(result);
+                    }
+                    else {
+                        const productUnit = {
+                            productId: newProduct.id,
+                            unitName: result.unit,
+                            exchangeValue: result.exchangeValue,
+                            price: result.price,
+                            isDirectSale: result.isDirectSale || false,
+                            isBaseUnit: true,
+                            quantity: result.quantity || 0,
+                            code: result.code,
+                            barCode: result.barCode || "",
+                            point: result.point || 0,
+                            storeId: loginUser.storeId,
+                            createdBy: loginUser.id,
+                        };
+
+                        if (!result.code) {
+                            const nextValue = await getNextValue(result.storeId, result.type)
+                            result.code = generateProductCode(result.type, nextValue)
+                            if (!result.barCode) {
+                                result.barCode = result.code
+                            }
+                        }
+                        await models.ProductUnit.create(productUnit, {
+                            transaction: t
+                        });
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        return {
+            error: true,
+            code: HttpStatusCode.BAD_REQUEST,
+            message: `Lỗi ${error}`
         }
     }
     return {

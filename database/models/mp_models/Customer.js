@@ -108,6 +108,10 @@ module.exports = (sequelize, Sequelize) => {
         allowNull: false,
         type: Sequelize.INTEGER(10).UNSIGNED,
       },
+    customerStoreId:{
+      allowNull:true,
+        type: Sequelize.INTEGER(10).UNSIGNED,
+    },
       status: {
         allowNull: false,
         type: Sequelize.ENUM("draft", "active", "inactive", "potential"),
@@ -125,6 +129,14 @@ module.exports = (sequelize, Sequelize) => {
         type: Sequelize.BOOLEAN,
         defaultValue: false
       },
+        branchId:{
+          type:Sequelize.INTEGER(10).UNSIGNED,
+            allowNull:true
+        },
+        companyName:{
+          type:Sequelize.STRING,
+            allowNull:true
+        },
       createdAt: {
         allowNull: true,
         type: Sequelize.DATE,
@@ -159,9 +171,15 @@ module.exports = (sequelize, Sequelize) => {
       targetKey: 'id',
     });
 
-    Customer.belongsTo(models.GroupCustomer, {
-      as: "groupCustomer",
-      foreignKey: "groupCustomerId",
+    Customer.belongsTo(models.Store,{
+        as:'customerStore',
+        foreignKey:'customerStoreId',
+        targetKey: 'id',
+    });
+
+    Customer.hasMany(models.CustomerGroupCustomer, {
+      as: "listGroupCustomer",
+      foreignKey: "customerId",
       sourceKey: "id",
     });
 

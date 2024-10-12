@@ -11,7 +11,7 @@ module.exports.getAll = async (req, res) => {
         const { loginUser = {} } = req;
         const { limit, page, branchId } = req.query;
         const result = await userService.getAll({
-            ...loginUser, limit, page, branchId
+            ...loginUser, limit, page, branchId, storeId:loginUser.storeId
         });
         if (result.success) res.json(respondItemSuccess(result.data));
         else res.json(respondWithError(result.code, result.message, {}));

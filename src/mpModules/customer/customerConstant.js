@@ -15,6 +15,10 @@ export const customerTypeOptions = [
     text: "Phòng khám",
     value: 4,
   },
+  {
+    text: "Đại lý",
+    value: 5
+  }
 ];
 
 export const customerType = {
@@ -22,6 +26,7 @@ export const customerType = {
   Company: 2,
   Pharmacy: 3,
   Clinic: 4,
+  Agency:5
 };
 
 export const customerStatus = {

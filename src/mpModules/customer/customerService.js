@@ -1,12 +1,7 @@
-import moment from "moment";
-import {orderStatuses} from "../order/orderConstant";
 import {formatMobileToSave} from "../../helpers/utils";
 
 const {hashPassword} = require("../auth/authService");
 const {createUserTracking} = require("../behavior/behaviorService");
-// const {
-//   sendNotificationThroughSms,
-// } = require("../notification/smsIntegrationService");
 const _ = require("lodash");
 const Sequelize = require("sequelize");
 const {Op} = Sequelize;
@@ -15,7 +10,7 @@ const sequelize = models.sequelize
 const {checkUniqueValue, randomString} = require("../../helpers/utils");
 const {customerStatus} = require("./customerConstant");
 const {HttpStatusCode} = require("../../helpers/errorCodes");
-const {addFilterByDate} = require("../../helpers/utils");
+const {addFilterByDate,formatExcelDate, checkCoordinates} = require("../../helpers/utils");
 const {
     accountTypes,
     logActions,
@@ -33,6 +28,7 @@ const customerAttributes = [
     "address",
     "avatarId",
     "birthday",
+    "facebook",
     "gender",
     "groupCustomerId",
     "position",
@@ -48,6 +44,8 @@ const customerAttributes = [
     "isDefault",
     "lat",
     "lng",
+    "customerStoreId",
+    "companyName",
     [Sequelize.literal(`(SELECT COALESCE(SUM(debtAmount), 0) 
   FROM customer_debts 
   WHERE Customer.id = customer_debts.customerId and customer_debts.debtAmount >= 0)`), 'totalDebt'],
@@ -65,9 +63,14 @@ const customerIncludes = [
         attributes: ["id", "originalName", "fileName", "filePath", "path"],
     },
     {
-        model: models.GroupCustomer,
-        as: "groupCustomer",
-        attributes: ["id", "name", "description", "type", "discount"],
+        model: models.CustomerGroupCustomer,
+        as: "listGroupCustomer",
+        attributes: ["id"],
+        include:[{
+            model:models.GroupCustomer,
+            as:"groupCustomer",
+            attributes: ["id", "name", "description", "type", "discount"],
+        }]
     },
     {
         model: models.Province,
@@ -202,6 +205,11 @@ export async function indexCustomers(filter) {
                     [Op.like]: `%${keyword.trim()}%`,
                 },
             },
+            {
+                companyName: {
+                    [Op.like]: `%${keyword.trim()}%`
+                }
+            }
         ];
     }
 
@@ -353,16 +361,11 @@ export async function readCustomer(id, loginUser) {
         attributes: customerAttributes,
         include: customerIncludes,
         where: {
-            id,
-            storeId: loginUser.storeId,
+            id
         },
     });
     if (!findCustomer) {
-        return {
-            error: true,
-            code: HttpStatusCode.NOT_FOUND,
-            message: "Khách hàng không tồn tại",
-        };
+        throw new Error("Khách hàng không tồn tại");
     }
     findCustomer.dataValues.totalOrder = parseInt(findCustomer.dataValues.totalOrder);
 
@@ -417,14 +420,69 @@ export async function updateCustomer(id, payload, loginUser) {
             message: "Khách hàng không tồn tại",
         };
     }
+    if(payload.phone && payload.phone !== "") {
+        const phoneExists = await models.Customer.findOne({
+            where: {
+                id: {
+                    [Op.ne]: id
+                },
+                phone: payload.phone,
+                storeId:payload.storeId
+            }
+        });
+        if (phoneExists) {
+            throw new Error("Số điện thoại đã tồn tại");
+        }
+    }
+    if(!checkCoordinates(payload.lng) || !checkCoordinates(payload.lat)) {
+        return{
+            error:true,
+            code:HttpStatusCode.NOT_FOUND,
+            message:"Địa chỉ nhập không hợp lệ"
+        }
+    }
     if (!findCustomer.code && !payload.code) {
         payload.code = `${generateCustomerCode(findCustomer.id)}`;
     }
-    await models.Customer.update(payload, {
-        where: {
-            id,
-        },
-    });
+    const t = await models.sequelize.transaction(async (t)=>{
+        payload.groupCustomerId = payload.groupCustomerId ? payload.groupCustomerId : [];
+        if(!Array.isArray(payload.groupCustomerId)){
+            payload.groupCustomerId = [payload.groupCustomerId];
+        }
+        await models.CustomerGroupCustomer.destroy({
+            where:{
+                customerId:id,
+                groupCustomerId:{
+                    [Op.notIn]:payload.groupCustomerId
+                }
+            },
+            transaction: t
+        });
+        for(const groupCustomerId of payload.groupCustomerId){
+            const findGroupCustomerExists = await models.CustomerGroupCustomer.findOne({
+                where:{
+                    customerId:id,
+                    groupCustomerId
+                }
+            });
+            if(!findGroupCustomerExists){
+                await models.CustomerGroupCustomer.create({
+                    customerId:id,
+                    groupCustomerId
+                },{
+                    transaction: t
+                })
+            }
+        }
+        delete payload.groupCustomerId;
+        await models.Customer.update(payload, {
+            where: {
+                id,
+            },
+            transaction:t
+        });
+
+    })
     return {
         success: true,
     };
@@ -446,6 +504,15 @@ export async function createCustomer(payload, loginUser) {
         phone: payload.phone,
         storeId: loginUser.storeId,
     });
+
+    if(!checkCoordinates(payload.lat)||!checkCoordinates(payload.lng)){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message: `Tọa độ nhập không hợp lệ`
+        }
+    }
+
     if (!checkPhone) {
         return {
             error: true,
@@ -453,16 +520,38 @@ export async function createCustomer(payload, loginUser) {
             message: `Số điện thoại ${payload.phone} đã được đăng ký`,
         };
     }
+    let newCustomer;
 
-    const newCustomer = await models.Customer.create(payload);
+    const t = await models.sequelize.transaction(async (t)=>{
+        let groupCustomers = payload.groupCustomerId || [];
+        if(!Array.isArray(groupCustomers)){
+            groupCustomers = [groupCustomers];
+        }
+        delete payload.groupCustomerId;
 
-    if (!payload.code) {
-        payload.code = `${generateCustomerCode(newCustomer.id)}`;
-        await models.Customer.update(
-            {code: payload.code},
-            {where: {id: newCustomer.id}}
-        );
-    }
+        newCustomer = await models.Customer.create(payload,{
+            transaction: t
+        });
+
+        groupCustomers = groupCustomers.map((item)=>{
+            return{
+                groupCustomerId:item,
+                customerId:newCustomer.id
+            }
+        });
+        await models.CustomerGroupCustomer.bulkCreate(groupCustomers,{
+            transaction:t
+        })
+
+        if (!payload.code) {
+            payload.code = `${generateCustomerCode(newCustomer.id)}`;
+            await models.Customer.update(
+                {code: payload.code},
+                {where: {id: newCustomer.id},
+                transaction: t}
+            );
+        }
+    })
 
     createUserTracking({
         accountId: loginUser.id,
@@ -471,10 +560,7 @@ export async function createCustomer(payload, loginUser) {
         action: logActions.customer_create.value,
         data: payload,
     });
-    //   sendNotificationThroughSms({
-    //     phone: newCustomer.phone,
-    //     content: `Dang ki thanh cong. Tai khoan cua ban dang duoc cho kich hoat.`,
-    //   });
+
     return {
         success: true,
         data: await models.Customer.findByPk(newCustomer.id, {
@@ -548,11 +634,21 @@ export async function deleteCustomerById(id, loginUser) {
             message: "Khách hàng không tồn tại",
         };
     }
-    await models.Customer.destroy({
-        where: {
-            id,
-        },
-    });
+    const t = await models.sequelize.transaction(async (t)=>{
+        await models.CustomerGroupCustomer.destroy({
+            where:{
+                customerId:id
+            },
+            transaction:t
+        });
+        await models.Customer.destroy({
+            where: {
+                id,
+            },
+            transaction:t
+        });
+
+    })
     createUserTracking({
         accountId: loginUser.id,
         type: accountTypes.USER,
@@ -663,10 +759,16 @@ export async function indexPaymentCustomer(params, loginUser) {
         },
         order: [["id", "DESC"]],
         where
-    })
+    });
+    const count = await models.Payment.count({
+        where
+    });
     return {
         success: true,
-        data: payments
+        data: {
+            items:payments,
+            totalItem: count
+        }
     }
 }
 
@@ -783,39 +885,35 @@ export async function historyVisitedService(customerId, query) {
     }
 }
 
-function formatExcelDate(excelDate) {
-    const date = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
 export async function uploadFileCreateCustomer(data, loginUser) {
     await models.sequelize.transaction(async (t) => {
         for (const item of data) {
             const customer = {
-                fullName: _.get(item, 'Họ tên', '').toString().trim(),
-                code: _.get(item, 'Mã khách hàng', '').toString().trim(),
-                birthday: _.get(item, 'Ngày sinh','').toString().trim(),
-                gender: parseInt(_.get(item, 'Giới tính', '').toString().trim()),
-                phone: formatMobileToSave(_.get(item, 'Số điện thoại', '').toString().trim()),
-                email: _.get(item, 'Email', '').toString().trim(),
-                taxCode: _.get(item, 'Mã thuế', '').toString().trim(),
-                address: _.get(item, 'Địa chỉ', '').toString().trim(),
-                groupCustomerName: _.get(item, 'Nhóm khách hàng', '').toString().trim(),
-                status: parseInt(_.get(item, 'Trạng thái', 1).toString().trim()),
-                wardName: _.get(item, 'Xã', '').toString().trim(),
-                districtName: _.get(item, 'Huyện', '').toString().trim(),
-                provinceName: _.get(item, 'Tỉnh', '').toString().trim(),
-                lat: _.get(item, 'Vĩ độ', '').toString().trim(),
-                lng: _.get(item, 'Kinh độ', '').toString().trim(),
-                type: parseInt(_.get(item, 'Loại khách hàng', 1).toString().trim()),
+                fullName: _.get(item, 'Họ tên', '') ? _.get(item, 'Họ tên', '').toString().trim() : "",
+                code: _.get(item, 'Mã khách hàng', '') ? _.get(item, 'Mã khách hàng', '').toString().trim() : "",
+                birthday: _.get(item, 'Ngày sinh','') ? _.get(item, 'Ngày sinh','').toString().trim() : "",
+                gender: _.get(item, 'Giới tính', 0) ? parseInt(_.get(item, 'Giới tính', 0).toString().trim()) : 0,
+                phone: _.get(item, 'Số điện thoại', '') ? formatMobileToSave(_.get(item, 'Số điện thoại', '').toString().trim()) : "",
+                email: _.get(item, 'Email', '') ? _.get(item, 'Email', '').toString().trim() : "",
+                taxCode: _.get(item, 'Mã thuế', '') ? _.get(item, 'Mã thuế', '').toString().trim() : "",
+                address: _.get(item, 'Địa chỉ', '') ? _.get(item, 'Địa chỉ', '').toString().trim() : "",
+                facebook: _.get(item, 'Facebook', '') ? _.get(item, 'Facebook', '').toString().trim() : "",
+                groupCustomerName: _.get(item, 'Nhóm khách hàng', '') ? _.get(item, 'Nhóm khách hàng', '').toString().trim() : "",
+                status: parseInt(_.get(item, 'Trạng thái', 1).toString()),
+                wardName: _.get(item, 'Xã', '') ? _.get(item, 'Xã', '').toString().trim() : "",
+                districtName: _.get(item, 'Huyện', '') ? _.get(item, 'Huyện', '').toString().trim() : "",
+                provinceName: _.get(item, 'Tỉnh', '') ? _.get(item, 'Tỉnh', '').toString().trim() : "",
+                location: _.get(item,'Tọa độ','') ? _.get(item,'Tọa độ','').toString().trim() : "",
+                type: parseInt(_.get(item, 'Loại khách hàng', 1).toString()),
                 storeId: loginUser.storeId,
                 createdBy: loginUser.id,
                 createdAt: new Date(),
-                note: _.get(item, 'Ghi chú', '').toString().trim()
+                note: _.get(item, 'Ghi chú', '') ? _.get(item, 'Ghi chú', '').toString().trim() : ""
             };
+
+            if(!checkCoordinates(customer.lat) || !checkCoordinates(customer.lng)){
+                throw new Error(`Tọa độ không hợp lệ`)
+            }
 
             if (customer.gender == 1) {
                 customer.gender = 'male';
@@ -830,20 +928,6 @@ export async function uploadFileCreateCustomer(data, loginUser) {
                 delete customer.birthday;
             }
             let groupCustomer = {}, ward, district, province;
-            [groupCustomer] = await models.GroupCustomer.findOrCreate({
-                where: {
-                    name: {
-                        [Op.like]: `%${customer.groupCustomerName}%`
-                    },
-                    storeId: customer.storeId
-                },
-                defaults: {
-                    name: customer.groupCustomerName,
-                    storeId: customer.storeId,
-                    createdBy: loginUser.id
-                },
-                transaction: t
-            });
             if (customer.status === 0) {
                 customer.status = customerStatus.INACTIVE;
             } else if(customer.status === 2) {
@@ -876,20 +960,29 @@ export async function uploadFileCreateCustomer(data, loginUser) {
                     });
                 }
             }
+            let lat = "",lng="";
+            if(customer.location){
+                [lat,lng] = customer.location.split(",");
+            }
             const payload = {
                 ...customer,
-                groupCustomerId: groupCustomer.id,
-                wardId: ward.id,
-                districtId: district.id,
-                provinceId: province.id
+                wardId: ward ? ward.id : null,
+                districtId: district ? district.id : null,
+                provinceId: province ? province.id : null,
+                lat: lat ? lat.trim() : "",
+                lng: lng ? lng.trim() : ""
             }
 
-            const checkPhone = await checkUniqueValue("Customer", {
-                phone: payload.phone,
-                storeId: loginUser.storeId,
-            });
-            if (!checkPhone) {
-                throw new Error(`Số điện thoại ${payload.phone} đã được đăng ký`);
+            if(payload.phone) {
+                const checkPhone = await models.Customer.findOne({
+                    where: {
+                        phone: customer.phone,
+                        storeId: loginUser.storeId,
+                    }
+                });
+                if (checkPhone) {
+                    throw new Error(`Số điện thoại ${payload.phone} đã được đăng ký`);
+                }
             }
 
             const newCustomer = await models.Customer.create(payload, {
@@ -906,6 +999,34 @@ export async function uploadFileCreateCustomer(data, loginUser) {
                     }
                 );
             }
+
+            let listCustomerName = customer.groupCustomerName.split("|");
+            if (listCustomerName.length > 0) {
+                for(const groupCustomerName of listCustomerName){
+                    [groupCustomer] = await models.GroupCustomer.findOrCreate({
+                        where: {
+                            name: {
+                                [Op.like]: `%${groupCustomerName}%`
+                            },
+                            storeId: customer.storeId
+                        },
+                        defaults: {
+                            name: groupCustomerName,
+                            storeId: customer.storeId,
+                            createdBy: loginUser.id
+                        },
+                        transaction: t
+                    });
+
+                    await models.CustomerGroupCustomer.create({
+                        customerId: newCustomer.id,
+                        groupCustomerId: groupCustomer.id
+                    },{
+                        transaction:t
+                    })
+                }
+            }
+
             createUserTracking({
                 accountId: loginUser.id,
                 type: accountTypes.USER,
@@ -919,4 +1040,242 @@ export async function uploadFileCreateCustomer(data, loginUser) {
         success:true,
         data:null
     }
+}
+
+export async function uploadFileCreateCustomerKiotVietService(data, loginUser) {
+    try {
+        await models.sequelize.transaction(async (t) => {
+            for (const item of data) {
+                const customer = {
+                    fullName: _.get(item, 'Tên khách hàng', '') ? _.get(item, 'Tên khách hàng', '').toString().trim() : "",
+                    code: _.get(item, 'Mã khách hàng', '') ? _.get(item, 'Mã khách hàng', '').toString().trim() : "",
+                    birthday: _.get(item, 'Ngày sinh','') ? _.get(item, 'Ngày sinh','').toString().trim() : "",
+                    gender: _.get(item, 'Giới tính', 'Nam') ? _.get(item, 'Giới tính', 'Nam').toString().trim() : "",
+                    phone: _.get(item, 'Điện thoại', '') ? formatMobileToSave(_.get(item, 'Điện thoại', '').toString().trim()) : "",
+                    email: _.get(item, 'Email', '') ? _.get(item, 'Email', '').toString().trim() : "",
+                    taxCode: _.get(item, 'Mã số thuế', '') ? _.get(item, 'Mã số thuế', '').toString().trim() : "",
+                    address: _.get(item, 'Địa chỉ', '') ? _.get(item, 'Địa chỉ', '').toString().trim() : "",
+                    groupCustomerName: _.get(item, 'Nhóm khách hàng', '') ? _.get(item, 'Nhóm khách hàng', '').toString().trim() : "",
+                    status: _.get(item, 'Trạng thái', 1) ? parseInt(_.get(item, 'Trạng thái', 1).toString().trim()) : 1,
+                    wardName: _.get(item, 'Phường/Xã', '') ? _.get(item, 'Phường/Xã', '').toString().trim() : "",
+                    districtAndProvinceName: _.get(item, 'Khu vực giao hàng', '') ? _.get(item, 'Khu vực giao hàng', '').toString().trim() : "",
+                    type: _.get(item, 'Loại khách', 'Cá nhân') ? _.get(item, 'Loại khách', 'Cá nhân').toString().trim() : "",
+                    company: _.get(item,'Công ty','') ? _.get(item,'Công ty','').toString().trim() : "",
+                    point:_.get(item, 'Điểm hiện tại', 0) ? parseInt(_.get(item, 'Điểm hiện tại', 0).toString().trim()) : 0,
+                    debt:_.get(item, 'Nợ cần thu hiện tại', 0) ? parseInt(_.get(item, 'Nợ cần thu hiện tại', 0).toString().trim()) : 0,
+                    facebook: _.get(item,'Facebook','') ? _.get(item,'Facebook','').toString().trim() : "",
+                    storeId: loginUser.storeId,
+                    createdBy: loginUser.id,
+                    createdAt: new Date(),
+                    note: _.get(item, 'Ghi chú', '') ? _.get(item, 'Ghi chú', '').toString().trim() : "",
+                    location: _.get(item,'Tọa độ','') ? _.get(item,'Tọa độ','').toString().trim() : ""
+                };
+
+                if (customer.gender === 'Nam') {
+                    customer.gender = 'male';
+                }
+                else {
+                    customer.gender = 'female';
+                }
+                if(customer.type === 'Cá nhân'){
+                    customer.type = 1;
+                }else{
+                    customer.type = 2;
+                }
+                if(customer.birthday){
+                    customer.birthday = formatExcelDate(customer.birthday);
+                }else{
+                    delete customer.birthday;
+                }
+                let groupCustomer = {}, ward, district, province;
+                if (customer.status === 0) {
+                    customer.status = customerStatus.INACTIVE;
+                } else if(customer.status === 2) {
+                    customer.status = customerStatus.DRAFT;
+                }else{
+                    customer.status = customerStatus.ACTIVE;
+                }
+                let [provinceName = "",districtName = ""] = customer.districtAndProvinceName.split("-");
+                if(provinceName) {
+                    province = await models.Province.findOne({
+                        where: {
+                            [Op.or]: {
+                                name2: {
+                                    [Op.like]: `${provinceName.trim()}`
+                                },
+                                name: {
+                                    [Op.like]: `${provinceName.trim()}`
+                                }
+                            }
+                        }, attributes: ["id"]
+                    });
+                }
+                if (province && districtName) {
+                    district = await models.District.findOne({
+                        where: {
+                            [Op.or]:{
+                                name2: {
+                                    [Op.like]: `${districtName.trim()}`
+                                },
+                                name:{
+                                    [Op.like]: `${provinceName.trim()}`
+                                }
+                            }, provinceId: province.id,
+                        }, attributes: ["id"]
+                    });
+                    if (district && customer.wardName) {
+                        ward = await models.Ward.findOne({
+                            where: {
+                                [Op.or]:{
+                                    name2: {
+                                        [Op.like]: `${customer.wardName.trim()}`
+                                    },
+                                    name:{
+                                        [Op.like]: `${customer.wardName.trim()}`
+                                    }
+                                }, districtId: district.id,
+                            }, attributes: ["id"]
+                        });
+                    }
+                }
+                let lng = "",lat = "";
+                if(customer.location){
+                    [lat,lng] = customer.location.split(",");
+                }
+                const payload = {
+                    ...customer,
+                    wardId: ward? ward.id:null,
+                    districtId: district? district.id:null,
+                    provinceId: province? province.id : null,
+                    lng: lng ? lng.trim() : "",
+                    lat: lat ? lat.trim() : ""
+                }
+
+                if(customer.phone) {
+                    const checkPhone = await models.Customer.findOne({
+                        where: {
+                            phone: customer.phone,
+                            storeId: loginUser.storeId,
+                        }
+                    });
+                    if (checkPhone) {
+                        throw new Error(`Số điện thoại ${payload.phone} đã được đăng ký`);
+                    }
+                }
+
+                const newCustomer = await models.Customer.create(payload, {
+                    transaction: t
+                });
+                if (!payload.code) {
+                    payload.code = `${generateCustomerCode(newCustomer.id)}`;
+                    await models.Customer.update(
+                        {code: payload.code},
+                        {
+                            where: {id: newCustomer.id},
+                            transaction: t
+                        }
+                    );
+                }
+
+                let listCustomerName = customer.groupCustomerName.split("|");
+                if (listCustomerName.length > 0) {
+                    for(const groupCustomerName of listCustomerName){
+                        [groupCustomer] = await models.GroupCustomer.findOrCreate({
+                            where: {
+                                name: {
+                                    [Op.like]: `%${groupCustomerName}%`
+                                },
+                                storeId: customer.storeId
+                            },
+                            defaults: {
+                                name: groupCustomerName,
+                                storeId: customer.storeId,
+                                createdBy: loginUser.id
+                            },
+                            transaction: t
+                        });
+
+                        await models.CustomerGroupCustomer.create({
+                            customerId: newCustomer.id,
+                            groupCustomerId: groupCustomer.id
+                        },{
+                            transaction:t
+                        })
+                    }
+                }
+
+                createUserTracking({
+                    accountId: loginUser.id,
+                    type: accountTypes.USER,
+                    objectId: newCustomer.id,
+                    action: logActions.customer_create.value,
+                    data: payload,
+                });
+            }
+        });
+        return{
+            success:true,
+            data:null
+        }
+    }catch(e){
+        return{
+            error:true,
+            code:HttpStatusCode.BAD_REQUEST,
+            message:`${e}`
+        }
+    }
+}
+
+export async function deleteListCustomer(loginUser,listCustomerId) {
+    const listCustomer = await models.Customer.findAll({
+        where:{
+            id:{
+                [Op.in]:listCustomerId
+            },
+            storeId:loginUser.storeId
+        }
+    })
+    if (!listCustomer || listCustomer.length !== listCustomerId.length) {
+        return {
+            error: true,
+            code: HttpStatusCode.NOT_FOUND,
+            message: "Tồn tại khách hàng không thuộc cửa hàng",
+        };
+    }
+    const t = await models.sequelize.transaction(async (t)=>{
+        await models.CustomerGroupCustomer.destroy({
+            where:{
+                customerId:{
+                    [Op.in]:listCustomerId
+                }
+            },
+            transaction:t
+        });
+        await models.Customer.destroy({
+            where: {
+                id:{
+                    [Op.in]:listCustomerId
+                }
+            },
+            transaction:t
+        });
+    });
+
+    for(const customer of listCustomer){
+        createUserTracking({
+            accountId: loginUser.id,
+            type: accountTypes.USER,
+            objectId: customer.id,
+            action: logActions.customer_delete.value,
+            data: {
+                id:customer.id,
+                fullName: customer.fullName,
+                phone: customer.phone,
+            },
+        });
+    }
+
+    return {
+        success: true,
+    };
 }
