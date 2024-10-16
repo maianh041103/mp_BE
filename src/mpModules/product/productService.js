@@ -86,10 +86,6 @@ export async function indexProducts(params) {
     ]);
     for (const item of items) {
         item.dataValues.inventory = parseInt(await getInventory(params.branchId, item.id));
-        if (!params.isSale) {
-            item.dataValues.batches = [];
-            continue;
-        }
         item.dataValues.batches = await findAllBatchByProductId(item.id, params.branchId);
     }
     return {
