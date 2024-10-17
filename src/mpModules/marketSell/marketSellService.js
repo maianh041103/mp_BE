@@ -17,6 +17,7 @@ const {indexCreate} = require("../saleReturn/saleReturnService");
 const {addFilterByDate} = require("../../helpers/utils");
 const moment = require('moment');
 const {readProduct, getProductBySeri} = require("../product/productService");
+const {getInventory} = require("../inventory/inventoryService");
 
 const marketAddressInclude = [
     {
@@ -1546,18 +1547,6 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                         loginUser, storeId,
                         transaction:t
                     });
-                    // if(item?.batches && item?.batches.length > 0) {
-                    //     for (const batch of item?.batches) {
-                    //         await models.MarketOrderBatch.create({
-                    //             marketOrderId: id,
-                    //             marketOrderProductId: item.marketOrderProductId,
-                    //             batchId: batch.batchId,
-                    //             quantity: batch.quantity
-                    //         }, {
-                    //             transaction: t
-                    //         });
-                    //     }
-                    // }
                     //Xử lý batches
                     const marketProduct = await models.MarketProduct.findOne({
                         where: {
@@ -1622,17 +1611,6 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                         throw new Error("Vui lòng nhập hết mã seri cho đơn hàng");
                     }
                     number = -1;
-                    // let endDate = new Date();
-                    // endDate.setDate(endDate.getDate() + marketSellContant.TIME_SHIP.TWO);
-                    // await models.Delivery.create({
-                    //     code:delivery.code,
-                    //     price:delivery.price,
-                    //     name:delivery.name,
-                    //     startDate:new Date(),
-                    //     endDate
-                    // },{
-                    //     transaction:t
-                    // })
                 }
                 else {
                     number = 1;
@@ -1720,6 +1698,12 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                     if(!inventory){
                         throw new Error("Chi nhánh không tồn tại sản phẩm bán")
                     }
+
+                    //Check số lượng sản phẩm
+                    if(inventory < item.quantity * item?.marketProduct?.productUnit?.exchangeValue){
+                        throw new Error(`Sản phẩm ${item?.product?.name} không đủ số lượng`);
+                    }
+
 
                     let whereCustomer = {};
                     if(marketOrderExists.customerId !== null){
