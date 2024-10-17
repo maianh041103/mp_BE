@@ -545,9 +545,7 @@ module.exports.updateAddressService = async (result) => {
                 if(addressExists.customerId){
                     where.customerId = customerId;
                 }else{
-                    where.customerId = {
-                        [Op.ne]:null
-                    }
+                    where.customerId = null;
                 }
                 await models.Address.update({
                     isDefaultAddress: false
