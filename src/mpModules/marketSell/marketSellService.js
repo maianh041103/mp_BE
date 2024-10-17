@@ -1688,14 +1688,11 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                         },
                         transaction: t
                     });
-                    const inventory = await models.Inventory.findOne({
-                        where: {
-                            productId: item?.marketProduct?.product?.id,
-                            branchId: marketOrderExists.toBranchId
-                        },
-                        transaction: t
-                    });
-                    if(!inventory){
+
+                    const inventory = await getInventory(marketOrderExists.toBranchId, item?.marketProduct?.product?.id)
+                    console.log(inventory);
+                    console.log(item.quantity * item?.marketProduct?.productUnit?.exchangeValue);
+                    if(!inventory || inventory === 0){
                         throw new Error("Chi nhánh không tồn tại sản phẩm bán")
                     }
 
