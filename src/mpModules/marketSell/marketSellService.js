@@ -899,7 +899,7 @@ module.exports.addProductToCartService = async (result) => {
         });
         let totalQuantity;
         if (productInCart) {
-            totalQuantity = productInCart.quantity + quantity;
+            totalQuantity = +productInCart.quantity || 0 + quantity;
         }
         if (totalQuantity > marketProductExists.quantity - marketProductExists.quantitySold) {
             return {
@@ -996,8 +996,8 @@ module.exports.getProductInCartService = async (result) => {
         let listProductGroupByStore = [];
         for (let item of listProductInCart) {
             if(
-                item.marketProduct.marketType === marketConfigContant.MARKET_TYPE.PRIVATE
-            && item.marketProduct.agencys.length === 0) {
+                item?.marketProduct?.marketType === marketConfigContant?.MARKET_TYPE.PRIVATE
+            && item?.marketProduct?.store?.agencys?.length === 0) {
                 continue;
             }
             //Cập nhật giá cho đại lý
