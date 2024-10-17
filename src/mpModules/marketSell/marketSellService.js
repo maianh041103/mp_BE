@@ -409,6 +409,8 @@ module.exports.getAllAddressService = async (result) => {
         }
         if(customerId){
             where.customerId = customerId;
+        }else{
+            where.customerId = null;
         }
         let listAddress = await models.Address.findAll({
             where,
