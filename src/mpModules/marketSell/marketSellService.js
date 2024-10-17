@@ -2053,7 +2053,8 @@ module.exports.getProductPrivateService = async (result) => {
                         { marketType: marketConfigContant.MARKET_TYPE.COMMON }
                     ]
                 }
-            ]
+            ],
+            status: marketConfigContant.PRODUCT_MARKET_STATUS.ACTIVE
         };
         if (productType) {
             let index = include.findIndex((item) => item.as === 'product');
