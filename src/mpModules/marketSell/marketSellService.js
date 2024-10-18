@@ -1251,6 +1251,7 @@ module.exports.createMarketOrderService = async (result) => {
                         storeSell
                     });
                 }
+                customerId = customer.id;
 
                 newMarketOrderBuy = await models.MarketOrder.create({
                     addressId,
