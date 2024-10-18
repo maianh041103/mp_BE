@@ -30,7 +30,8 @@ const createSchema = Joi.object().keys({
   debt: Joi.number().integer().allow(null).allow(""),
   status: Joi.string().allow(null).allow(""),
   lat: Joi.string().allow(null).allow(""),
-  lng: Joi.string().allow(null).allow("")
+  lng: Joi.string().allow(null).allow(""),
+  companyName: Joi.string().allow(null).allow("")
 });
 
 export function createValidator(req, res, next) {
@@ -89,7 +90,8 @@ const updateSchema = Joi.object().keys({
   type: Joi.number().integer().allow(null).allow(""),
   status: Joi.string().allow(null).allow(""),
   lat: Joi.string().allow(null).allow(""),
-  lng: Joi.string().allow(null).allow("")
+  lng: Joi.string().allow(null).allow(""),
+  companyName: Joi.string().allow(null).allow("")
 });
 
 export async function updateValidator(req, res, next) {
