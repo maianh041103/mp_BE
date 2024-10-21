@@ -51,7 +51,7 @@ export const productMasterIncludes = [
 export async function indexMasterSaleProducts(params) {
   const limit = +params.limit || 10;
   const page = +params.page || 1;
-  const { storeId, branchId, keyword, productUnit } = params;
+  const { storeId, branchId, keyword, productUnit, listProductUnitId } = params;
   const where = {};
   if (storeId) {
     where.storeId = storeId;
@@ -84,6 +84,12 @@ export async function indexMasterSaleProducts(params) {
       productId: {
         [Op.in]: productIds
       }
+    }
+  }
+  if(listProductUnitId){
+    const listUnitId = listProductUnitId.split(",");
+    where.id = {
+      [Op.in]:listUnitId
     }
   }
   const [items, count] = await Promise.all([
