@@ -5,6 +5,7 @@ import {createWarehouseCard} from "../warehouse/warehouseService";
 import {warehouseStatus} from "../warehouse/constant";
 import {MARKET_TYPE} from "../marketConfig/marketConfigContant";
 import {STATUS_ORDER} from "../marketSell/marketSellContant";
+import {findAllBatchByProductId} from "../batch/batchService";
 
 const moment = require("moment");
 const {
@@ -85,64 +86,7 @@ export async function indexProducts(params) {
     ]);
     for (const item of items) {
         item.dataValues.inventory = parseInt(await getInventory(params.branchId, item.id));
-        if (!params.isSale) {
-            item.dataValues.batches = [];
-            continue;
-        }
-        const productBatches = await models.ProductToBatch.findAll({
-            attributes: [
-                "id",
-                "storeId",
-                "branchId",
-                "productId",
-                "batchId",
-                "productUnitId",
-                "quantity",
-                "expiryDate",
-            ],
-            include: [
-                {
-                    model: models.Batch,
-                    as: "batch",
-                    attributes: ["id", "name", "quantity", "expiryDate"],
-                    order: [["expiryDate", "ASC"]],
-                },
-                {
-                    model: models.ProductUnit,
-                    as: "productUnit",
-                    attributes: [
-                        "id",
-                        "unitName",
-                        "exchangeValue",
-                        "price",
-                        "quantity",
-                        "isBaseUnit",
-                    ],
-                    where: {
-                        branchId: item.branchId,
-                        storeId: item.storeId,
-                    },
-                },
-            ],
-            where: {
-                productId: item.id,
-            },
-            order: [["expiryDate", "ASC"]],
-        });
-        const batches = [];
-        for (const pb of productBatches) {
-            batches.push({
-                id: pb.id,
-                storeId: pb.storeId,
-                batchId: pb.batchId,
-                name: pb.dataValues.batch.name,
-                productUnit: pb.dataValues.productUnit,
-                productId: pb.productId,
-                quantity: pb.quantity,
-                expiryDate: pb.expiryDate,
-            });
-        }
-        item.dataValues.batches = batches;
+        item.dataValues.batches = await findAllBatchByProductId(item.id, params.branchId);
     }
     return {
         success: true,
