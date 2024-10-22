@@ -2009,7 +2009,7 @@ module.exports.getProductPrivateService = async (result) => {
             {
                 model: models.ProductUnit,
                 as: "productUnit",
-                attributes: ["id", "unitName", "exchangeValue"]
+                attributes: ["id", "unitName", "exchangeValue","code"]
             }
         ];
         let where = {
