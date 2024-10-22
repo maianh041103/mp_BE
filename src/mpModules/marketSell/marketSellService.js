@@ -2074,8 +2074,7 @@ module.exports.getProductPrivateService = async (result) => {
                     name: {
                         [Op.like]: `%${keyword.trim()}%`
                     }
-                },
-                attributes: ["name"]
+                }
             })
         }
         if(!sortBy){
@@ -2088,15 +2087,17 @@ module.exports.getProductPrivateService = async (result) => {
             offset: (parseInt(page) - 1) * (parseInt(limit)),
             order: [[sortBy, "DESC"]],
         });
+        console.log("OK");
         const index = include.findIndex(item => {
             return item.as === "agencys";
         });
         include.splice(index, 1);
-
+        console.log("OKK");
         const count = await models.MarketProduct.count({
             where,
             include
         });
+        console.log("OK1");
         for (const marketProduct of listMarketProduct) {
             if (marketProduct.agencys.length > 0) {
                 let index = marketProduct.agencys.findIndex(item => {
@@ -2108,6 +2109,7 @@ module.exports.getProductPrivateService = async (result) => {
             }
             marketProduct.dataValues.images = await getImages(marketProduct.images);
         }
+        console.log("OK2");
         return {
             success: true,
             data: {
