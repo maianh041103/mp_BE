@@ -957,6 +957,9 @@ async function handleCreateOrder(order, loginUser) {
       pointResult += order.pointOrder
     }
     for (const item of order.products) {
+      if(item.pointProduct && item.pointProduct !== 0){
+        pointResult += item.pointProduct;
+      }
       if (!item.itemPrice) {
         const productUnit = await models.ProductUnit.findOne({
           where: {
