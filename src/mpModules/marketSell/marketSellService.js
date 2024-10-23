@@ -2321,9 +2321,20 @@ module.exports.getMarketProductBySeriSerive = async (result)=>{
                     model:models.MarketProduct,
                     as:"marketProduct",
                     attributes:["id","productId"]
+                },
+                {
+                    model: models.MarketOrder,
+                    as:"marketOrder",
+                    include:[
+                        {
+                            model:models.Customer,
+                            as:"customer"
+                        }
+                    ]
                 }
             ]
         });
+
         if(!seri){
             return{
                 error:true,
@@ -2339,11 +2350,13 @@ module.exports.getMarketProductBySeriSerive = async (result)=>{
                 code:HttpStatusCode.BAD_REQUEST
             }
         }
-        const product = await getProductBySeri(productId);
+        const product = (await getProductBySeri(productId))?.data;
+        const marketOrder = seri.marketOrder;
         return {
             success: true,
             data: {
-                item:product
+                item:product,
+                marketOrder
             }
         }
     } catch (e) {
