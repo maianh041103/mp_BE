@@ -2321,16 +2321,6 @@ module.exports.getMarketProductBySeriSerive = async (result)=>{
                     model:models.MarketProduct,
                     as:"marketProduct",
                     attributes:["id","productId"]
-                },
-                {
-                    model: models.MarketOrder,
-                    as:"marketOrder",
-                    include:[
-                        {
-                            model:models.Customer,
-                            as:"customer"
-                        }
-                    ]
                 }
             ]
         });
@@ -2351,7 +2341,48 @@ module.exports.getMarketProductBySeriSerive = async (result)=>{
             }
         }
         const product = (await getProductBySeri(productId))?.data;
-        const marketOrder = seri.marketOrder;
+        const marketOrder = await models.MarketOrder.findOne({
+            include:[{
+                model:models.Customer,
+                as:"customer",
+                include:[{
+                    model: models.Ward,
+                    as:"ward",
+                    attributes:["name"]
+                },{
+                    model: models.District,
+                    as:"district",
+                    attributes:["name"]
+                },{
+                    model:models.Province,
+                    as:"province",
+                    attributes:["name"]
+                }]
+            },{
+                model: models.Ward,
+                as:"ward",
+                attributes:["name"]
+            },{
+                model: models.District,
+                as:"district",
+                attributes:["name"]
+            },{
+                model:models.Province,
+                as:"province",
+                attributes:["name"]
+            },{
+                model:models.Store,
+                as:"store",
+                attributes:["id","name","phone","address"]
+            },{
+                model:models.Store,
+                as:"toStore",
+                attributes:["id","name","phone","address"]
+            }],
+            where:{
+                id:seri.marketOrderId
+            }
+        })
         return {
             success: true,
             data: {
