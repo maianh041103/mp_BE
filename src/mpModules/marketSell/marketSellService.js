@@ -1600,17 +1600,6 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
             let number;
             if (status === marketSellContant.STATUS_ORDER.SEND || status === marketSellContant.STATUS_ORDER.CANCEL) {
                 if (status === marketSellContant.STATUS_ORDER.SEND) {
-                    const countSeri = await models.Seri.count({
-                        where:{
-                            marketOrderId:id
-                        }
-                    });
-                    const countProduct = marketOrderExists?.products?.reduce((calc,item)=>{
-                        return calc + item.quantity;
-                    },0);
-                    if(countSeri < countProduct){
-                        throw new Error("Vui lòng nhập hết mã seri cho đơn hàng");
-                    }
                     number = -1;
                 }
                 else {
