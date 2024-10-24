@@ -1169,7 +1169,7 @@ async function handleCreateOrder(order, loginUser) {
       //End tích điểm
 
       //Cập nhật điểm
-      if (pointResult != 0) {
+      if (pointResult != 0 && order.customerId) {
         await models.Customer.update(
           {
             point: Sequelize.literal(`COALESCE(point, 0) + ${pointResult}`)
