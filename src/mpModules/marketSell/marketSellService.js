@@ -1600,17 +1600,6 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
             let number;
             if (status === marketSellContant.STATUS_ORDER.SEND || status === marketSellContant.STATUS_ORDER.CANCEL) {
                 if (status === marketSellContant.STATUS_ORDER.SEND) {
-                    const countSeri = await models.Seri.count({
-                        where:{
-                            marketOrderId:id
-                        }
-                    });
-                    const countProduct = marketOrderExists?.products?.reduce((calc,item)=>{
-                        return calc + item.quantity;
-                    },0);
-                    if(countSeri < countProduct){
-                        throw new Error("Vui lòng nhập hết mã seri cho đơn hàng");
-                    }
                     number = -1;
                 }
                 else {
@@ -2009,7 +1998,7 @@ module.exports.getProductPrivateService = async (result) => {
             {
                 model: models.ProductUnit,
                 as: "productUnit",
-                attributes: ["id", "unitName", "exchangeValue"]
+                attributes: ["id", "unitName", "exchangeValue","code"]
             }
         ];
         let where = {
@@ -2074,8 +2063,7 @@ module.exports.getProductPrivateService = async (result) => {
                     name: {
                         [Op.like]: `%${keyword.trim()}%`
                     }
-                },
-                attributes: ["name"]
+                }
             })
         }
         if(!sortBy){
@@ -2088,15 +2076,17 @@ module.exports.getProductPrivateService = async (result) => {
             offset: (parseInt(page) - 1) * (parseInt(limit)),
             order: [[sortBy, "DESC"]],
         });
+        console.log("OK");
         const index = include.findIndex(item => {
             return item.as === "agencys";
         });
         include.splice(index, 1);
-
+        console.log("OKK");
         const count = await models.MarketProduct.count({
             where,
             include
         });
+        console.log("OK1");
         for (const marketProduct of listMarketProduct) {
             if (marketProduct.agencys.length > 0) {
                 let index = marketProduct.agencys.findIndex(item => {
@@ -2108,6 +2098,7 @@ module.exports.getProductPrivateService = async (result) => {
             }
             marketProduct.dataValues.images = await getImages(marketProduct.images);
         }
+        console.log("OK2");
         return {
             success: true,
             data: {
@@ -2333,6 +2324,7 @@ module.exports.getMarketProductBySeriSerive = async (result)=>{
                 }
             ]
         });
+
         if(!seri){
             return{
                 error:true,
@@ -2348,11 +2340,54 @@ module.exports.getMarketProductBySeriSerive = async (result)=>{
                 code:HttpStatusCode.BAD_REQUEST
             }
         }
-        const product = await getProductBySeri(productId);
+        const product = (await getProductBySeri(productId))?.data;
+        const marketOrder = await models.MarketOrder.findOne({
+            include:[{
+                model:models.Customer,
+                as:"customer",
+                include:[{
+                    model: models.Ward,
+                    as:"ward",
+                    attributes:["name"]
+                },{
+                    model: models.District,
+                    as:"district",
+                    attributes:["name"]
+                },{
+                    model:models.Province,
+                    as:"province",
+                    attributes:["name"]
+                }]
+            },{
+                model: models.Ward,
+                as:"ward",
+                attributes:["name"]
+            },{
+                model: models.District,
+                as:"district",
+                attributes:["name"]
+            },{
+                model:models.Province,
+                as:"province",
+                attributes:["name"]
+            },{
+                model:models.Store,
+                as:"store",
+                attributes:["id","name","phone","address"]
+            },{
+                model:models.Store,
+                as:"toStore",
+                attributes:["id","name","phone","address"]
+            }],
+            where:{
+                id:seri.marketOrderId
+            }
+        })
         return {
             success: true,
             data: {
-                item:product
+                item:product,
+                marketOrder
             }
         }
     } catch (e) {

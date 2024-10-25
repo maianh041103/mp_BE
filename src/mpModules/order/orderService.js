@@ -957,6 +957,9 @@ async function handleCreateOrder(order, loginUser) {
       pointResult += order.pointOrder
     }
     for (const item of order.products) {
+      if(item.pointProduct && item.pointProduct !== 0){
+        pointResult += item.pointProduct;
+      }
       if (!item.itemPrice) {
         const productUnit = await models.ProductUnit.findOne({
           where: {
@@ -1166,7 +1169,7 @@ async function handleCreateOrder(order, loginUser) {
       //End tích điểm
 
       //Cập nhật điểm
-      if (pointResult != 0) {
+      if (pointResult != 0 && order.customerId) {
         await models.Customer.update(
           {
             point: Sequelize.literal(`COALESCE(point, 0) + ${pointResult}`)
