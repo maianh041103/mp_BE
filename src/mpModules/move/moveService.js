@@ -8,6 +8,7 @@ import { createWarehouseCard } from "../warehouse/warehouseService";
 import { warehouseStatus } from "../warehouse/constant";
 import { addBatchQty, getBatch, getOrCreateBatch } from "../batch/batchService";
 import { getFilter } from "./filter";
+import {HttpStatusCode} from "../../helpers/errorCodes";
 const _ = require("lodash");
 const userLogContant = require("../userLog/userLogContant");
 
@@ -193,12 +194,19 @@ export async function receiveMove(id, payload, loginUser) {
         raiseBadRequestError("Chi nhánh không phù hợp để nhận hàng")
     }
     if (move.status === 'RECEIVED') {
-        raiseBadRequestError("Đã nhận được hàng")
+        return{
+            error:true,
+            message:"Đã nhận được hàng",
+            code: HttpStatusCode.BAD_REQUEST
+        }
     }
     await models.sequelize.transaction(async (t) => {
         let checkReceived = true;
         for (const item of items) {
             const moveItem = await getMoveItem(item.id);
+            if(item.totalQuantity + moveItem.toQuantity > moveItem.quantity){
+                throw new Error("Bạn đã nhận quá số lượng chuyển");
+            }
             if(item.totalQuantity + moveItem.toQuantity !== moveItem.quantity){
                 checkReceived = false;
             }
