@@ -1424,6 +1424,18 @@ module.exports.getAllMarketOrderService = async (result) => {
         });
         for(const row of rows){
             row.dataValues.totalPrice = parseInt(row.dataValues.totalPrice);
+
+            //Tra ve listSeri
+            for(const item of row.products){
+                const series = await models.Seri.findAll({
+                    where:{
+                        marketOrderId: item.marketOrderId,
+                        marketProductId: item.marketProductId
+                    },
+                    attributes:["id","code"]
+                });
+                item.dataValues.series = series;
+            }
         }
         const count = await models.MarketOrder.count({
             where
