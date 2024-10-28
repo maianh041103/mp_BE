@@ -1291,15 +1291,13 @@ module.exports.createMarketOrderService = async (result) => {
                         transaction: t
                     });
 
-                    if(!customerId) {
-                        await models.Cart.destroy({
-                            where: {
-                                marketProductId: item.marketProductId,
-                                storeId
-                            },
-                            transaction: t
-                        });
-                    }
+                    await models.Cart.destroy({
+                        where: {
+                            marketProductId: item.marketProductId,
+                            storeId
+                        },
+                        transaction: t
+                    });
                 }
 
                 const code = generateCode("MK", newMarketOrderBuy.id);
