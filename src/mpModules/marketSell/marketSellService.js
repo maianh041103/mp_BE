@@ -899,7 +899,7 @@ module.exports.addProductToCartService = async (result) => {
         });
         let totalQuantity;
         if (productInCart) {
-            totalQuantity = +productInCart.quantity || 0 + quantity;
+            totalQuantity = +productInCart.quantity + quantity;
         }
         if (totalQuantity > marketProductExists.quantity - marketProductExists.quantitySold) {
             return {
