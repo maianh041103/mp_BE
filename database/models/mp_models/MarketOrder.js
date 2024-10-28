@@ -56,6 +56,14 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull:true,
                 type: DataTypes.TEXT,
             },
+            cancelNote:{
+                allowNull:true,
+                type:DataTypes.TEXT
+            },
+            closedNote:{
+                allowNull:true,
+                type: DataTypes.TEXT
+            },
             wardId:{
                 allowNull:true,
                 type: DataTypes.INTEGER(10).UNSIGNED,

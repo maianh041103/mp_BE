@@ -122,6 +122,7 @@ const marketOrderInclude = [
 const marketOrderAttributes = [
     "id","code","fullName","storeId","toStoreId","toBranchId","addressId","address", "phone","status",
     "note","wardId","districtId","provinceId","isPayment","createdAt","deliveryFee","customerId",
+    "cancelNote","closedNote",
     [Sequelize.literal(`(SELECT SUM(market_order_products.quantity * market_order_products.price)
     FROM market_order_products
     WHERE MarketOrder.id = market_order_products.marketOrderId )`), 'totalPrice'],
@@ -899,7 +900,7 @@ module.exports.addProductToCartService = async (result) => {
         });
         let totalQuantity;
         if (productInCart) {
-            totalQuantity = +productInCart.quantity || 0 + quantity;
+            totalQuantity = +productInCart.quantity + quantity;
         }
         if (totalQuantity > marketProductExists.quantity - marketProductExists.quantitySold) {
             return {
@@ -1291,15 +1292,13 @@ module.exports.createMarketOrderService = async (result) => {
                         transaction: t
                     });
 
-                    if(!customerId) {
-                        await models.Cart.destroy({
-                            where: {
-                                marketProductId: item.marketProductId,
-                                storeId
-                            },
-                            transaction: t
-                        });
-                    }
+                    await models.Cart.destroy({
+                        where: {
+                            marketProductId: item.marketProductId,
+                            storeId
+                        },
+                        transaction: t
+                    });
                 }
 
                 const code = generateCode("MK", newMarketOrderBuy.id);
@@ -1507,6 +1506,16 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
             }
         }
         const t = await models.sequelize.transaction(async (t) => {
+            if(status === marketSellContant.STATUS_ORDER.CLOSED){
+                await models.MarketOrder.update({
+                    closedNote:note
+                }, {
+                    where: {
+                        id
+                    },
+                    transaction: t
+                });
+            }
             await models.MarketOrder.update({
                 status
             }, {
@@ -1603,7 +1612,16 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                     number = -1;
                 }
                 else {
+                    await models.MarketOrder.update({
+                        cancelNote: note
+                    }, {
+                        where: {
+                            id
+                        },
+                        transaction:t
+                    });
                     number = 1;
+
                     await models.Seri.destroy({
                         where:{
                             marketOrderId:id
