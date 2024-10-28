@@ -1032,11 +1032,13 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
         customerId = -1, branchId, products, totalPrice
     } = order;
 
-    const groupCustomerIds = ((await models.CustomerGroupCustomer.findAll({
+    const groupCustomerIds = (await models.CustomerGroupCustomer.findAll({
         where:{
             customerId
         }
-    })).map(item=> item.groupCustomerId)).join(",");
+    })).map(item=> item.groupCustomerId);
+
+    const groupCustomerIdsString = groupCustomerIds.length > 0 ? groupCustomerIds.join(', ') : '-1';
 
     const discountItem = {
         model: models.DiscountItem,
@@ -1083,7 +1085,7 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
                     {
                         isAllCustomer: 0,
                         id: {
-                            [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId IN (${groupCustomerIds}) AND discount_customers.discountId = Discount.id)`)
+                            [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId IN (${groupCustomerIdsString}) AND discount_customers.discountId = Discount.id)`)
                         }
                     }
                 ]
@@ -1139,12 +1141,13 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
         page, limit
     } = filter;
 
-    const groupCustomerIds = ((await models.CustomerGroupCustomer.findAll({
+    const groupCustomerIds = (await models.CustomerGroupCustomer.findAll({
         where:{
             customerId
         }
-    })).map(item=> item.groupCustomerId)).join(",");
+    })).map(item=> item.groupCustomerId);
 
+    const groupCustomerIdsString = groupCustomerIds.length > 0 ? groupCustomerIds.join(', ') : '-1';
 
     const discountByProductIncludes = getDiscountApplyIncludes(order, filter, loginUser);
     const discountItem = {
@@ -1196,7 +1199,7 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
                     {
                         isAllCustomer: 0,
                         id: {
-                            [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId IN (${groupCustomerIds}) AND discount_customers.discountId = Discount.id)`)
+                            [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId IN (${groupCustomerIdsString}) AND discount_customers.discountId = Discount.id)`)
                         }
                     }
                 ]
