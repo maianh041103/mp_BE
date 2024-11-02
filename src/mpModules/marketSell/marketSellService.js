@@ -1963,7 +1963,7 @@ const isProductPermission = async (marketProductId, storeId)=>{
 
 module.exports.getProductPrivateService = async (result) => {
     try {
-        let {storeId, limit = 10, page = 1, keyword, toStoreId,  productType, customerId} = result;
+        let {storeId, limit = 10, page = 1, keyword, toStoreId,  productType, customerId, isAll} = result;
         if(customerId){
             const customerExists = await models.Customer.findOne({
                 where:{
@@ -2035,7 +2035,10 @@ module.exports.getProductPrivateService = async (result) => {
             storeId: {
                 [Op.ne]: storeId
             },
-            [Op.or]: [
+            status: marketConfigContant.PRODUCT_MARKET_STATUS.ACTIVE
+        };
+        if(!isAll){
+            where[Op.or] = [
                 {
                     // Trường hợp store A là đại lý của store B
                     [Op.and]: [
@@ -2073,9 +2076,8 @@ module.exports.getProductPrivateService = async (result) => {
                         { marketType: marketConfigContant.MARKET_TYPE.COMMON }
                     ]
                 }
-            ],
-            status: marketConfigContant.PRODUCT_MARKET_STATUS.ACTIVE
-        };
+            ];
+        }
         if (productType) {
             let index = include.findIndex((item) => item.as === 'product');
             if(productType){
