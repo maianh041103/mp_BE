@@ -264,6 +264,7 @@ module.exports.getAll = async (filter, loginUser) => {
         }
     }
 
+    const index = clonedDiscountInclude.findIndex(x=>x.as === "discountTime");
     if (effective) {
         let tmp = {};
         if (effective == 1) {
