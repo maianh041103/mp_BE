@@ -3,6 +3,7 @@ const discountContant = require('./discountContant');
 const { HttpStatusCode } = require('../../helpers/errorCodes');
 const { Sequelize, Op, where } = require("sequelize");
 const { getISOWeek } = require('date-fns');
+const _ = require("lodash");
 
 const discountAttributes = [
     "id",
@@ -245,6 +246,8 @@ module.exports.getAll = async (filter, loginUser) => {
         page, limit, keyword, effective, target, type, status
     } = filter;
 
+    let clonedDiscountInclude = _.cloneDeep(discountIncludes);
+
     let where = {};
 
     where.storeId = loginUser.storeId;
@@ -264,7 +267,8 @@ module.exports.getAll = async (filter, loginUser) => {
     if (effective) {
         let tmp = {};
         if (effective == 1) {
-            discountIncludes[1] = {
+            console.log("OKKKk1")
+            clonedDiscountInclude[index] = {
                 model: models.DiscountTime,
                 as: "discountTime",
                 where: {
@@ -278,7 +282,7 @@ module.exports.getAll = async (filter, loginUser) => {
             }
         }
         else if (effective == 2) {
-            discountIncludes[1] = {
+            clonedDiscountInclude[index] = {
                 model: models.DiscountTime,
                 as: "discountTime",
                 where: {
@@ -295,7 +299,7 @@ module.exports.getAll = async (filter, loginUser) => {
             }
         }
         else if (effective == 3) {
-            discountIncludes[1] = {
+            clonedDiscountInclude[index] = {
                 model: models.DiscountTime,
                 as: "discountTime",
                 where: {
@@ -310,6 +314,7 @@ module.exports.getAll = async (filter, loginUser) => {
         }
     }
 
+    console.log(clonedDiscountInclude);
     if (target) {
         where.target = target.trim();
     }
@@ -325,7 +330,7 @@ module.exports.getAll = async (filter, loginUser) => {
     const rows = await models.Discount.findAll({
         where,
         attributes: discountAttributes,
-        include: discountIncludes,
+        include: clonedDiscountInclude,
         limit: parseInt(limit),
         order: [['createdAt', 'DESC']],
         offset: (page - 1) * limit
@@ -334,7 +339,7 @@ module.exports.getAll = async (filter, loginUser) => {
     const count = await models.Discount.count({
         where,
         attributes: ["id"],
-        include: [discountIncludes[1]],
+        include: [clonedDiscountInclude[index]],
         raw: true
     });
 
