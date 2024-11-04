@@ -1742,7 +1742,7 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                             productId: item?.marketProduct?.product?.id,
                             branchId: marketOrderExists.toBranchId,
                             changeQty: item.quantity * number * item?.marketProduct?.productUnit?.exchangeValue,
-                            remainQty: inventory.quantity,
+                            remainQty: inventory,
                             createdAt: new Date(),
                             updatedAt: new Date()
                         }, {
