@@ -167,7 +167,10 @@ export async function getDetail(id) {
     if (!move) {
         raiseBadRequestError("Không tìm thấy phiếu chuyển haàng")
     }
-    return move
+    for(let item of move.items){
+        item.dataValues.product.dataValues.quantity = parseInt(await getInventory(move.toBranchId, item.product.id));
+    }
+    return move;
 }
 
 export async function getMoveItem(id) {
