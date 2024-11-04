@@ -48,7 +48,7 @@ export const moveInclude = [
             {
                 model: models.ProductUnit,
                 as: 'productUnit',
-                attributes: ['id', 'unitName', 'exchangeValue', 'isBaseUnit'],
+                attributes: ['id', 'unitName', 'exchangeValue', 'isBaseUnit', 'code'],
             },
             {
                 model: models.Product,

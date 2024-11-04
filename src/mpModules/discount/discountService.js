@@ -3,6 +3,7 @@ const discountContant = require('./discountContant');
 const { HttpStatusCode } = require('../../helpers/errorCodes');
 const { Sequelize, Op, where } = require("sequelize");
 const { getISOWeek } = require('date-fns');
+const _ = require("lodash");
 
 const discountAttributes = [
     "id",
@@ -245,6 +246,8 @@ module.exports.getAll = async (filter, loginUser) => {
         page, limit, keyword, effective, target, type, status
     } = filter;
 
+    let clonedDiscountInclude = _.cloneDeep(discountIncludes);
+
     let where = {};
 
     where.storeId = loginUser.storeId;
@@ -261,10 +264,12 @@ module.exports.getAll = async (filter, loginUser) => {
         }
     }
 
+    const index = clonedDiscountInclude.findIndex(x=>x.as === "discountTime");
     if (effective) {
         let tmp = {};
         if (effective == 1) {
-            discountIncludes[1] = {
+            console.log("OKKKk1")
+            clonedDiscountInclude[index] = {
                 model: models.DiscountTime,
                 as: "discountTime",
                 where: {
@@ -278,7 +283,7 @@ module.exports.getAll = async (filter, loginUser) => {
             }
         }
         else if (effective == 2) {
-            discountIncludes[1] = {
+            clonedDiscountInclude[index] = {
                 model: models.DiscountTime,
                 as: "discountTime",
                 where: {
@@ -295,7 +300,7 @@ module.exports.getAll = async (filter, loginUser) => {
             }
         }
         else if (effective == 3) {
-            discountIncludes[1] = {
+            clonedDiscountInclude[index] = {
                 model: models.DiscountTime,
                 as: "discountTime",
                 where: {
@@ -310,6 +315,7 @@ module.exports.getAll = async (filter, loginUser) => {
         }
     }
 
+    console.log(clonedDiscountInclude);
     if (target) {
         where.target = target.trim();
     }
@@ -325,7 +331,7 @@ module.exports.getAll = async (filter, loginUser) => {
     const rows = await models.Discount.findAll({
         where,
         attributes: discountAttributes,
-        include: discountIncludes,
+        include: clonedDiscountInclude,
         limit: parseInt(limit),
         order: [['createdAt', 'DESC']],
         offset: (page - 1) * limit
@@ -334,7 +340,7 @@ module.exports.getAll = async (filter, loginUser) => {
     const count = await models.Discount.count({
         where,
         attributes: ["id"],
-        include: [discountIncludes[1]],
+        include: [clonedDiscountInclude[index]],
         raw: true
     });
 
@@ -1032,11 +1038,13 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
         customerId = -1, branchId, products, totalPrice
     } = order;
 
-    const groupCustomerId = ((await models.Customer.findOne({
-        where: {
-            id: customerId
+    const groupCustomerIds = (await models.CustomerGroupCustomer.findAll({
+        where:{
+            customerId
         }
-    })) || {}).groupCustomerId || -1;
+    })).map(item=> item.groupCustomerId);
+
+    const groupCustomerIdsString = groupCustomerIds.length > 0 ? groupCustomerIds.join(', ') : '-1';
 
     const discountItem = {
         model: models.DiscountItem,
@@ -1083,7 +1091,7 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
                     {
                         isAllCustomer: 0,
                         id: {
-                            [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId = ${groupCustomerId} AND discount_customers.discountId = Discount.id)`)
+                            [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId IN (${groupCustomerIdsString}) AND discount_customers.discountId = Discount.id)`)
                         }
                     }
                 ]
@@ -1139,12 +1147,13 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
         page, limit
     } = filter;
 
-    const groupCustomerId = ((await models.Customer.findOne({
-        where: {
-            id: customerId
+    const groupCustomerIds = (await models.CustomerGroupCustomer.findAll({
+        where:{
+            customerId
         }
-    })) || {}).groupCustomerId || -1;
+    })).map(item=> item.groupCustomerId);
 
+    const groupCustomerIdsString = groupCustomerIds.length > 0 ? groupCustomerIds.join(', ') : '-1';
 
     const discountByProductIncludes = getDiscountApplyIncludes(order, filter, loginUser);
     const discountItem = {
@@ -1196,7 +1205,7 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
                     {
                         isAllCustomer: 0,
                         id: {
-                            [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId = ${groupCustomerId} AND discount_customers.discountId = Discount.id)`)
+                            [Op.in]: Sequelize.literal(`(SELECT discountId FROM discount_customers WHERE groupCustomerId IN (${groupCustomerIdsString}) AND discount_customers.discountId = Discount.id)`)
                         }
                     }
                 ]
@@ -1359,5 +1368,31 @@ module.exports.detailConfig = async (loginUser) => {
     return {
         success: true,
         data: discountConfig
+    }
+}
+
+module.exports.countApply = async (payload)=> {
+    const {discountId, customerId} = payload;
+    const count = await models.DiscountApply.count({
+        where:{
+            discountId
+        },
+        include:[
+            {
+                model:models.Order,
+                as:"order",
+                where:[
+                    {
+                        customerId
+                    }
+                ]
+            }
+        ]
+    });
+    return{
+        success:true,
+        data:{
+            count: count || 0
+        }
     }
 }

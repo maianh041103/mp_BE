@@ -55,4 +55,9 @@ router.get("/config/detail", authenticate, (req, res, next) => {
     next();
 }, authorize, discountController.detailConfig)
 
+router.get("/countApply/:discountId/:customerId", authenticate, (req, res, next) => {
+    req.apiRole = [];
+    next();
+}, authorize, discountController.countApply)
+
 module.exports = router;

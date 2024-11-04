@@ -180,6 +180,7 @@ export async function indexCustomers(filter) {
         pointRange = {},
         type,
         gender,
+        createdAt
     } = filter;
 
     const conditions = {};
@@ -240,6 +241,15 @@ export async function indexCustomers(filter) {
             birthdayEnd
         } = birthdayRange;
         conditions.birthday = addFilterByDate([birthdayStart, birthdayEnd]);
+    }
+
+    if(createdAt){
+        conditions.createdAt =  {
+            [Op.between]: [
+                new Date(`${createdAt} 00:00:00`),
+                new Date(`${createdAt} 23:59:59`)
+            ]
+        }
     }
 
     if (pointRange) {

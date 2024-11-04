@@ -24,8 +24,13 @@ function processQuery(params) {
     keyword = "",
     type,
     status,
-    include,
   } = params;
+  const include = [
+    {
+      model: models.Image,
+      as:"image"
+    }
+  ]
   const query = {
     include,
     offset: +limit * (+page - 1),

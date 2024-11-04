@@ -122,6 +122,7 @@ const marketOrderInclude = [
 const marketOrderAttributes = [
     "id","code","fullName","storeId","toStoreId","toBranchId","addressId","address", "phone","status",
     "note","wardId","districtId","provinceId","isPayment","createdAt","deliveryFee","customerId",
+    "cancelNote","closedNote",
     [Sequelize.literal(`(SELECT SUM(market_order_products.quantity * market_order_products.price)
     FROM market_order_products
     WHERE MarketOrder.id = market_order_products.marketOrderId )`), 'totalPrice'],
@@ -899,7 +900,7 @@ module.exports.addProductToCartService = async (result) => {
         });
         let totalQuantity;
         if (productInCart) {
-            totalQuantity = +productInCart.quantity || 0 + quantity;
+            totalQuantity = +productInCart.quantity + quantity;
         }
         if (totalQuantity > marketProductExists.quantity - marketProductExists.quantitySold) {
             return {
@@ -1291,15 +1292,13 @@ module.exports.createMarketOrderService = async (result) => {
                         transaction: t
                     });
 
-                    if(!customerId) {
-                        await models.Cart.destroy({
-                            where: {
-                                marketProductId: item.marketProductId,
-                                storeId
-                            },
-                            transaction: t
-                        });
-                    }
+                    await models.Cart.destroy({
+                        where: {
+                            marketProductId: item.marketProductId,
+                            storeId
+                        },
+                        transaction: t
+                    });
                 }
 
                 const code = generateCode("MK", newMarketOrderBuy.id);
@@ -1425,6 +1424,18 @@ module.exports.getAllMarketOrderService = async (result) => {
         });
         for(const row of rows){
             row.dataValues.totalPrice = parseInt(row.dataValues.totalPrice);
+
+            //Tra ve listSeri
+            for(const item of row.products){
+                const series = await models.Seri.findAll({
+                    where:{
+                        marketOrderId: item.marketOrderId,
+                        marketProductId: item.marketProductId
+                    },
+                    attributes:["id","code"]
+                });
+                item.dataValues.series = series;
+            }
         }
         const count = await models.MarketOrder.count({
             where
@@ -1507,6 +1518,16 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
             }
         }
         const t = await models.sequelize.transaction(async (t) => {
+            if(status === marketSellContant.STATUS_ORDER.CLOSED){
+                await models.MarketOrder.update({
+                    closedNote:note
+                }, {
+                    where: {
+                        id
+                    },
+                    transaction: t
+                });
+            }
             await models.MarketOrder.update({
                 status
             }, {
@@ -1603,7 +1624,16 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                     number = -1;
                 }
                 else {
+                    await models.MarketOrder.update({
+                        cancelNote: note
+                    }, {
+                        where: {
+                            id
+                        },
+                        transaction:t
+                    });
                     number = 1;
+
                     await models.Seri.destroy({
                         where:{
                             marketOrderId:id
@@ -1712,7 +1742,7 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
                             productId: item?.marketProduct?.product?.id,
                             branchId: marketOrderExists.toBranchId,
                             changeQty: item.quantity * number * item?.marketProduct?.productUnit?.exchangeValue,
-                            remainQty: inventory.quantity,
+                            remainQty: inventory,
                             createdAt: new Date(),
                             updatedAt: new Date()
                         }, {
@@ -1933,7 +1963,7 @@ const isProductPermission = async (marketProductId, storeId)=>{
 
 module.exports.getProductPrivateService = async (result) => {
     try {
-        let {storeId, limit = 10, page = 1, keyword, toStoreId,  productType, customerId} = result;
+        let {storeId, limit = 10, page = 1, keyword, toStoreId,  productType, customerId, isAll} = result;
         if(customerId){
             const customerExists = await models.Customer.findOne({
                 where:{
@@ -2005,7 +2035,10 @@ module.exports.getProductPrivateService = async (result) => {
             storeId: {
                 [Op.ne]: storeId
             },
-            [Op.or]: [
+            status: marketConfigContant.PRODUCT_MARKET_STATUS.ACTIVE
+        };
+        if(!isAll){
+            where[Op.or] = [
                 {
                     // Trường hợp store A là đại lý của store B
                     [Op.and]: [
@@ -2043,9 +2076,8 @@ module.exports.getProductPrivateService = async (result) => {
                         { marketType: marketConfigContant.MARKET_TYPE.COMMON }
                     ]
                 }
-            ],
-            status: marketConfigContant.PRODUCT_MARKET_STATUS.ACTIVE
-        };
+            ];
+        }
         if (productType) {
             let index = include.findIndex((item) => item.as === 'product');
             if(productType){

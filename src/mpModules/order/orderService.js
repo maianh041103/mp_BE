@@ -492,6 +492,32 @@ function generateOrderCode(no) {
   return no
 }
 
+async function checkApplyDiscount(listDiscountId, storeId){
+  const config = await models.DiscountConfig.findOne({
+    where:{
+      storeId
+    }
+  });
+  if(config.isMergeDiscount === false){
+    const discounts = await models.Discount.findAll({
+      where:{
+        id:{
+          [Op.in]:listDiscountId
+        }
+      }
+    });
+    let discountTypes = [];
+    for(let item of discounts){
+      if(!discountTypes.includes(item.target)){
+        discountTypes.push(item.target);
+      }
+    }
+    if(discountTypes.length > 1){
+      return false;
+    }
+  }
+  return true;
+}
 // Đơn hàng tạo trên quầy
 // discountType = 1 => %
 // discountType = 2 => VND
@@ -517,6 +543,16 @@ async function handleCreateOrder(order, loginUser) {
   }
   if (responseReadBranch.error) {
     return responseReadBranch
+  }
+
+  if(!(await checkApplyDiscount(order.listDiscountId || {}, loginUser.storeId))){
+    throw Error(
+        JSON.stringify({
+          error: true,
+          code: HttpStatusCode.BAD_REQUEST,
+          message: `Không thể áp dụng đồng thời khuyến mãi`
+        })
+    )
   }
 
   const point =
@@ -549,17 +585,20 @@ async function handleCreateOrder(order, loginUser) {
       }
     })
     if (customer) {
-      const groupCustomer = await models.GroupCustomer.findOne({
+      const groupCustomers = await models.CustomerGroupCustomer.findAll({
         where: {
-          id: customer.groupCustomerId
+          customerId: order.customerId
         }
-      })
-      if (!groupCustomer) {
+      });
+      const groupCustomerIds = groupCustomers.map(x => x.groupCustomerId);
+      if (!groupCustomers) {
         checkCustomer = 0
       } else {
         const pointCustomerExist = await models.PointCustomer.findOne({
           where: {
-            groupCustomerId: groupCustomer.id
+            groupCustomerId: {
+              [Op.in]:groupCustomerIds
+            }
           }
         })
         if (pointCustomerExist) {
@@ -957,9 +996,6 @@ async function handleCreateOrder(order, loginUser) {
       pointResult += order.pointOrder
     }
     for (const item of order.products) {
-      if(item.pointProduct && item.pointProduct !== 0){
-        pointResult += item.pointProduct;
-      }
       if (!item.itemPrice) {
         const productUnit = await models.ProductUnit.findOne({
           where: {
@@ -970,33 +1006,32 @@ async function handleCreateOrder(order, loginUser) {
       }
     }
     //End khuyến mãi - tích điểm
-
     if (point) {
       if (
         !order.paymentPoint ||
-        order.paymentPoint == 0 ||
-        point.isPointBuy == true
+        order.paymentPoint === 0 ||
+        point.isPointBuy === true
       ) {
         //Check áp dụng cho hóa đơn thanh toán bằng điểm không
         if (
           order.customerId &&
-          point.status == pointContant.statusPoint.ACTIVE
+          point.status === pointContant.statusPoint.ACTIVE
         ) {
           if (checkCustomer == 1) {
             //Tính điểm áp mã
-            if (point.type == pointContant.typePoint.ORDER) {
+            if (point.type === pointContant.typePoint.ORDER) {
               //Tính tổng tiền đơn hàng = tổng giá của các sản phẩm (không áp  dụng km hóa đơn ,...)
               if (
-                ((point.isDiscountOrder == false &&
+                ((point.isDiscountOrder === false &&
                   !(order.discountOrder > 0)) ||
-                  point.isDiscountOrder == true) &&
-                point.isDiscountProduct == true
+                  point.isDiscountOrder === true) &&
+                point.isDiscountProduct === true
               ) {
                 pointResult += Math.floor(
-                  newOrder.totalPrice / point.convertMoneyBuy
+                    (newOrder.totalPrice + moneyDiscountByPoint) / point.convertMoneyBuy
                 )
                 const weight =
-                  Math.floor(newOrder.totalPrice / point.convertMoneyBuy) /
+                  Math.floor((newOrder.totalPrice + moneyDiscountByPoint) / point.convertMoneyBuy) /
                   totalNewPriceItem
                 for (const item of order.products) {
                   await models.OrderProduct.increment(
@@ -1017,15 +1052,15 @@ async function handleCreateOrder(order, loginUser) {
                   )
                 }
               } else if (
-                ((point.isDiscountOrder == false &&
+                ((point.isDiscountOrder === false &&
                   !(order.discountOrder > 0)) ||
-                  point.isDiscountOrder == true) &&
-                point.isDiscountProduct == false
+                  point.isDiscountOrder === true) &&
+                point.isDiscountProduct === false
               ) {
                 //Tính tổng các sản phẩm có isDiscount = 0 và trừ đi chiết khấu
                 let totalPriceNotDiscount = 0
                 for (const item of order.products) {
-                  if (!(item.isDiscount == true)) {
+                  if (item.itemPrice === null) {
                     const productUnit = await models.ProductUnit.findOne({
                       where: {
                         id: item.productUnitId
@@ -1043,7 +1078,7 @@ async function handleCreateOrder(order, loginUser) {
                 //Cập nhật điểm cho từng sản phẩm
                 const weight = Math.floor(totalPriceNotDiscount / point.convertMoneyBuy) / (totalPriceNotDiscount + discountAmount)
                 for (const item of order.products) {
-                  if (!(item.isDiscount == true)) {
+                  if (item.itemPrice === null) {
                     await models.OrderProduct.increment(
                       {
                         point: Sequelize.literal(
@@ -1073,9 +1108,8 @@ async function handleCreateOrder(order, loginUser) {
                   //Lấy điểm tích ở từng sản phẩm
                   for (const item of order.products) {
                     if (
-                      point.isDiscountProduct == true ||
-                      (point.isDiscountProduct == false &&
-                        !(item.isDiscount == true))
+                      point.isDiscountProduct === true ||
+                      (point.isDiscountProduct === false && item.itemPrice === null)
                     ) {
                       const productUnit = await models.ProductUnit.findOne({
                         where: {
@@ -1106,9 +1140,9 @@ async function handleCreateOrder(order, loginUser) {
                   //Lấy mặc định
                   for (const item of order.products) {
                     if (
-                      point.isDiscountProduct == true ||
-                      (point.isDiscountProduct == false &&
-                        !(item.isDiscount == true))
+                      point.isDiscountProduct === true ||
+                      (point.isDiscountProduct === false &&
+                        (item.itemPrice === null))
                     ) {
                       if (!item.itemPrice) {
                         const productUnit = await models.ProductUnit.findOne({
