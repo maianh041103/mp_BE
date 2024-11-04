@@ -1370,3 +1370,29 @@ module.exports.detailConfig = async (loginUser) => {
         data: discountConfig
     }
 }
+
+module.exports.countApply = async (payload)=> {
+    const {discountId, customerId} = payload;
+    const count = await models.DiscountApply.count({
+        where:{
+            discountId
+        },
+        include:[
+            {
+                model:models.Order,
+                as:"order",
+                where:[
+                    {
+                        customerId
+                    }
+                ]
+            }
+        ]
+    });
+    return{
+        success:true,
+        data:{
+            count: count || 0
+        }
+    }
+}
