@@ -231,3 +231,20 @@ module.exports.detailConfig = async (req, res) => {
         res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
     }
 }
+
+//[GET] /mp/api/discount/countApply/:discountId/:customerId
+module.exports.countApply = async (req, res) => {
+    try {
+        const { loginUser = {} } = req;
+        const {discountId, customerId} = req.params;
+        const result = await discountService.countApply({loginUser, discountId, customerId});
+        if (result.success) {
+            res.json(respondItemSuccess(result));
+        }
+        else
+            res.json(respondWithError(result.code, result.message, {}));
+    } catch (error) {
+        console.log(error);
+        res.json(respondWithError(HttpStatusCode.SYSTEM_ERROR, error.message, error));
+    }
+}
