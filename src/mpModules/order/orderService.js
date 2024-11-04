@@ -492,6 +492,32 @@ function generateOrderCode(no) {
   return no
 }
 
+async function checkApplyDiscount(listDiscountId, storeId){
+  const config = await models.DiscountConfig.findOne({
+    where:{
+      storeId
+    }
+  });
+  if(config.isMergeDiscount === false){
+    const discounts = await models.Discount.findAll({
+      where:{
+        id:{
+          [Op.in]:listDiscountId
+        }
+      }
+    });
+    let discountTypes = [];
+    for(let item of discounts){
+      if(!discountTypes.includes(item.target)){
+        discountTypes.push(item.target);
+      }
+    }
+    if(discountTypes.length > 1){
+      return false;
+    }
+  }
+  return true;
+}
 // Đơn hàng tạo trên quầy
 // discountType = 1 => %
 // discountType = 2 => VND
@@ -517,6 +543,16 @@ async function handleCreateOrder(order, loginUser) {
   }
   if (responseReadBranch.error) {
     return responseReadBranch
+  }
+
+  if(!(await checkApplyDiscount(order.listDiscountId || {}, loginUser.storeId))){
+    throw Error(
+        JSON.stringify({
+          error: true,
+          code: HttpStatusCode.BAD_REQUEST,
+          message: `Không thể áp dụng đồng thời khuyến mãi`
+        })
+    )
   }
 
   const point =
