@@ -585,17 +585,20 @@ async function handleCreateOrder(order, loginUser) {
       }
     })
     if (customer) {
-      const groupCustomer = await models.GroupCustomer.findOne({
+      const groupCustomers = await models.CustomerGroupCustomer.findAll({
         where: {
-          id: customer.groupCustomerId
+          customerId: order.customerId
         }
-      })
-      if (!groupCustomer) {
+      });
+      const groupCustomerIds = groupCustomers.map(x => x.groupCustomerId);
+      if (!groupCustomers) {
         checkCustomer = 0
       } else {
         const pointCustomerExist = await models.PointCustomer.findOne({
           where: {
-            groupCustomerId: groupCustomer.id
+            groupCustomerId: {
+              [Op.in]:groupCustomerIds
+            }
           }
         })
         if (pointCustomerExist) {
@@ -1003,7 +1006,6 @@ async function handleCreateOrder(order, loginUser) {
       }
     }
     //End khuyến mãi - tích điểm
-
     if (point) {
       if (
         !order.paymentPoint ||
@@ -1026,10 +1028,10 @@ async function handleCreateOrder(order, loginUser) {
                 point.isDiscountProduct == true
               ) {
                 pointResult += Math.floor(
-                  newOrder.totalPrice / point.convertMoneyBuy
+                    (newOrder.totalPrice + moneyDiscountByPoint) / point.convertMoneyBuy
                 )
                 const weight =
-                  Math.floor(newOrder.totalPrice / point.convertMoneyBuy) /
+                  Math.floor((newOrder.totalPrice + moneyDiscountByPoint) / point.convertMoneyBuy) /
                   totalNewPriceItem
                 for (const item of order.products) {
                   await models.OrderProduct.increment(
