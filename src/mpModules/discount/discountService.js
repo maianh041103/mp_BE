@@ -973,6 +973,7 @@ const convertResult = (rows) => {
             }
 
             return {
+                id:item.id,
                 condition: {
                     order: {
                         from: item.orderFrom
