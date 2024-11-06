@@ -1066,8 +1066,8 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
     discountByOrderIncludes.push(discountItem);
 
     const {
-        page, limit
-    } = filter;
+        page, limit, type
+    } = {...filter};
 
     const where = {
         target: discountContant.discountTarget.ORDER,
@@ -1097,6 +1097,9 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
                 ]
             }
         ]
+    }
+    if(type){
+        where.type = type;
     }
     let rows = await models.Discount.findAll({
         attributes: discountAttributes,
@@ -1144,8 +1147,8 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
     } = order;
 
     const {
-        page, limit
-    } = filter;
+        page, limit, type
+    } = {...filter};
 
     const groupCustomerIds = (await models.CustomerGroupCustomer.findAll({
         where:{
@@ -1211,6 +1214,10 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
                 ]
             }
         ]
+    }
+
+    if(type){
+        where.type = type;
     }
 
     let rows = await models.Discount.findAll({

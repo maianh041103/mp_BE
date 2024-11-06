@@ -18,6 +18,7 @@ const {addFilterByDate} = require("../../helpers/utils");
 const moment = require('moment');
 const {readProduct, getProductBySeri} = require("../product/productService");
 const {getInventory} = require("../inventory/inventoryService");
+const discountContant = require("../discount/discountContant");
 
 const marketAddressInclude = [
     {
@@ -218,6 +219,14 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser,branc
         },
         { transaction: t }
     );
+    await models.DiscountApply.update({
+        orderId:newOrder.id
+    },{
+        where:{
+            marketOrderId:marketOrderId
+        },
+        transaction:t
+    });
     for (const item of marketOrderExists.products) {
         const productUnit = await models.ProductUnit.findOne({
             where: {
@@ -1187,7 +1196,8 @@ module.exports.createMarketOrderService = async (result) => {
         const listNewMarketOrderBuy = [];
         const t = await models.sequelize.transaction(async (t) => {
             for (const order of orders) {
-                let {addressId, listProduct, toStoreId, note, customerId, isDirectSale} = order;
+                let {addressId, listProduct, toStoreId, note, customerId, isDirectSale, discountOrderItemId} = order;
+
                 if (!addressId) {
                     throw new Error(`Vui lòng gửi thông tin địa chỉ giao hàng`);
                 }
@@ -1274,6 +1284,37 @@ module.exports.createMarketOrderService = async (result) => {
 
                 let totalPrice = 0;
                 for (const item of listProduct) {
+                    if(item.discountProductItemId){
+                        const discountItem = await models.DiscountItem.findOne({
+                            where:{
+                                id:item.discountProductItemId
+                            }
+                        });
+                        if(!discountItem){
+                            throw new Error(`Item khuyến mãi có id = ${item.discountProductItemId}  không tồn tại`);
+                        }
+                        const discount = await models.Discount.findOne({
+                            where:{
+                                id:discountItem.discountId,
+                                target: discountContant.discountTarget.PRODUCT,
+                                type: discountContant.discountType.PRICE_BY_BUY_NUMBER
+                            }
+                        });
+                        if(!discount){
+                            throw new Error(`Không tồn tại khuyến mãi hàng hóa mua hàng giảm giá hàng có id = ${discountItem.discountId}`);
+                        }
+                        if(discountItem.changeType === discountContant.discountDiscountType.TYPE_PRICE){
+                            item.price = discountItem.fixedPrice;
+                        }else{
+                            item.price -= (discountItem.fixedPrice || 0);
+                        }
+                        await models.DiscountApply.create({
+                            discountId:item.discountProductItemId,
+                            marketOrderId: newMarketOrderBuy.id
+                        },{
+                            transaction:t
+                        })
+                    }
                     totalPrice += item.price * item.quantity;
                     let marketProductExists = await models.MarketProduct.findOne({
                         where: {
@@ -1309,6 +1350,38 @@ module.exports.createMarketOrderService = async (result) => {
                 }, {
                     transaction: t
                 });
+                if(discountOrderItemId){
+                    const discountItem = await models.DiscountItem.findOne({
+                        where:{
+                            id:discountOrderItemId
+                        }
+                    });
+                    if(!discountItem){
+                        throw new Error(`Item khuyến mãi có id = ${discountOrderItemId}  không tồn tại`);
+                    }
+                    const discount = await models.Discount.findOne({
+                        where:{
+                            id:discountItem.discountId,
+                            target: discountContant.discountTarget.ORDER,
+                            type: discountContant.discountType.ORDER_PRICE
+                        }
+                    });
+                    if(!discount){
+                        throw new Error(`Không tồn tại khuyến mãi giảm giá hóa đơn có id = ${discountItem.discountId}`);
+                    }
+                    if(discountItem.discountType === discountContant.discountDiscountType.AMOUNT){
+                        totalPrice -= discountItem.discountValue;
+                    }else{
+                        totalPrice -= discountItem.discountValue * totalPrice;
+                    }
+                    await models.DiscountApply.create({
+                        discountId:discountOrderItemId,
+                        marketOrderId: newMarketOrderBuy.id
+                    },{
+                        transaction:t
+                    })
+                }
+
                 await models.MarketOrder.update({
                     code, totalPrice
                 }, {
@@ -1317,7 +1390,7 @@ module.exports.createMarketOrderService = async (result) => {
                     },
                     transaction: t
                 });
-
+                newMarketOrderBuy.totalPrice = totalPrice;
                 listNewMarketOrderBuy.push(newMarketOrderBuy);
             }
         })
@@ -1718,7 +1791,7 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
 
                     //Check số lượng sản phẩm
                     if(inventory < item.quantity * item?.marketProduct?.productUnit?.exchangeValue){
-                        throw new Error(`Sản phẩm ${item?.product?.name} không đủ số lượng`);
+                        throw new Error(`Sản phẩm không đủ số lượng`);
                     }
 
 

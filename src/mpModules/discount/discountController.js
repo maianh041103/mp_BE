@@ -138,10 +138,11 @@ module.exports.getDiscountByOrder = async (req, res) => {
     try {
         const { loginUser = {} } = req;
         const order = req.body || {};
-        const page = req.params.page || 1;
-        const limit = req.params.limit || 20;
+        const page = req.query.page || 1;
+        const limit = req.query.limit || 20;
+        const type = req.query.type;
         const filter = {
-            page, limit
+            page, limit, type
         }
 
         const result = await discountService.getDiscountByOrder(order, filter, loginUser);
@@ -161,10 +162,11 @@ module.exports.getDiscountByProduct = async (req, res) => {
     try {
         const { loginUser = {} } = req;
         const order = req.body || {};
-        const page = req.params.page || 1;
-        const limit = req.params.limit || 20;
+        const page = req.query.page || 1;
+        const limit = req.query.limit || 20;
+        const type = req.query.type;
         const filter = {
-            page, limit
+            page, limit, type
         }
 
         const result = await discountService.getDiscountByProduct(order, filter, loginUser);

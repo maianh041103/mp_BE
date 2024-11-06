@@ -17,7 +17,11 @@ module.exports = (sequelize, DataTypes) => {
             },
             orderId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
-                allowNull: false,
+                allowNull: true,
+            },
+            marketOrderId:{
+                type:DataTypes.INTEGER(11).UNSIGNED,
+                allowNull:true
             }
         },
         {
