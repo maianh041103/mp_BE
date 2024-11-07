@@ -1309,7 +1309,7 @@ module.exports.createMarketOrderService = async (result) => {
                             item.price -= (discountItem.fixedPrice || 0);
                         }
                         await models.DiscountApply.create({
-                            discountId:item.discountProductItemId,
+                            discountId:discount.id,
                             marketOrderId: newMarketOrderBuy.id
                         },{
                             transaction:t
@@ -1375,7 +1375,7 @@ module.exports.createMarketOrderService = async (result) => {
                         totalPrice -= discountItem.discountValue * totalPrice;
                     }
                     await models.DiscountApply.create({
-                        discountId:discountOrderItemId,
+                        discountId:discount.id,
                         marketOrderId: newMarketOrderBuy.id
                     },{
                         transaction:t
