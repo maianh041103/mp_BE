@@ -844,7 +844,7 @@ module.exports.getDetail = async (discountId, loginUser) => {
     }
 }
 
-const getDiscountApplyIncludes = (order, filter, loginUser) => {
+const getDiscountApplyIncludes = (order) => {
     const {
         customerId = -1, branchId
     } = order;
@@ -1034,10 +1034,22 @@ const convertResult = (rows) => {
 }
 
 module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
-    const discountByOrderIncludes = getDiscountApplyIncludes(order, filter, loginUser);
-    const {
-        customerId = -1, branchId, products, totalPrice
+    const discountByOrderIncludes = getDiscountApplyIncludes(order);
+    let {
+        customerId = -1, branchId, products, totalPrice, toStoreId
     } = order;
+
+    if(toStoreId){
+        const customerExists = await models.Customer.findOne({
+            where:{
+                storeId : toStoreId,
+                customerStoreId: loginUser.storeId
+            }
+        });
+        if (customerExists) {
+            customerId = customerExists.id;
+        }
+    }
 
     const groupCustomerIds = (await models.CustomerGroupCustomer.findAll({
         where:{
@@ -1070,10 +1082,12 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
         page, limit, type
     } = {...filter};
 
+    let storeId = loginUser.storeId;
+    if(toStoreId) storeId = toStoreId;
     const where = {
         target: discountContant.discountTarget.ORDER,
         status: discountContant.discountStatus.ACTIVE,
-        storeId: loginUser.storeId,
+        storeId,
         [Op.and]: [
             {
                 [Op.or]: [
@@ -1143,13 +1157,25 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
 }
 
 module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
-    const {
-        productUnitId, quantity, branchId, customerId = -1
+    let {
+        productUnitId, quantity, branchId, customerId = -1, toStoreId
     } = order;
 
     const {
         page, limit, type
     } = {...filter};
+
+    if(toStoreId){
+        const customerExists = await models.Customer.findOne({
+            where:{
+                storeId : toStoreId,
+                customerStoreId: loginUser.storeId
+            }
+        });
+        if (customerExists) {
+            customerId = customerExists.id;
+        }
+    }
 
     const groupCustomerIds = (await models.CustomerGroupCustomer.findAll({
         where:{
@@ -1159,7 +1185,7 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
 
     const groupCustomerIdsString = groupCustomerIds.length > 0 ? groupCustomerIds.join(', ') : '-1';
 
-    const discountByProductIncludes = getDiscountApplyIncludes(order, filter, loginUser);
+    const discountByProductIncludes = getDiscountApplyIncludes(order);
     const discountItem = {
         model: models.DiscountItem,
         as: "discountItem",
@@ -1187,10 +1213,12 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
 
     discountByProductIncludes.push(discountItem);
 
+    let storeId = loginUser.storeId;
+    if(toStoreId) storeId = toStoreId;
     const where = {
         target: discountContant.discountTarget.PRODUCT,
         status: discountContant.discountStatus.ACTIVE,
-        storeId: loginUser.storeId,
+        storeId,
         [Op.and]: [
             {
                 [Op.or]: [
