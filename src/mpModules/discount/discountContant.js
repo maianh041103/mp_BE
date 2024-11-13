@@ -34,3 +34,8 @@ export const discountBirthday = {
     WEEK: "week",
     MONTH: "month"
 }
+
+export  const discountChannel = {
+    ONLINE: "online",
+    OFFLINE: "offline",
+}

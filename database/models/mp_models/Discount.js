@@ -61,6 +61,10 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.BOOLEAN,
                 defaultValue: false,
             },
+            isAllChannel: {
+              type:DataTypes.BOOLEAN,
+              defaultValue: false,
+            },
             storeId: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false
@@ -110,6 +114,11 @@ module.exports = (sequelize, DataTypes) => {
             as: "store",
             foreignKey: "storeId",
             targetKey: 'id',
+        });
+        Discount.hasMany(models.DiscountChannel, {
+            as: "discountChannel",
+            foreignKey: 'discountId',
+            sourceKey: 'id',
         })
     };
 
