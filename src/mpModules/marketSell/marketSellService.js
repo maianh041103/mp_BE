@@ -212,7 +212,8 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser,branc
             userId:loginUser.id,
             storeId: loginUser.storeId,
             createdBy: loginUser.id,
-            branchId: branchId
+            branchId: branchId,
+            marketOrderId
         },
         { transaction: t }
     );
@@ -252,7 +253,8 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser,branc
                 comboId: null,
                 quantityLast: null,
                 userId:loginUser.id,
-                point: 0
+                point: 0,
+                marketOrderProductId: item.marketOrderProductId
             },
             { transaction: t }
         )

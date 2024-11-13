@@ -170,7 +170,8 @@ const orderAttributes = [
   'discountByPoint',
   'createdAt',
   'createdBy',
-  'canReturn'
+  'canReturn',
+    'marketOrderId'
 ]
 
 const productAttributes = ['name', 'shortName', 'code', 'barCode', 'imageId']
@@ -438,11 +439,21 @@ export async function readOrder(result) {
       'price',
       'itemPrice',
       'point',
-      'quantityLast'
+      'quantityLast',
+        'marketOrderProductId'
     ],
     include: orderProductIncludes,
     where: orderProductWhere
-  })
+  });
+
+  let series = [];
+  if(order.marketOrderId){
+    series = await models.Seri.findAll({
+      where:{
+        marketOrderId: order.marketOrderId
+      }
+    });
+  }
 
   let totalPrice = 0
   for (const item of products) {
@@ -451,6 +462,14 @@ export async function readOrder(result) {
       itemPrice = productUnit.price
     }
     totalPrice += item.itemPrice * item.quantity
+    if(item.marketOrderProductId){
+      const marketProduct = await models.MarketProduct.findOne({
+        where:{
+          productId:item.productId
+        }
+      });
+      item.dataValues.series = series.filter(item=>item.marketProductId === marketProduct.id);
+    }
   }
 
   let discountAmount =

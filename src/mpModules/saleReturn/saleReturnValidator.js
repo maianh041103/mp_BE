@@ -29,6 +29,7 @@ const createSchema = Joi.object().keys({
                 ).allow([])
             }
         ),
+    listSeri: Joi.array().allow(null)
 });
 
 export function createValidator(req, res, next) {

@@ -367,6 +367,17 @@ export async function indexCreate(saleReturn, loginUser) {
       }
     }
 
+    if(saleReturn.listSeri){
+      await models.Seri.destroy({
+        where:{
+          id:{
+            [Op.in]:saleReturn.listSeri
+          }
+        }
+      },{
+        transaction: t
+      });
+    }
     //Check cap nhat canReturn
     const products = await models.OrderProduct.findAll({
       where:{
