@@ -110,6 +110,10 @@ const createSchema = Joi.object().keys({
         customer: Joi.object({
             isAll: Joi.boolean(),
             ids: Joi.array().items(Joi.number())
+        }),
+        channel: Joi.object({
+            isAll: Joi.boolean(),
+            ids: Joi.array().items(Joi.number())
         })
     }).required()
 }).options({ allowUnknown: true });

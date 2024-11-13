@@ -49,7 +49,8 @@ module.exports.getAll = async (req, res) => {
             effective: condition.effective,
             target: condition.target,
             type: condition.method,
-            status: condition.status
+            status: condition.status,
+            channel: condition.channel
         }
 
         const result = await discountService.getAll(filter, loginUser);
@@ -141,8 +142,9 @@ module.exports.getDiscountByOrder = async (req, res) => {
         const page = req.query.page || 1;
         const limit = req.query.limit || 20;
         const type = req.query.type;
+        const channel = req.query.channel;
         const filter = {
-            page, limit, type
+            page, limit, type, channel
         }
 
         const result = await discountService.getDiscountByOrder(order, filter, loginUser);
@@ -165,8 +167,9 @@ module.exports.getDiscountByProduct = async (req, res) => {
         const page = req.query.page || 1;
         const limit = req.query.limit || 20;
         const type = req.query.type;
+        const channel = req.query.channel;
         const filter = {
-            page, limit, type
+            page, limit, type, channel
         }
 
         const result = await discountService.getDiscountByProduct(order, filter, loginUser);
