@@ -25,6 +25,10 @@ module.exports = (sequelize, DataTypes) => {
             price:{
                 allowNull: false,
                 type:DataTypes.INTEGER(20).UNSIGNED
+            },
+            itemPrice:{
+                allowNull:false,
+                type:DataTypes.INTEGER(20).UNSIGNED
             }
         },
         {
