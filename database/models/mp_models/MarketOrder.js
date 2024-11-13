@@ -99,6 +99,10 @@ module.exports = (sequelize, DataTypes) => {
                 allowNull:true,
                 type:DataTypes.INTEGER(10).UNSIGNED
             },
+            discountItemId:{
+                allowNull:true,
+                type:DataTypes.INTEGER(10).UNSIGNED
+            },
             createdAt: {
                 allowNull: true,
                 type: DataTypes.DATE,
