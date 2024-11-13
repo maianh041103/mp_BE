@@ -123,7 +123,7 @@ const marketOrderInclude = [
 const marketOrderAttributes = [
     "id","code","fullName","storeId","toStoreId","toBranchId","addressId","address", "phone","status",
     "note","wardId","districtId","provinceId","isPayment","createdAt","deliveryFee","customerId",
-    "cancelNote","closedNote", "totalPrice"
+    "cancelNote","closedNote", "totalPrice","discountItemId"
 ]
 const storeAttributes = [
     "id", "name", "phone","email", "address", "wardId", "districtId", "provinceId","isAgency",
@@ -1274,7 +1274,8 @@ module.exports.createMarketOrderService = async (result) => {
                     fullName: addressExists.fullName,
                     deliveryFee: 50000,
                     note,
-                    customerId
+                    customerId,
+                    discountItemId:discountOrderItemId
                 }, {
                     transaction: t
                 });
@@ -1311,7 +1312,7 @@ module.exports.createMarketOrderService = async (result) => {
                             marketOrderId: newMarketOrderBuy.id
                         },{
                             transaction:t
-                        })
+                        });
                     }
                     totalPrice += itemPrice * item.quantity;
                     let marketProductExists = await models.MarketProduct.findOne({
@@ -1327,7 +1328,8 @@ module.exports.createMarketOrderService = async (result) => {
                         marketOrderId: newMarketOrderBuy.id,
                         quantity: item.quantity,
                         price: item.price,
-                        itemPrice
+                        itemPrice,
+                        discountItemId: item.discountProductItemId
                     }, {
                         transaction: t
                     });
@@ -1980,7 +1982,6 @@ module.exports.updateOrderService = async (result) => {
         for(const product of listProduct){
             let itemPrice = product.price;
             if(product.discountProductItemId){
-                console.log(product.discountProductItemId);
                 const discountItem = await models.DiscountItem.findOne({
                     where:{
                         id:product.discountProductItemId
@@ -2012,7 +2013,8 @@ module.exports.updateOrderService = async (result) => {
                 await models.MarketOrderProduct.update({
                     quantity: product.quantity,
                     price:product.price,
-                    itemPrice
+                    itemPrice,
+                    discountItemId:product.discountProductItemId
                 },{
                     where:{
                         id:product.marketOrderProductId
@@ -2024,7 +2026,8 @@ module.exports.updateOrderService = async (result) => {
                     quantity: product.quantity,
                     price: product.price,
                     marketOrderId: id,
-                    marketProductId: product.marketProductId
+                    marketProductId: product.marketProductId,
+                    discountItemId:product.discountProductItemId
                 },{
                     transaction: t
                 });
@@ -2089,7 +2092,8 @@ module.exports.updateOrderService = async (result) => {
 
         console.log(totalPrice);
         await models.MarketOrder.update({
-            note,totalPrice
+            note,totalPrice,
+            discountItemId:discountOrderItemId
         },{
             where:{
                 id
