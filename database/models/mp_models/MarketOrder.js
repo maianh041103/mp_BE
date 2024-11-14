@@ -168,7 +168,12 @@ module.exports = (sequelize, DataTypes) => {
             as:"customer",
             foreignKey:"customerId",
             targetKey:"id"
-        })
+        });
+        MarketOrder.belongsTo(models.DiscountItem,{
+            as:"discountOrderItem",
+            foreignKey:"discountItemId",
+            targetKey:"id"
+        });
     };
     return MarketOrder;
 };

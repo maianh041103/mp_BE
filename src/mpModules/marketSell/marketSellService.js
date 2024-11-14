@@ -82,6 +82,16 @@ const marketOrderInclude = [
             {
                 model:models.MarketOrderBatch,
                 as:"orderBatches"
+            },
+            {
+                model:models.DiscountItem,
+                as:"discountProductItem",
+                include:[
+                    {
+                        model:models.Discount,
+                        as:"discount"
+                    }
+                ]
             }
         ]
     },
@@ -118,6 +128,16 @@ const marketOrderInclude = [
     {
         model:models.Customer,
         as:"customer"
+    },
+    {
+        model:models.DiscountItem,
+        as:"discountOrderItem",
+        include:[
+            {
+                model:models.Discount,
+                as:"discount"
+            }
+        ]
     }
 ];
 const marketOrderAttributes = [
