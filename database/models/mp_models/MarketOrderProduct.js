@@ -58,6 +58,11 @@ module.exports = (sequelize, DataTypes) => {
             foreignKey:"marketOrderProductId",
             sourceKey:"id"
         });
+        MarketOrderProduct.belongsTo(models.DiscountItem,{
+            as:"discountProductItem",
+            foreignKey:"discountItemId",
+            targetKey:"id",
+        });
     };
     return MarketOrderProduct;
 };
