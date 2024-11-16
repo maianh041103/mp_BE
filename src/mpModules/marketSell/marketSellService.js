@@ -66,7 +66,7 @@ const marketOrderInclude = [
                     {
                         model: models.Product,
                         as: "product",
-                        attributes: ["id", "name","primePrice","code"]
+                        attributes: ["id", "name","primePrice","code", "imageUrl"]
                     },
                     {
                         model: models.ProductUnit,
@@ -1448,6 +1448,13 @@ const handleGetDetailMarketOrder = async ( {id,storeId} )=>{
     if (!marketOrder) {
         throw new Error(`Không tồn tại đơn hàng có id = ${id}`);
     }
+    for(const item of marketOrder.products){
+        if(item.marketProduct.imageCenter === null){
+            item.dataValues.marketProduct.dataValues.imageCenter = {
+                filePath: item.marketProduct.product.imageUrl
+            }
+        }
+    }
     marketOrder.dataValues.totalPrice = parseInt(marketOrder.dataValues.totalPrice);
     return marketOrder;
 }
@@ -1531,6 +1538,12 @@ module.exports.getAllMarketOrderService = async (result) => {
                     attributes:["id","code"]
                 });
                 item.dataValues.series = series;
+
+                if(item.marketProduct.imageCenter === null){
+                    item.dataValues.marketProduct.dataValues.imageCenter = {
+                        filePath: item.marketProduct.product.imageUrl
+                    }
+                }
             }
         }
         const count = await models.MarketOrder.count({
@@ -2296,17 +2309,14 @@ module.exports.getProductPrivateService = async (result) => {
             offset: (parseInt(page) - 1) * (parseInt(limit)),
             order: [[sortBy, "DESC"]],
         });
-        console.log("OK");
         const index = include.findIndex(item => {
             return item.as === "agencys";
         });
         include.splice(index, 1);
-        console.log("OKK");
         const count = await models.MarketProduct.count({
             where,
             include
         });
-        console.log("OK1");
         for (const marketProduct of listMarketProduct) {
             if (marketProduct.agencys.length > 0) {
                 let index = marketProduct.agencys.findIndex(item => {
@@ -2317,8 +2327,10 @@ module.exports.getProductPrivateService = async (result) => {
                 marketProduct.dataValues.discountPrice = marketProduct.dataValues.agencys[index].discountPrice;
             }
             marketProduct.dataValues.images = await getImages(marketProduct.images);
+            marketProduct.dataValues.imageCenter = {
+                filePath: marketProduct.product.imageUrl
+            }
         }
-        console.log("OK2");
         return {
             success: true,
             data: {
@@ -2364,10 +2376,16 @@ module.exports.getSeriService = async (result) => {
                 {
                     model:models.Product,
                     as:"product",
-                    attributes:["name"]
+                    attributes:["name", "imageUrl"]
                 }
             ]
         });
+        if(marketProduct.imageCenter === null){
+            marketProduct.dataValues.imageCenter =
+                {
+                    filePath: marketProduct.product.imageUrl
+                };
+        }
         marketProduct.dataValues.quantity = marketOrderProductExists.quantity;
         const series = await models.Seri.findAll({
             where:{

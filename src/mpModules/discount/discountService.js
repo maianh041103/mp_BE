@@ -414,12 +414,13 @@ module.exports.update = async (discount, discountId, loginUser) => {
         };
     }
 
-    const { branch, customer } = discount.scope || {};
+    const { branch, customer, channel} = discount.scope || {};
     const isAllBranch = (branch || {}).isAll;
     const isAllCustomer = (customer || {}).isAll;
-    discount.isAllBranch = isAllBranch == true ? 1 : 0;
-    discount.isAllCustomer = isAllCustomer == true ? 1 : 0;
-
+    const isAllChannel = (channel.isAll || {}) === true ? 1 : 0;
+    discount.isAllBranch = isAllBranch === true ? 1 : 0;
+    discount.isAllCustomer = isAllCustomer === true ? 1 : 0;
+    discount.isAllChannel = isAllChannel === true ? 1 : 0;
     const t = await models.sequelize.transaction(async (t) => {
         //Update bảng discount
         const discountUpdate = await models.Discount.update(

@@ -12,7 +12,7 @@ const marketProductInclude = [
     {
         model: models.Product,
         as: "product",
-        attributes: ["id", "name", "shortName", "code", "groupProductId","description"],
+        attributes: ["id", "name", "shortName", "code", "groupProductId","description", "imageUrl"],
         include: [{
             model: models.GroupProduct,
             as: "groupProduct",
@@ -247,7 +247,7 @@ module.exports.getAllProductService = async (result) => {
         {
             model: models.Product,
             as: "product",
-            attributes: ["id", "name", "shortName", "code", "groupProductId","description"],
+            attributes: ["id", "name", "shortName", "code", "groupProductId","description", "imageUrl"],
             include: [{
                 model: models.GroupProduct,
                 as: "groupProduct",
@@ -362,6 +362,11 @@ module.exports.getAllProductService = async (result) => {
 
     for (let item of rows) {
         item.dataValues.images = await getImages(item.images);
+        if(item.dataValues.imageCenter === null){
+            item.dataValues.imageCenter = {
+                filePath: item.product.imageUrl
+            }
+        }
     }
     let count = await models.MarketProduct.count({
         where,
@@ -646,6 +651,11 @@ module.exports.getDetailProductService = async (result) => {
         }
     }
     marketProduct.dataValues.images = await getImages(marketProduct.images);
+    if(marketProduct.imageCenter == null){
+        marketProduct.dataValues.imageCenter = {
+            filePath: marketProduct.product.imageUrl
+        }
+    }
     return {
         success: true,
         data: {
