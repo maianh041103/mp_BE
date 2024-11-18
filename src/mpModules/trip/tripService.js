@@ -5,6 +5,7 @@ const { HttpStatusCode } = require("../../helpers/errorCodes");
 const axios = require('axios');
 const tripContant = require("./tripContant");
 const { generateCode } = require("../../helpers/codeGenerator");
+const { client } = require("../../../redis/redisConnect");
 const config = require("../../../config/default.json");
 const {checkDouble, checkCoordinates} = require("../../helpers/utils");
 
@@ -66,8 +67,9 @@ const sortMap = async (listPoint) => {
     const apiUrl = `https://maps.vietmap.vn/api/matrix?api-version=1.1&apikey=${API_KEY}&${points}`;
     const response = await axios.get(apiUrl);
     const data = response.data;
-    //let res = travel(data);
-    let res = tsp(data.distances);
+    let res = travel(data);
+    res.shift();
+    res.shift();
     console.log(res);
     return res;
 }
@@ -122,74 +124,7 @@ const travel = (data) => {
     }
     Try(2);
     return X_best;
-    // console.log(data.distances);
-    // const n = data.distances.length; // Số lượng thành phố
-    // const INF = Infinity;
-    //
-    // // dp[mask][i] sẽ là chi phí tối thiểu để đi qua tất cả các thành phố trong `mask` và kết thúc ở thành phố `i`
-    // let dp = Array(1 << n).fill(null).map(() => Array(n).fill(INF));
-    //
-    // // Bắt đầu từ thành phố 0, chi phí là 0
-    // dp[1][0] = 0;
-    //
-    // // Duyệt qua tất cả các tập hợp (mask) của các thành phố đã thăm
-    // for (let mask = 1; mask < (1 << n); mask++) {
-    //     for (let u = 0; u < n; u++) {
-    //         // Nếu thành phố `u` đã được thăm trong tập hợp `mask`
-    //         if (mask & (1 << u)) {
-    //             for (let v = 0; v < n; v++) {
-    //                 // Nếu thành phố `v` chưa được thăm trong tập hợp `mask`
-    //                 if (!(mask & (1 << v))) {
-    //                     let nextMask = mask | (1 << v); // Cập nhật tập hợp mới sau khi thăm thành phố `v`
-    //                     dp[nextMask][v] = Math.min(dp[nextMask][v], dp[mask][u] + data.distances[u][v]);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-    //
-    // // Tìm chi phí tối thiểu để quay lại thành phố 0 từ tất cả các thành phố khác
-    // let ans = INF;
-    // for (let i = 1; i < n; i++) {
-    //     ans = Math.min(ans, dp[(1 << n) - 1][i] + data.distances[i][0]);
-    // }
-    //
-    // return ans;
 }
-
-const tsp = (distances) => {
-    const n = distances.length; // Number of cities
-    const visited = new Array(n).fill(false); // Track visited cities
-    const path = [0]; // Start at city 0
-    let totalDistance = 0;
-
-    visited[0] = true; // Mark the starting city as visited
-
-    for (let i = 1; i < n; i++) {
-        let lastCity = path[path.length - 1];
-        let nearestCity = -1;
-        let nearestDistance = Infinity;
-
-        // Find the nearest unvisited city
-        for (let j = 0; j < n; j++) {
-            if (!visited[j] && distances[lastCity][j] < nearestDistance) {
-                nearestCity = j;
-                nearestDistance = distances[lastCity][j];
-            }
-        }
-
-        // Move to the nearest city
-        path.push(nearestCity);
-        visited[nearestCity] = true;
-        totalDistance += nearestDistance;
-    }
-
-    // Return to the starting city
-    totalDistance += distances[path[path.length - 1]][0];
-    return path;
-};
-
-
 
 module.exports.createTrip = async (params) => {
     const { name, lat, lng, time, latEnd, lngEnd, userId, note, listCustomer, createdBy, storeId, status = tripContant.TRIPSTATUS.PENDING } = params;
@@ -252,7 +187,7 @@ module.exports.createTrip = async (params) => {
             }
         }
         if (listCustomer.length > 1) {
-            //listPoint.push(`${latEnd},${lngEnd}`);
+            listPoint.push(`${latEnd},${lngEnd}`);
             let res = await sortMap(listPoint);
             for (let i = 0; i < listCustomer.length; i++) {
                 let lngTmp, latTmp;
@@ -268,7 +203,7 @@ module.exports.createTrip = async (params) => {
                     lngTmp = listCustomer[i].lng;
                     latTmp = listCustomer[i].lat;
                 }
-                const index = res.findIndex(item => item == i + 1);
+                const index = res.findIndex(item => item == i + 2);
                 const address = await reverse(lngTmp, latTmp);
 
                 await models.TripCustomer.create({
@@ -277,7 +212,7 @@ module.exports.createTrip = async (params) => {
                     lat: latTmp,
                     lng: lngTmp,
                     status: tripContant.TRIPSTATUS.NOT_VISITED,
-                    stt: index,
+                    stt: index + 1,
                     address
                 }, {
                     transaction: t
@@ -555,6 +490,12 @@ module.exports.changeStatus = async (params) => {
             });
 
             const key = `map_${tripCustomer.tripId}`;
+            await client.set(key, JSON.stringify({
+                id: tripCustomer.tripId,
+                lng: tripCustomer.lng,
+                lat: tripCustomer.lat
+            }));
+            await client.expire(key, config.redis.timeToLive);
 
             await models.Trip.update({
                 latCurrent: tripCustomer.lat,
@@ -689,7 +630,7 @@ const updateIndex = async (tripId) => {
         listPoint.unshift(`${trip.lat},${trip.lng}`);
     }
     if (listPoint.length > 1) {
-        //listPoint.push(`${trip.latEnd},${trip.lngEnd}`);
+        listPoint.push(`${trip.latEnd},${trip.lngEnd}`);
         console.log(listPoint);
         let res = await sortMap(listPoint);
         const countVisted = await models.TripCustomer.count({
@@ -700,10 +641,10 @@ const updateIndex = async (tripId) => {
         });
 
         for (let i = 0; i < listTripCustomer.length; i++) {
-            const index = res.findIndex(item => item === i + 1);
-            if (index + countVisted !== listTripCustomer[i].stt) {
+            const index = res.findIndex(item => item == i + 2);
+            if (index + 1 + countVisted != listTripCustomer[i].stt) {
                 await models.TripCustomer.update({
-                    stt: index + countVisted
+                    stt: index + 1 + countVisted
                 }, {
                     where: {
                         id: listTripCustomer[i].id
