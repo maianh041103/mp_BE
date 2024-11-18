@@ -53,3 +53,43 @@ export async function getNextValue(storeId, type) {
     });
     return newCode.value
 }
+
+export async function getNextValueTransactione(storeId, type, t) {
+    let code = await models.Codes.findOne({
+        attributes: ['value'],
+        where: {
+            storeId: storeId,
+            type: type
+        },
+        transaction: t
+    })
+    if (!code) {
+        await models.Codes.create({
+            storeId: storeId,
+            type: type,
+            value: 0
+        },
+            {
+                transaction: t
+            });
+    }
+    await models.Codes.increment(
+        {value: 1},
+        {
+            where: {
+                storeId: storeId,
+                type: type
+            },
+            transaction: t
+        }
+    )
+    const newCode =  await models.Codes.findOne({
+        attributes: ['value'],
+        where: {
+            storeId: storeId,
+            type: type
+        },
+        transaction:t
+    });
+    return newCode.value
+}

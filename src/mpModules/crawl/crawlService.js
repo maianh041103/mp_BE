@@ -4,12 +4,14 @@ const { Sequelize, Op, where } = require("sequelize");
 const _ = require("lodash");
 const axios = require('axios');
 const categoryContant = require("./categoryContant");
-const {getNextValue} = require("../product/productCodeService");
+const {getNextValue, getNextValueTransactione} = require("../product/productCodeService");
 const codeGenerator = require("../../helpers/codeGenerator");
 const {generateCode} = require("../../helpers/codeGenerator");
 const {addSourceMappingUrl} = require("@babel/cli/lib/babel/util");
 const {productStatuses} = require("../product/productConstant");
 const marketConfigContant = require("../marketConfig/marketConfigContant");
+const {createWarehouseCard} = require("../warehouse/warehouseService");
+const {warehouseStatus} = require("../warehouse/constant");
 
 const createCategories = async (categories, storeId, t) => {
     const payload = categories.map(item=>
@@ -28,7 +30,7 @@ const createCategories = async (categories, storeId, t) => {
 
 module.exports.createFromMedicineMarket = async (payload) => {
     await models.sequelize.transaction(async (t) => {
-        const {token, storeId} = payload;
+        const {token, storeId, branchId} = payload;
         const categories = categoryContant.categories;
         await createCategories(categories, storeId, t);
         const apiUrl = `https://chothuoc24h.vn/searchProduct`;
@@ -59,15 +61,16 @@ module.exports.createFromMedicineMarket = async (payload) => {
                     }
                 });
                 const products = response.data;
-                const productToSave = await Promise.all(products.data.map(async (product) => {
-                    const nextValue = await getNextValue(storeId, 1);
+                let productToSave = [];
+                for(const product of products.data) {
+                    const nextValue = await getNextValueTransactione(storeId, 1, t);
                     const code = generateCode("TH", nextValue);
-                    return {
+                    productToSave.push({
                         name: product.name,
                         shortName: product.common_name ? product.common_name : product.name,
                         slug: product.name,
                         code,
-                        barCode:code,
+                        barCode: code,
                         groupProductId: category.id,
                         imageUrl: `https://chothuoc24h.vn/storage/${product.image}`,
                         price: product.price,
@@ -75,13 +78,14 @@ module.exports.createFromMedicineMarket = async (payload) => {
                         type: 1,
                         drugCode: "",
                         status: productStatuses.ACTIVE,
-                        inventory: 0,
+                        inventory: 1000,
                         baseUnit: product.unit || "",
-                    };
-                }));
+                    })
+                }
                 const newProducts = await models.Product.bulkCreate(productToSave,{
                     transaction: t
                 });
+                await createInventory(newProducts, branchId, t);
                 const unitToSave = newProducts.map(item=>{
                         return{
                             productId: item.id,
@@ -127,6 +131,33 @@ module.exports.createFromMedicineMarket = async (payload) => {
         success:true,
         data:null
     }
+}
+
+const createInventory = async (products, branchId, t)=>{
+    const warehouseCards = products.map(item => {
+        return {
+            type: warehouseStatus.ADJUSTMENT,
+            partner: "",
+            productId: item.id,
+            branchId: branchId,
+            changeQty: item.inventory,
+            remainQty: item.inventory,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        }
+    })
+    let newWarehouseCards = await models.WarehouseCard.bulkCreate(warehouseCards, { transaction: t });
+    const ids = newWarehouseCards.map(item=>item.id);
+
+    const updateQueries = newWarehouseCards.map(item =>
+        `UPDATE warehouse_card SET code = '${generateCode("KK", item.id)}' WHERE id = ${item.id}`
+    );
+
+    await Promise.all(
+        updateQueries.map(query =>
+            models.sequelize.query(query, { transaction: t })
+        )
+    );
 }
 
 module.exports.createFromWholesaleMedicine= async (payload) => {
