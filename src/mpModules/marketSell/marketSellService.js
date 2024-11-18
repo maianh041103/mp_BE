@@ -986,7 +986,7 @@ module.exports.getProductInCartService = async (result) => {
                 {
                     model: models.Product,
                     as: "product",
-                    attributes: ["id", "name"]
+                    attributes: ["id", "name", "imageUrl"]
                 }, {
                     model: models.ProductUnit,
                     as: "productUnit",
@@ -1022,6 +1022,13 @@ module.exports.getProductInCartService = async (result) => {
             where,
             include
         });
+        for(const item of listProductInCart){
+            if(item.marketProduct.imageCenter === null){
+                item.dataValues.marketProduct.dataValues.imageCenter = {
+                    filePath: item.marketProduct.product.imageUrl
+                }
+            }
+        }
         let listProductGroupByStore = [];
         for (let item of listProductInCart) {
             if(
