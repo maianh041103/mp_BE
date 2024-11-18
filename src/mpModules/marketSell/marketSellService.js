@@ -2327,8 +2327,10 @@ module.exports.getProductPrivateService = async (result) => {
                 marketProduct.dataValues.discountPrice = marketProduct.dataValues.agencys[index].discountPrice;
             }
             marketProduct.dataValues.images = await getImages(marketProduct.images);
-            marketProduct.dataValues.imageCenter = {
-                filePath: marketProduct.product.imageUrl
+            if(marketProduct.imageCenter === null){
+                marketProduct.dataValues.imageCenter = {
+                    filePath: marketProduct.product.imageUrl
+                }
             }
         }
         return {
