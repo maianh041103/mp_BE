@@ -770,6 +770,8 @@ module.exports.getDetailProductService = async (result) => {
         const listProduct = await models.MarketProduct.findAll({
             where,
             include: marketProductDetailInclude,
+            limit:20,
+            offset:0
         });
         marketProduct.dataValues.productWillCare = listProduct;
 
