@@ -735,6 +735,11 @@ module.exports.getDetailProductService = async (result) => {
         if (marketProduct.images) {
             marketProduct.dataValues.images = await getImages(marketProduct.images);
         }
+        if(marketProduct.imageCenter === null){
+            marketProduct.dataValues.imageCenter = {
+                filePath: marketProduct.product.imageUrl
+            }
+        }
         if (marketProduct.agencys.length > 0) {
             let index = marketProduct.agencys.findIndex(item => {
                 return item.agencyId !== null;
