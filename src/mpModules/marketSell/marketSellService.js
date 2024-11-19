@@ -773,6 +773,13 @@ module.exports.getDetailProductService = async (result) => {
             limit:20,
             offset:0
         });
+        for(const item of listProduct){
+            if(item.imageCenter === null){
+                item.dataValues.imageCenter = {
+                    filePath: item.product.imageUrl
+                }
+            }
+        }
         marketProduct.dataValues.productWillCare = listProduct;
 
         for(const product of listProduct){
