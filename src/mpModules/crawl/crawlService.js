@@ -22,25 +22,33 @@ const createCategories = async (categories, storeId, t) => {
             storeId
         }
     });
-    await models.GroupProduct.bulkCreate(payload,
+    const groupProducts =  await models.GroupProduct.bulkCreate(payload,
         {
             transaction: t
         });
+    return groupProducts;
 }
 
 module.exports.createFromMedicineMarket = async (payload) => {
     await models.sequelize.transaction(async (t) => {
         const {token, storeId, branchId} = payload;
         const categories = categoryContant.categories;
-        await createCategories(categories, storeId, t);
+        let groupProducts = await createCategories(categories, storeId, t);
         const apiUrl = `https://chothuoc24h.vn/searchProduct`;
+        groupProducts = groupProducts.map(item=>{
+            const category = categories.find(category => category.name === item.name);
+            return {
+                ...item,
+                categoryId: category.id
+            }
+        });
 
-        for (const category of categories) {
+        for (const category of groupProducts) {
             let currentPage = 1;
             while (true) {
                 const body = new URLSearchParams();
                 body.append('page', currentPage);
-                body.append('categoryId', category.id);
+                body.append('categoryId', category.categoryId);
                 const response = await axios.post(apiUrl, body, {
                     headers: {
                         'Accept': '*/*',
@@ -48,7 +56,7 @@ module.exports.createFromMedicineMarket = async (payload) => {
                         'Connection': 'keep-alive',
                         'Cookie': token,
                         'Origin': 'https://chothuoc24h.vn',
-                        'Referer': `https://chothuoc24h.vn/tim-kiem.html?category=${category.id}`,
+                        'Referer': `https://chothuoc24h.vn/tim-kiem.html?category=${category.categoryId}`,
                         'Sec-Fetch-Dest': 'empty',
                         'Sec-Fetch-Mode': 'cors',
                         'Sec-Fetch-Site': 'same-origin',
@@ -71,7 +79,7 @@ module.exports.createFromMedicineMarket = async (payload) => {
                         slug: product.name,
                         code,
                         barCode: code,
-                        groupProductId: category.id,
+                        groupProductId: category.dataValues.id,
                         imageUrl: `https://chothuoc24h.vn/storage/${product.image}`,
                         price: product.price,
                         storeId: storeId,

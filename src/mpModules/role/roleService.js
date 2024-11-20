@@ -198,8 +198,7 @@ export async function deleteRoleById(id, loginUser) {
     where: {
       id,
       storeId: loginUser.storeId,
-    },
-    raw: true,
+    }
   });
 
   if (!findRole) {
