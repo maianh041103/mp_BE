@@ -404,7 +404,8 @@ export async function readUserProfile(userId) {
       "phone",
       "roleId",
       "storeId",
-      "position"
+      "position",
+        "isAdmin"
     ],
     include: userIncludes,
   });
@@ -423,6 +424,8 @@ export async function readUserProfile(userId) {
       birthday: user.birthday,
       gender: user.gender,
       role: user.role,
+      branches: user.branches,
+      isAdmin: user.isAdmin
     },
   };
 }

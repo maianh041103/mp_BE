@@ -137,6 +137,10 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         type: DataTypes.INTEGER(15).UNSIGNED,
         defaultValue: 0
+      },
+      marketOrderId:{
+        allowNull: true,
+        type: DataTypes.INTEGER(15).UNSIGNED,
       }
     },
     {

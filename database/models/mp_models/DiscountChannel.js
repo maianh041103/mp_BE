@@ -2,8 +2,8 @@
 const Sequelize = require("sequelize");
 const discountContant = require('../../../src/mpModules/discount/discountContant');
 module.exports = (sequelize, DataTypes) => {
-    const DiscountApply = sequelize.define(
-        "DiscountApply",
+    const DiscountChannel = sequelize.define(
+        "DiscountChannel",
         {
             id: {
                 type: DataTypes.INTEGER(11).UNSIGNED,
@@ -15,33 +15,24 @@ module.exports = (sequelize, DataTypes) => {
                 type: DataTypes.INTEGER(11).UNSIGNED,
                 allowNull: false,
             },
-            orderId: {
-                type: DataTypes.INTEGER(11).UNSIGNED,
-                allowNull: true,
+            channel: {
+                type: Sequelize.ENUM(discountContant.discountChannel.OFFLINE, discountContant.discountChannel.ONLINE),
+                allowNull: false,
             },
-            marketOrderId:{
-                type:DataTypes.INTEGER(11).UNSIGNED,
-                allowNull:true
-            }
         },
         {
-            tableName: "discount_apply",
+            tableName: "discount_channels",
             timestamps: false,
         }
     );
 
-    DiscountApply.associate = function (models) {
-        DiscountApply.belongsTo(models.Discount, {
+    DiscountChannel.associate = function (models) {
+        DiscountChannel.belongsTo(models.Discount, {
             as: "discount",
             foreignKey: "discountId",
             sourceKey: 'id',
-        }),
-            DiscountApply.belongsTo(models.Order, {
-                as: "order",
-                foreignKey: "orderId",
-                sourceKey: 'id',
-            })
+        })
     };
 
-    return DiscountApply;
+    return DiscountChannel;
 };

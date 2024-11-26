@@ -122,7 +122,8 @@ export async function createController(req, res) {
             note: _.get(req.body, "note", ""),
             lat:_.get(req.body, "lat", "")?_.get(req.body, "lat", "").trim():null,
             lng:_.get(req.body, "lng", "")?_.get(req.body, "lng", "").trim():null,
-            companyName: _.get(req, "body.companyName", null)
+            companyName: _.get(req, "body.companyName", null),
+            branchId: _.get(req, "body.branchId", null)
         };
         const result = await createCustomer(customer, loginUser);
         if (result.success) res.json(respondItemSuccess(result.data));
@@ -164,7 +165,8 @@ export async function updateController(req, res) {
             ...(status && {status}),
             updatedBy: loginUser.id,
             updatedAt: new Date(),
-            companyName: _.get(req, "body.companyName", null)
+            companyName: _.get(req, "body.companyName", null),
+            branchId: _.get(req, "body.branchId", null)
         };
         const result = await updateCustomer(id, customer, loginUser);
         if (result.success) res.json(respondItemSuccess(result.data));

@@ -25,6 +25,14 @@ module.exports = (sequelize, DataTypes) => {
             price:{
                 allowNull: false,
                 type:DataTypes.INTEGER(20).UNSIGNED
+            },
+            itemPrice:{
+                allowNull:false,
+                type:DataTypes.INTEGER(20).UNSIGNED
+            },
+            discountItemId:{
+                allowNull:true,
+                type:DataTypes.INTEGER(10).UNSIGNED
             }
         },
         {
@@ -49,6 +57,11 @@ module.exports = (sequelize, DataTypes) => {
             as: "orderBatches",
             foreignKey:"marketOrderProductId",
             sourceKey:"id"
+        });
+        MarketOrderProduct.belongsTo(models.DiscountItem,{
+            as:"discountProductItem",
+            foreignKey:"discountItemId",
+            targetKey:"id",
         });
     };
     return MarketOrderProduct;

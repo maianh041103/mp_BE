@@ -18,6 +18,7 @@ const {addFilterByDate} = require("../../helpers/utils");
 const moment = require('moment');
 const {readProduct, getProductBySeri} = require("../product/productService");
 const {getInventory} = require("../inventory/inventoryService");
+const discountContant = require("../discount/discountContant");
 
 const marketAddressInclude = [
     {
@@ -65,7 +66,7 @@ const marketOrderInclude = [
                     {
                         model: models.Product,
                         as: "product",
-                        attributes: ["id", "name","primePrice","code"]
+                        attributes: ["id", "name","primePrice","code", "imageUrl"]
                     },
                     {
                         model: models.ProductUnit,
@@ -81,6 +82,16 @@ const marketOrderInclude = [
             {
                 model:models.MarketOrderBatch,
                 as:"orderBatches"
+            },
+            {
+                model:models.DiscountItem,
+                as:"discountProductItem",
+                include:[
+                    {
+                        model:models.Discount,
+                        as:"discount"
+                    }
+                ]
             }
         ]
     },
@@ -117,15 +128,22 @@ const marketOrderInclude = [
     {
         model:models.Customer,
         as:"customer"
+    },
+    {
+        model:models.DiscountItem,
+        as:"discountOrderItem",
+        include:[
+            {
+                model:models.Discount,
+                as:"discount"
+            }
+        ]
     }
 ];
 const marketOrderAttributes = [
     "id","code","fullName","storeId","toStoreId","toBranchId","addressId","address", "phone","status",
     "note","wardId","districtId","provinceId","isPayment","createdAt","deliveryFee","customerId",
-    "cancelNote","closedNote",
-    [Sequelize.literal(`(SELECT SUM(market_order_products.quantity * market_order_products.price)
-    FROM market_order_products
-    WHERE MarketOrder.id = market_order_products.marketOrderId )`), 'totalPrice'],
+    "cancelNote","closedNote", "totalPrice","discountItemId"
 ]
 const storeAttributes = [
     "id", "name", "phone","email", "address", "wardId", "districtId", "provinceId","isAgency",
@@ -214,10 +232,19 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser,branc
             userId:loginUser.id,
             storeId: loginUser.storeId,
             createdBy: loginUser.id,
-            branchId: branchId
+            branchId: branchId,
+            marketOrderId
         },
         { transaction: t }
     );
+    await models.DiscountApply.update({
+        orderId:newOrder.id
+    },{
+        where:{
+            marketOrderId:marketOrderId
+        },
+        transaction:t
+    });
     for (const item of marketOrderExists.products) {
         const productUnit = await models.ProductUnit.findOne({
             where: {
@@ -246,7 +273,8 @@ const handlerCreateOrderPayment = async ({marketOrderId, storeId,loginUser,branc
                 comboId: null,
                 quantityLast: null,
                 userId:loginUser.id,
-                point: 0
+                point: 0,
+                marketOrderProductId: item.id
             },
             { transaction: t }
         )
@@ -707,6 +735,11 @@ module.exports.getDetailProductService = async (result) => {
         if (marketProduct.images) {
             marketProduct.dataValues.images = await getImages(marketProduct.images);
         }
+        if(marketProduct.imageCenter === null){
+            marketProduct.dataValues.imageCenter = {
+                filePath: marketProduct.product.imageUrl
+            }
+        }
         if (marketProduct.agencys.length > 0) {
             let index = marketProduct.agencys.findIndex(item => {
                 return item.agencyId !== null;
@@ -742,7 +775,16 @@ module.exports.getDetailProductService = async (result) => {
         const listProduct = await models.MarketProduct.findAll({
             where,
             include: marketProductDetailInclude,
+            limit:20,
+            offset:0
         });
+        for(const item of listProduct){
+            if(item.imageCenter === null){
+                item.dataValues.imageCenter = {
+                    filePath: item.product.imageUrl
+                }
+            }
+        }
         marketProduct.dataValues.productWillCare = listProduct;
 
         for(const product of listProduct){
@@ -958,7 +1000,7 @@ module.exports.getProductInCartService = async (result) => {
                 {
                     model: models.Product,
                     as: "product",
-                    attributes: ["id", "name"]
+                    attributes: ["id", "name", "imageUrl"]
                 }, {
                     model: models.ProductUnit,
                     as: "productUnit",
@@ -994,6 +1036,13 @@ module.exports.getProductInCartService = async (result) => {
             where,
             include
         });
+        for(const item of listProductInCart){
+            if(item.marketProduct.imageCenter === null){
+                item.dataValues.marketProduct.dataValues.imageCenter = {
+                    filePath: item.marketProduct.product.imageUrl
+                }
+            }
+        }
         let listProductGroupByStore = [];
         for (let item of listProductInCart) {
             if(
@@ -1187,7 +1236,8 @@ module.exports.createMarketOrderService = async (result) => {
         const listNewMarketOrderBuy = [];
         const t = await models.sequelize.transaction(async (t) => {
             for (const order of orders) {
-                let {addressId, listProduct, toStoreId, note, customerId, isDirectSale} = order;
+                let {addressId, listProduct, toStoreId, note, customerId, isDirectSale, discountOrderItemId} = order;
+
                 if (!addressId) {
                     throw new Error(`Vui lòng gửi thông tin địa chỉ giao hàng`);
                 }
@@ -1267,14 +1317,47 @@ module.exports.createMarketOrderService = async (result) => {
                     fullName: addressExists.fullName,
                     deliveryFee: 50000,
                     note,
-                    customerId
+                    customerId,
+                    discountItemId:discountOrderItemId
                 }, {
                     transaction: t
                 });
 
                 let totalPrice = 0;
                 for (const item of listProduct) {
-                    totalPrice += item.price * item.quantity;
+                    let itemPrice = item.price;
+                    if(item.discountProductItemId){
+                        const discountItem = await models.DiscountItem.findOne({
+                            where:{
+                                id:item.discountProductItemId
+                            }
+                        });
+                        if(!discountItem){
+                            throw new Error(`Item khuyến mãi có id = ${item.discountProductItemId}  không tồn tại`);
+                        }
+                        const discount = await models.Discount.findOne({
+                            where:{
+                                id:discountItem.discountId,
+                                target: discountContant.discountTarget.PRODUCT,
+                                type: discountContant.discountType.PRICE_BY_BUY_NUMBER
+                            }
+                        });
+                        if(!discount){
+                            throw new Error(`Không tồn tại khuyến mãi hàng hóa mua hàng giảm giá hàng có id = ${discountItem.discountId}`);
+                        }
+                        if(discountItem.changeType === discountContant.discountDiscountType.TYPE_PRICE){
+                            itemPrice = discountItem.fixedPrice;
+                        }else{
+                            itemPrice -= (discountItem.fixedPrice || 0);
+                        }
+                        await models.DiscountApply.create({
+                            discountId:discount.id,
+                            marketOrderId: newMarketOrderBuy.id
+                        },{
+                            transaction:t
+                        });
+                    }
+                    totalPrice += itemPrice * item.quantity;
                     let marketProductExists = await models.MarketProduct.findOne({
                         where: {
                             id: item.marketProductId,
@@ -1287,7 +1370,9 @@ module.exports.createMarketOrderService = async (result) => {
                         marketProductId: item.marketProductId,
                         marketOrderId: newMarketOrderBuy.id,
                         quantity: item.quantity,
-                        price: item.price
+                        price: item.price,
+                        itemPrice,
+                        discountItemId: item.discountProductItemId
                     }, {
                         transaction: t
                     });
@@ -1309,6 +1394,38 @@ module.exports.createMarketOrderService = async (result) => {
                 }, {
                     transaction: t
                 });
+                if(discountOrderItemId){
+                    const discountItem = await models.DiscountItem.findOne({
+                        where:{
+                            id:discountOrderItemId
+                        }
+                    });
+                    if(!discountItem){
+                        throw new Error(`Item khuyến mãi có id = ${discountOrderItemId}  không tồn tại`);
+                    }
+                    const discount = await models.Discount.findOne({
+                        where:{
+                            id:discountItem.discountId,
+                            target: discountContant.discountTarget.ORDER,
+                            type: discountContant.discountType.ORDER_PRICE
+                        }
+                    });
+                    if(!discount){
+                        throw new Error(`Không tồn tại khuyến mãi giảm giá hóa đơn có id = ${discountItem.discountId}`);
+                    }
+                    if(discountItem.discountType === discountContant.discountDiscountType.AMOUNT){
+                        totalPrice -= discountItem.discountValue;
+                    }else{
+                        totalPrice -= discountItem.discountValue * totalPrice;
+                    }
+                    await models.DiscountApply.create({
+                        discountId:discount.id,
+                        marketOrderId: newMarketOrderBuy.id
+                    },{
+                        transaction:t
+                    })
+                }
+
                 await models.MarketOrder.update({
                     code, totalPrice
                 }, {
@@ -1317,7 +1434,7 @@ module.exports.createMarketOrderService = async (result) => {
                     },
                     transaction: t
                 });
-
+                newMarketOrderBuy.totalPrice = totalPrice;
                 listNewMarketOrderBuy.push(newMarketOrderBuy);
             }
         })
@@ -1351,6 +1468,13 @@ const handleGetDetailMarketOrder = async ( {id,storeId} )=>{
     });
     if (!marketOrder) {
         throw new Error(`Không tồn tại đơn hàng có id = ${id}`);
+    }
+    for(const item of marketOrder.products){
+        if(item.marketProduct.imageCenter === null){
+            item.dataValues.marketProduct.dataValues.imageCenter = {
+                filePath: item.marketProduct.product.imageUrl
+            }
+        }
     }
     marketOrder.dataValues.totalPrice = parseInt(marketOrder.dataValues.totalPrice);
     return marketOrder;
@@ -1435,6 +1559,12 @@ module.exports.getAllMarketOrderService = async (result) => {
                     attributes:["id","code"]
                 });
                 item.dataValues.series = series;
+
+                if(item.marketProduct.imageCenter === null){
+                    item.dataValues.marketProduct.dataValues.imageCenter = {
+                        filePath: item.marketProduct.product.imageUrl
+                    }
+                }
             }
         }
         const count = await models.MarketOrder.count({
@@ -1718,7 +1848,7 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
 
                     //Check số lượng sản phẩm
                     if(inventory < item.quantity * item?.marketProduct?.productUnit?.exchangeValue){
-                        throw new Error(`Sản phẩm ${item?.product?.name} không đủ số lượng`);
+                        throw new Error(`Sản phẩm không đủ số lượng`);
                     }
 
 
@@ -1834,7 +1964,7 @@ module.exports.changeStatusMarketOrderService = async (result) =>   {
 }
 
 module.exports.updateOrderService = async (result) => {
-    const {id, addressId, listProduct,storeId, note} = result;
+    const {id, addressId, listProduct,storeId, note, discountOrderItemId} = result;
     const marketOrder = await models.MarketOrder.findOne({
         where: {
             id,
@@ -1903,12 +2033,44 @@ module.exports.updateOrderService = async (result) => {
             }
         });
         let totalPrice = 0;
+        let discountApplyIds = [];
+
         for(const product of listProduct){
-            totalPrice += product.price * product.quantity;
+            let itemPrice = product.price;
+            if(product.discountProductItemId){
+                const discountItem = await models.DiscountItem.findOne({
+                    where:{
+                        id:product.discountProductItemId
+                    }
+                });
+                if(!discountItem){
+                    throw new Error(`Item khuyến mãi có id = ${product.discountProductItemId}  không tồn tại`);
+                }
+                const discount = await models.Discount.findOne({
+                    where:{
+                        id:discountItem.discountId,
+                        target: discountContant.discountTarget.PRODUCT,
+                        type: discountContant.discountType.PRICE_BY_BUY_NUMBER
+                    }
+                });
+                if(!discount){
+                    throw new Error(`Không tồn tại khuyến mãi hàng hóa mua hàng giảm giá hàng có id = ${discountItem.discountId}`);
+                }
+                discountApplyIds.push(discount.id);
+                if(discountItem.changeType === discountContant.discountDiscountType.TYPE_PRICE){
+                    itemPrice = discountItem.fixedPrice;
+                }else{
+                    itemPrice -= (discountItem.fixedPrice || 0);
+                }
+            }
+
+            totalPrice += itemPrice * product.quantity;
             if(product.marketOrderProductId){
                 await models.MarketOrderProduct.update({
                     quantity: product.quantity,
-                    price:product.price
+                    price:product.price,
+                    itemPrice,
+                    discountItemId:product.discountProductItemId
                 },{
                     where:{
                         id:product.marketOrderProductId
@@ -1920,14 +2082,74 @@ module.exports.updateOrderService = async (result) => {
                     quantity: product.quantity,
                     price: product.price,
                     marketOrderId: id,
-                    marketProductId: product.marketProductId
+                    marketProductId: product.marketProductId,
+                    discountItemId:product.discountProductItemId
                 },{
                     transaction: t
                 });
             }
         }
+        if(discountOrderItemId){
+            const discountItem = await models.DiscountItem.findOne({
+                where:{
+                    id:discountOrderItemId
+                }
+            });
+            if(!discountItem){
+                throw new Error(`Item khuyến mãi có id = ${discountOrderItemId}  không tồn tại`);
+            }
+            const discount = await models.Discount.findOne({
+                where:{
+                    id:discountItem.discountId,
+                    target: discountContant.discountTarget.ORDER,
+                    type: discountContant.discountType.ORDER_PRICE
+                }
+            });
+            if(!discount){
+                throw new Error(`Không tồn tại khuyến mãi giảm giá hóa đơn có id = ${discountItem.discountId}`);
+            }
+            if(discountItem.discountType === discountContant.discountDiscountType.AMOUNT){
+                totalPrice -= discountItem.discountValue;
+            }else{
+                totalPrice -= discountItem.discountValue * totalPrice;
+            }
+            discountApplyIds.push(discount.id);
+        }
+
+        await models.DiscountApply.destroy({
+            where:{
+                discountId:{
+                    [Op.notIn]:discountApplyIds
+                },
+                marketOrderId:marketOrder.id
+            },
+            transaction: t
+        });
+        const listDiscountIdExists = (await models.DiscountApply.findAll({
+            where:{
+                discountId:{
+                    [Op.in]:discountApplyIds
+                },
+                marketOrderId:marketOrder.id
+            }
+        })).map(item=>item.discountId);
+        const listDiscountIdAdd = discountApplyIds.filter(item => !listDiscountIdExists.includes(item));
+        const discountApplyAdd = listDiscountIdAdd.map(id=>{
+            return {
+                marketOrderId: marketOrder.id,
+                discountId: id
+            }
+        });
+        await models.DiscountApply.bulkCreate(discountApplyAdd,
+            {
+                transaction:t
+            });
+
+
+        console.log(totalPrice);
         await models.MarketOrder.update({
-            note,totalPrice
+            note,totalPrice,
+            discountItemId:discountOrderItemId
         },{
             where:{
                 id
@@ -2108,17 +2330,14 @@ module.exports.getProductPrivateService = async (result) => {
             offset: (parseInt(page) - 1) * (parseInt(limit)),
             order: [[sortBy, "DESC"]],
         });
-        console.log("OK");
         const index = include.findIndex(item => {
             return item.as === "agencys";
         });
         include.splice(index, 1);
-        console.log("OKK");
         const count = await models.MarketProduct.count({
             where,
             include
         });
-        console.log("OK1");
         for (const marketProduct of listMarketProduct) {
             if (marketProduct.agencys.length > 0) {
                 let index = marketProduct.agencys.findIndex(item => {
@@ -2129,8 +2348,12 @@ module.exports.getProductPrivateService = async (result) => {
                 marketProduct.dataValues.discountPrice = marketProduct.dataValues.agencys[index].discountPrice;
             }
             marketProduct.dataValues.images = await getImages(marketProduct.images);
+            if(marketProduct.imageCenter === null){
+                marketProduct.dataValues.imageCenter = {
+                    filePath: marketProduct.product.imageUrl
+                }
+            }
         }
-        console.log("OK2");
         return {
             success: true,
             data: {
@@ -2176,10 +2399,16 @@ module.exports.getSeriService = async (result) => {
                 {
                     model:models.Product,
                     as:"product",
-                    attributes:["name"]
+                    attributes:["name", "imageUrl"]
                 }
             ]
         });
+        if(marketProduct.imageCenter === null){
+            marketProduct.dataValues.imageCenter =
+                {
+                    filePath: marketProduct.product.imageUrl
+                };
+        }
         marketProduct.dataValues.quantity = marketOrderProductExists.quantity;
         const series = await models.Seri.findAll({
             where:{

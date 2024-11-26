@@ -16,6 +16,7 @@ const discountAttributes = [
     "isMultiple",
     "isAllCustomer",
     "isAllBranch",
+    "isAllChannel",
     "storeId",
     "createdAt",
     "updatedAt",
@@ -51,6 +52,11 @@ const discountIncludes = [
         model: models.DiscountCustomer,
         as: "discountCustomer",
         attributes: ["groupCustomerId"]
+    },
+    {
+        model: models.DiscountChannel,
+        as: "discountChannel",
+        attributes: ["channel"]
     }
 ]
 
@@ -104,14 +110,15 @@ module.exports.create = async (discount, loginUser) => {
 
     const t = await models.sequelize.transaction(async (t) => {
         //Tạo bảng discount
-        const { branch, customer } = discount.scope || {};
-        let isAllBranch = branch.isAll == true ? 1 : 0;
-        let isAllCustomer = customer.isAll == true ? 1 : 0;
+        const { branch, customer, channel } = discount.scope || {};
+        let isAllBranch = branch.isAll === true ? 1 : 0;
+        let isAllCustomer = customer.isAll === true ? 1 : 0;
+        let isAllChannel = channel.isAll === true ? 1 : 0;
 
         const { code, name, status, note, target, type, isMultiple, createdAt } = discount;
         const storeId = loginUser.storeId;
         const newDiscount = await models.Discount.create({
-            code, name, status, note, target, type, isMultiple, isAllBranch, isAllCustomer, createdAt, storeId
+            code, name, status, note, target, type, isMultiple, isAllBranch, isAllCustomer,isAllChannel, createdAt, storeId
         }, { transaction: t })
 
         newDiscountId = newDiscount.id;
@@ -230,6 +237,18 @@ module.exports.create = async (discount, loginUser) => {
             }
 
         }
+
+        if(channel){
+            let {types} = channel;
+            if (isAllChannel === 0) {
+                for (const type of types) {
+                    await models.DiscountChannel.create({
+                        discountId: newDiscountId,
+                        channel:type
+                    }, { transaction: t });
+                }
+            }
+        }
     });
 
     return {
@@ -243,7 +262,7 @@ module.exports.create = async (discount, loginUser) => {
 
 module.exports.getAll = async (filter, loginUser) => {
     const {
-        page, limit, keyword, effective, target, type, status
+        page, limit, keyword, effective, target, type, status, channel
     } = filter;
 
     let clonedDiscountInclude = _.cloneDeep(discountIncludes);
@@ -315,7 +334,6 @@ module.exports.getAll = async (filter, loginUser) => {
         }
     }
 
-    console.log(clonedDiscountInclude);
     if (target) {
         where.target = target.trim();
     }
@@ -326,6 +344,22 @@ module.exports.getAll = async (filter, loginUser) => {
 
     if (status) {
         where.status = status.trim();
+    }
+
+    if(channel){
+        where[Op.or] = [
+            { isAllChannel: 1 },
+            {
+                isAllChannel: 0,
+                id: {
+                    [Op.in]: Sequelize.literal(`(
+                        SELECT discountId 
+                        FROM discount_channels
+                        WHERE channel = '${channel}' AND discount_channels.discountId = Discount.id
+                        )`)
+                }
+            }
+        ]
     }
 
     const rows = await models.Discount.findAll({
@@ -380,12 +414,13 @@ module.exports.update = async (discount, discountId, loginUser) => {
         };
     }
 
-    const { branch, customer } = discount.scope || {};
+    const { branch, customer, channel} = discount.scope || {};
     const isAllBranch = (branch || {}).isAll;
     const isAllCustomer = (customer || {}).isAll;
-    discount.isAllBranch = isAllBranch == true ? 1 : 0;
-    discount.isAllCustomer = isAllCustomer == true ? 1 : 0;
-
+    const isAllChannel = (channel.isAll || {}) === true ? 1 : 0;
+    discount.isAllBranch = isAllBranch === true ? 1 : 0;
+    discount.isAllCustomer = isAllCustomer === true ? 1 : 0;
+    discount.isAllChannel = isAllChannel === true ? 1 : 0;
     const t = await models.sequelize.transaction(async (t) => {
         //Update bảng discount
         const discountUpdate = await models.Discount.update(
@@ -844,7 +879,7 @@ module.exports.getDetail = async (discountId, loginUser) => {
     }
 }
 
-const getDiscountApplyIncludes = (order, filter, loginUser) => {
+const getDiscountApplyIncludes = (order) => {
     const {
         customerId = -1, branchId
     } = order;
@@ -973,6 +1008,7 @@ const convertResult = (rows) => {
             }
 
             return {
+                id:item.id,
                 condition: {
                     order: {
                         from: item.orderFrom
@@ -1033,10 +1069,22 @@ const convertResult = (rows) => {
 }
 
 module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
-    const discountByOrderIncludes = getDiscountApplyIncludes(order, filter, loginUser);
-    const {
-        customerId = -1, branchId, products, totalPrice
+    const discountByOrderIncludes = getDiscountApplyIncludes(order);
+    let {
+        customerId = -1, branchId, products, totalPrice, toStoreId
     } = order;
+
+    if(toStoreId){
+        const customerExists = await models.Customer.findOne({
+            where:{
+                storeId : toStoreId,
+                customerStoreId: loginUser.storeId
+            }
+        });
+        if (customerExists) {
+            customerId = customerExists.id;
+        }
+    }
 
     const groupCustomerIds = (await models.CustomerGroupCustomer.findAll({
         where:{
@@ -1066,13 +1114,15 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
     discountByOrderIncludes.push(discountItem);
 
     const {
-        page, limit
-    } = filter;
+        page, limit, type, channel
+    } = {...filter};
 
+    let storeId = loginUser.storeId;
+    if(toStoreId) storeId = toStoreId;
     const where = {
         target: discountContant.discountTarget.ORDER,
         status: discountContant.discountStatus.ACTIVE,
-        storeId: loginUser.storeId,
+        storeId,
         [Op.and]: [
             {
                 [Op.or]: [
@@ -1095,6 +1145,24 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
                         }
                     }
                 ]
+            }
+        ]
+    }
+    if(type){
+        where.type = type;
+    }
+    if(channel){
+        where[Op.or] = [
+            { isAllChannel: 1 },
+            {
+                isAllChannel: 0,
+                id: {
+                    [Op.in]: Sequelize.literal(`(
+                        SELECT discountId 
+                        FROM discount_channels
+                        WHERE channel = '${channel}' AND discount_channels.discountId = Discount.id
+                        )`)
+                }
             }
         ]
     }
@@ -1139,13 +1207,25 @@ module.exports.getDiscountByOrder = async (order, filter, loginUser) => {
 }
 
 module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
-    const {
-        productUnitId, quantity, branchId, customerId = -1
+    let {
+        productUnitId, quantity, branchId, customerId = -1, toStoreId
     } = order;
 
     const {
-        page, limit
-    } = filter;
+        page, limit, type, channel
+    } = {...filter};
+
+    if(toStoreId){
+        const customerExists = await models.Customer.findOne({
+            where:{
+                storeId : toStoreId,
+                customerStoreId: loginUser.storeId
+            }
+        });
+        if (customerExists) {
+            customerId = customerExists.id;
+        }
+    }
 
     const groupCustomerIds = (await models.CustomerGroupCustomer.findAll({
         where:{
@@ -1155,7 +1235,7 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
 
     const groupCustomerIdsString = groupCustomerIds.length > 0 ? groupCustomerIds.join(', ') : '-1';
 
-    const discountByProductIncludes = getDiscountApplyIncludes(order, filter, loginUser);
+    const discountByProductIncludes = getDiscountApplyIncludes(order);
     const discountItem = {
         model: models.DiscountItem,
         as: "discountItem",
@@ -1183,10 +1263,12 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
 
     discountByProductIncludes.push(discountItem);
 
+    let storeId = loginUser.storeId;
+    if(toStoreId) storeId = toStoreId;
     const where = {
         target: discountContant.discountTarget.PRODUCT,
         status: discountContant.discountStatus.ACTIVE,
-        storeId: loginUser.storeId,
+        storeId,
         [Op.and]: [
             {
                 [Op.or]: [
@@ -1209,6 +1291,26 @@ module.exports.getDiscountByProduct = async (order, filter, loginUser) => {
                         }
                     }
                 ]
+            }
+        ]
+    }
+
+    if(type){
+        where.type = type;
+    }
+
+    if(channel){
+        where[Op.or] = [
+            { isAllChannel: 1 },
+            {
+                isAllChannel: 0,
+                id: {
+                    [Op.in]: Sequelize.literal(`(
+                        SELECT discountId 
+                        FROM discount_channels
+                        WHERE channel = '${channel}' AND discount_channels.discountId = Discount.id
+                        )`)
+                }
             }
         ]
     }
