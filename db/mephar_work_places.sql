@@ -1,0 +1,59 @@
+-- MySQL dump 10.13  Distrib 8.0.36, for Win64 (x86_64)
+--
+-- Host: 103.75.180.105    Database: mephar
+-- ------------------------------------------------------
+-- Server version	8.0.36-0ubuntu0.20.04.1
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `work_places`
+--
+
+DROP TABLE IF EXISTS `work_places`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `work_places` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `storeId` int unsigned DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
+  `createdBy` int unsigned DEFAULT NULL,
+  `updatedBy` int unsigned DEFAULT NULL,
+  `createdAt` datetime DEFAULT NULL,
+  `updatedAt` datetime DEFAULT NULL,
+  `deletedAt` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `storeId` (`storeId`),
+  CONSTRAINT `work_places_ibfk_1` FOREIGN KEY (`storeId`) REFERENCES `stores` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb3;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `work_places`
+--
+
+LOCK TABLES `work_places` WRITE;
+/*!40000 ALTER TABLE `work_places` DISABLE KEYS */;
+INSERT INTO `work_places` VALUES (1,3,'B?nh vi?n 109',2,2,'2024-01-07 01:33:32','2024-01-07 01:35:15',NULL),(2,3,'B?nh vi?n 108',2,2,'2024-01-07 01:35:28','2024-01-07 01:35:28','2024-01-07 01:35:42'),(3,3,'Benh vien 103',2,2,'2024-01-08 15:10:05','2024-01-08 15:10:05',NULL),(4,24,'B?nh vi?n B?ch Mai',48,48,'2024-01-12 11:31:07','2024-01-12 11:31:07',NULL),(5,3,'B?nh vi?n B?ch Mai',2,2,'2024-01-13 18:24:57','2024-01-13 18:24:57',NULL),(6,29,'BV 108',49,49,'2024-01-21 00:15:40','2024-01-21 00:15:40',NULL),(7,31,'Benh vien 1',50,50,'2024-01-21 10:21:49','2024-01-21 10:21:49',NULL),(8,31,'test',50,50,'2024-01-29 02:55:15','2024-01-29 02:55:15',NULL),(9,120,'Công tác tại Việt Nam',98,98,'2024-03-19 09:46:51','2024-03-19 09:46:51',NULL),(10,120,'Công tác tại nước Mỹ',98,98,'2024-03-19 09:47:05','2024-03-19 09:47:05',NULL),(11,126,'a',104,104,'2024-03-25 13:49:49','2024-03-25 13:49:49',NULL),(12,126,'Hải Phòng',104,104,'2024-03-27 10:28:09','2024-03-27 10:28:09',NULL),(13,29,'Bệnh viện Bạch Mai',49,49,'2024-03-28 14:12:14','2024-03-28 14:12:14',NULL),(14,173,'HN',144,144,'2024-05-16 10:30:34','2024-05-16 10:30:34',NULL),(15,171,'Bạch Mai',143,143,'2024-06-04 10:39:33','2024-06-04 10:39:33',NULL),(16,194,'BV PH',168,168,'2024-07-05 16:54:42','2024-07-05 16:54:42',NULL),(17,188,'Bạch mai',163,163,'2024-07-19 10:30:58','2024-07-19 10:30:58',NULL),(18,171,'Trung tâm phục hồi nhân phẩm',143,143,'2024-07-19 13:55:05','2024-07-19 13:55:05',NULL),(21,171,'Bệnh viện Hà Nam',145,NULL,'2024-07-23 17:44:07','2024-07-23 17:44:07',NULL);
+/*!40000 ALTER TABLE `work_places` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-12-08 14:10:16
